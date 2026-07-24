@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🗺️ 可可世界 · 探险地图</title>
+    <link rel="stylesheet" href="css/explore.css">
+    <link rel="stylesheet" href="css/sudoku.css">
+    <link rel="stylesheet" href="css/trade.css">
+    <link rel="stylesheet" href="css/mining.css">
+    <link rel="stylesheet" href="css/rice.css">
+    <link rel="stylesheet" href="css/grinder.css">
+    <link rel="stylesheet" href="css/panini.css">
+
+
+    <style>
+        .treasure-marker {
+            animation: treasurePulse 1.5s ease-in-out infinite;
+            z-index: 6 !important;
+        }
+        @keyframes treasurePulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.15); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="map-container">
+    <!-- ===== 顶部标题栏 ===== -->
+    <div class="map-header">
+        <div class="title">
+            🗺️ 可可世界
+            <span>· 探险地图</span>
+        </div>
+        <div class="stats">
+            🚩 <strong id="regionCount">0</strong>/10
+            &nbsp;|&nbsp; 👤 Lv.<strong id="playerLevelDisplay">1</strong>
+            &nbsp;|&nbsp; <span id="adventurerDisplay" style="cursor:pointer;" onclick="openAdventurerPanel()">
+                ⭐ <span id="adventurerTitle">浅行员</span>
+                🏅 <span id="adventurerRep">0/50</span>
+            </span>
+            &nbsp;|&nbsp; ⚓ <strong id="exploreCoinDisplay">0</strong>
+        </div>
+        <div class="header-actions">
+            <button class="btn-backpack" id="backpackBtn">🎒 背包</button>
+            <button class="btn-close-map" id="closeMapBtn">关闭</button>
+        </div>
+    </div>
+
+    <!-- ===== 地图区域 ===== -->
+    <div class="map-area" id="mapArea">
+        <img class="map-image" id="mapImage"
+        src="images/cap.jpg"
+        alt="可可世界地图"
+        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%222910%22 height=%221280%22%3E%3Crect fill=%22%231a2a4a%22 width=%222910%22 height=%221280%22/%3E%3Ctext x=%221455%22 y=%22640%22 text-anchor=%22middle%22 fill=%22%23aaa%22 font-size=%2240%22 font-family=%22sans-serif%22%3E请将地图放入 images/cap.jpg%3C/text%3E%3C/svg%3E'">
+
+        <div class="map-overlay" id="mapOverlay">
+            <div class="ship-marker" id="shipMarker">⛵</div>
+        </div>
+
+        <div class="travel-progress" id="travelProgress">
+            <div class="bar-track">
+                <div class="bar-fill" id="travelBar"></div>
+            </div>
+            <div class="text" id="travelText">⛵ 航行中...</div>
+        </div>
+
+        <div class="toast" id="toastMsg"></div>
+    </div>
+
+    <!-- ===== 底部信息面板 ===== -->
+    <div class="info-panel" id="infoPanel">
+        <!-- 信息模式 -->
+        <div id="infoMode" style="display:flex;width:100%;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div class="info-text" id="infoText">
+                <span class="name">🌊 欢迎米来湾</span>
+                <span class="status-badge" id="statusBadge">📍 当前位置</span>
+                <br>
+                <span class="sub">初始区域</span>
+            </div>
+            <div class="actions" id="actionButtons">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 钓鱼模式 -->
+        <div id="fishingMode" style="display:none;width:100%;">
+            <div id="fishingContainer"></div>
+        </div>
+
+        <!-- ⭐ 挖矿模式（新增） -->
+        <div id="miningMode" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#2d1b0e,#4a2c1a);border-radius:16px;z-index:4;padding:12px 16px;overflow-y:auto;border:2px solid #c98f5e;box-shadow:inset 0 0 60px rgba(0,0,0,0.6);">
+            <div id="miningContainer"></div>
+        </div>
+
+        <!-- 悬赏板模式 -->
+        <div id="bountyMode" style="display:none;width:100%;height:100%;position:absolute;top:0;left:0;background:rgba(10,22,32,0.98);border-radius:16px;z-index:3;padding:20px;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="color:#ffd700;margin:0;font-size:1.1rem;">📋 悬赏板</h3>
+                <button id="closeBountyBtn" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.7rem;color:white;font-weight:bold;">关闭</button>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#a56b3a;text-align:center;">
+                <div style="font-size:4rem;margin-bottom:16px;">📋</div>
+                <div style="font-size:1.2rem;font-weight:bold;color:#ffd700;">悬赏功能开发中</div>
+                <div style="font-size:0.75rem;color:#a56b3a;margin-top:8px;">来自各岛屿的NPC悬赏即将上线...</div>
+                <div style="font-size:0.6rem;color:#a56b3a;margin-top:20px;">💡 冒险者等级 <span id="bountyRankDisplay">浅行员</span></div>
+            </div>
+        </div>
+
+        <!-- 小王子游戏容器 -->
+        <div id="princeGameContainer" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#2d1b0e,#4a2c1a);border-radius:16px;z-index:4;padding:12px 16px;overflow-y:auto;border:2px solid #c98f5e;box-shadow:inset 0 0 60px rgba(0,0,0,0.6);">
+            <!-- 由 princeGame.js 动态渲染 -->
+        </div>
+
+        <!-- 数独游戏容器（煎蛋海） -->
+        <div id="sudokuContainer" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#2d1b0e,#4a2c1a);border-radius:16px;z-index:4;padding:12px 16px;overflow-y:auto;border:2px solid #c98f5e;box-shadow:inset 0 0 60px rgba(0,0,0,0.6);">
+            <!-- 由 sudoku.js 动态渲染 -->
+        </div>
+
+        <!-- 交易容器（可颂大陆） -->
+        <div id="tradeContainer" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#1a2a3a,#0d1b2a);border-radius:16px;z-index:4;padding:12px 16px;overflow-y:auto;border:2px solid #c98f5e;box-shadow:inset 0 0 60px rgba(0,0,0,0.6);">
+            <!-- 由 trade.js 动态渲染 -->
+        </div>
+
+        <!-- 鱼获弹窗（旧版保留兼容） -->
+        <div id="catchModal" style="display:none;position:absolute;bottom:50%;left:50%;transform:translate(-50%,50%);background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);border-radius:20px;padding:16px 24px;z-index:20;text-align:center;border:2px solid rgba(255,215,0,0.2);min-width:160px;flex-direction:column;align-items:center;pointer-events:none;">
+            <span id="catchIcon" style="font-size:3rem;">🐟</span>
+            <span id="catchName" style="font-size:1.1rem;font-weight:bold;color:#ffd700;">小丑鱼</span>
+            <span id="catchDesc" style="font-size:0.7rem;color:#aaa;">普通 · 3秒窗口</span>
+            <span id="catchReward" style="font-size:0.8rem;color:#6f9e3f;margin-top:4px;">⚓ +1 ⭐ +2</span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 探险背包模态框 ===== -->
+<div id="backpackModal" class="modal hidden">
+    <div class="backpack-modal-content">
+        <div class="backpack-header">
+            <h3>🎒 探险背包</h3>
+            <button class="btn-close-backpack" id="closeBackpackBtn">关闭</button>
+        </div>
+        <div class="backpack-grid" id="backpackGrid">
+            <div style="grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;">
+                🎒 背包空空如也，去探险收集物品吧！
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 冒险者详情面板 ===== -->
+<div id="adventurerModal" class="modal hidden">
+    <div class="adventurer-modal-content">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;color:#5a2e1c;">⭐ 冒险者档案</h3>
+            <button id="closeAdventurerModal" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">关闭</button>
+        </div>
+        <div style="text-align:center;padding:8px 0 16px 0;border-bottom:1px solid #e7c29e;">
+            <div style="font-size:2.5rem;">⭐</div>
+            <div style="font-size:1.3rem;font-weight:bold;color:#5a2e1c;" id="detailTitle">浅行员</div>
+            <div style="font-size:0.8rem;color:#a56b3a;">Lv.<span id="detailRank">1</span> 冒险者</div>
+            <div style="margin-top:8px;">
+                <div style="width:100%;height:8px;background:#f5ede4;border-radius:4px;overflow:hidden;">
+                    <div id="repProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#6f9e3f,#ffd700);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+                <div style="font-size:0.7rem;color:#a56b3a;margin-top:4px;" id="repProgressText">0 / 50</div>
+            </div>
+            <div style="font-size:0.65rem;color:#a56b3a;margin-top:4px;">累计声望: <span id="detailTotalRep">0</span></div>
+        </div>
+        <div style="margin-top:12px;">
+            <div style="font-size:0.75rem;font-weight:bold;color:#5a2e1c;margin-bottom:6px;">📜 声望记录</div>
+            <div id="repRecordsList" style="max-height:200px;overflow-y:auto;font-size:0.7rem;"></div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e7c29e;">
+            <div style="font-size:0.6rem;color:#a56b3a;text-align:center;">💡 钓鱼、探索新区域可获得声望</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 脚本 ===== -->
+<script src="js/storyData.js"></script>
+<script src="js/storyRenderer.js"></script>
+<script src="js/adventurer.js"></script>
+<script src="js/treasure.js"></script>
+<script src="js/princeDialogue.js"></script>
+<script src="js/fishing.js"></script>
+<script src="js/princeGame.js"></script>
+<script src="js/sudoku.js"></script>
+<script src="js/trade.js"></script>
+<script src="js/explore-regions.js"></script>
+<script src="js/mining.js"></script>
+<script src="js/rice.js"></script>
+<script src="js/grinder.js"></script>
+<script src="js/panini.js"></script>
+<script src="js/bounty.js"></script>   <!-- ← 确认在这里 -->
+<script src="js/travel.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/explore.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,433 @@
+/* ============================================================
+   mining.css · 沙锅洲 · 挖矿小游戏样式
+   ============================================================ */
+
+#miningMode {
+    background: #1a1410 !important;
+    border: 2px solid #5a4a3a !important;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.6) !important;
+}
+
+.mining-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 6px;
+    padding: 6px 10px;
+    color: #ffefcf;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ===== 顶部统计栏 ===== */
+.mining-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.mining-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+.mining-stat-icon {
+    font-size: 1rem;
+}
+.mining-stat-label {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.6rem;
+}
+.mining-stat-value {
+    font-weight: bold;
+    color: #ffd700;
+    font-size: 0.8rem;
+    min-width: 16px;
+}
+.mining-btn-close {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px;
+    padding: 2px 16px;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    font-size: 0.6rem;
+    line-height: 26px;
+    transition: 0.15s;
+}
+.mining-btn-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+/* ===== 游戏区域 ===== */
+.mining-game-area {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ===== 左侧：工具列 + 背篓 ===== */
+.mining-left-side {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+}
+
+/* 工具按钮 */
+.mining-tools-side {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.mining-tool-side-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 0.5rem;
+    gap: 2px;
+    padding: 4px;
+    position: relative;
+}
+.mining-tool-side-btn .tool-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+.mining-tool-side-btn .tool-name {
+    font-size: 0.5rem;
+    font-weight: 600;
+    opacity: 0.7;
+}
+.mining-tool-side-btn .tool-count {
+    font-size: 0.45rem;
+    opacity: 0.4;
+    background: rgba(0,0,0,0.3);
+    padding: 0 8px;
+    border-radius: 12px;
+    min-width: 18px;
+    text-align: center;
+}
+.mining-tool-side-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+.mining-tool-side-btn.active {
+    background: rgba(255, 215, 0, 0.12);
+    border-color: #ffd700;
+    color: #ffd700;
+    box-shadow: 0 0 24px rgba(255, 215, 0, 0.06);
+}
+.mining-tool-side-btn.active .tool-count {
+    color: #ffd700;
+}
+
+/* 背篓按钮（在工具列下方） */
+.mining-basket-btn-container {
+    margin-top: 4px;
+}
+.mining-basket-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 56px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.08);
+    background: rgba(255, 215, 0, 0.04);
+    color: rgba(255, 215, 0, 0.4);
+    cursor: pointer;
+    transition: 0.15s;
+    font-size: 0.5rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.mining-basket-btn:hover {
+    background: rgba(255, 215, 0, 0.08);
+    color: rgba(255, 215, 0, 0.6);
+}
+.mining-basket-btn .basket-count {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffd700;
+}
+
+/* ===== 矿洞网格 ===== */
+.mining-grid-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 0;
+    position: relative;
+}
+
+.mining-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 7 / 6.5;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    position: relative;
+}
+.mining-row {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    position: relative;
+}
+
+/* ===== 深度横线 ===== */
+.mining-depth-line {
+    position: absolute;
+    top: -12px;
+    left: -8px;
+    right: -8px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.5), rgba(255, 215, 0, 0.2), transparent);
+    border-radius: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.mining-depth-number {
+    position: absolute;
+    top: -18px;
+    right: 4px;
+    font-size: 0.8rem;
+    color: rgba(255, 215, 0, 0.4);
+    font-weight: 600;
+    background: rgba(0,0,0,0.4);
+    padding: 0 12px;
+    border-radius: 12px;
+    font-family: 'Courier New', monospace;
+    border: 1px solid rgba(255, 215, 0, 0.06);
+    z-index: 2;
+}
+.mining-row.current-row .mining-depth-line {
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.6), rgba(255, 215, 0, 0.3), transparent);
+}
+.mining-row.current-row .mining-depth-number {
+    color: rgba(255, 215, 0, 0.5);
+}
+
+/* ===== 格子 ===== */
+.mining-cell {
+    flex: 1;
+    aspect-ratio: 1 / 1;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    cursor: default;
+    transition: 0.15s;
+    user-select: none;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.mining-cell.hidden {
+    background: #2d241c;
+    border-color: rgba(255, 255, 255, 0.02);
+    cursor: not-allowed;
+}
+
+.mining-cell.revealed {
+    background: #6a5a4a;
+    border-color: rgba(255, 215, 0, 0.06);
+    cursor: pointer;
+}
+.mining-cell.revealed:hover {
+    background: #7a6a5a;
+    border-color: rgba(255, 215, 0, 0.15);
+    transform: scale(1.04);
+}
+
+.mining-cell.mined-dirt {
+    background: #2d241c;
+    border-color: transparent;
+    cursor: default;
+}
+
+.mining-cell.mined-item {
+    background: #2d241c;
+    border-color: rgba(255, 215, 0, 0.1);
+    cursor: pointer;
+    animation: miningItemPulse 1.2s ease-in-out infinite;
+}
+.mining-cell.mined-item:hover {
+    transform: scale(1.08);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+@keyframes miningItemPulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(255, 215, 0, 0.05); }
+    50% { box-shadow: 0 0 16px rgba(255, 215, 0, 0.15); }
+}
+
+.mining-cell .item-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgba(255,215,0,0.05));
+}
+
+/* ===== 底部状态 ===== */
+.mining-status {
+    text-align: center;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.2);
+    padding: 2px 0;
+    flex-shrink: 0;
+}
+
+/* ===== 收集弹出 ===== */
+.mining-collect-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    padding: 16px 28px;
+    z-index: 100;
+    text-align: center;
+    border: 2px solid rgba(255, 215, 0, 0.15);
+    min-width: 140px;
+    animation: miningPopupIn 0.35s ease;
+    pointer-events: none;
+}
+@keyframes miningPopupIn {
+    0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+    80% { transform: translate(-50%, -50%) scale(1.05); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.mining-collect-popup .popup-icon {
+    font-size: 2.4rem;
+    line-height: 1.2;
+}
+.mining-collect-popup .popup-name {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #ffd700;
+    margin-top: 2px;
+}
+.mining-collect-popup .popup-hint {
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.3);
+    margin-top: 2px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 520px) {
+    .mining-tool-side-btn {
+        width: 48px;
+        height: 48px;
+    }
+    .mining-tool-side-btn .tool-icon {
+        font-size: 1.4rem;
+    }
+    .mining-tool-side-btn .tool-name {
+        font-size: 0.4rem;
+    }
+    .mining-tool-side-btn .tool-count {
+        font-size: 0.35rem;
+    }
+    .mining-basket-btn {
+        width: 48px;
+        height: 44px;
+        font-size: 0.4rem;
+    }
+    .mining-basket-btn .basket-count {
+        font-size: 0.65rem;
+    }
+    .mining-cell {
+        font-size: 1.1rem;
+    }
+    .mining-cell .item-icon {
+        font-size: 1.4rem;
+    }
+    .mining-grid {
+        max-width: 340px;
+    }
+    .mining-stat {
+        font-size: 0.6rem;
+    }
+    .mining-depth-number {
+        font-size: 0.6rem;
+        top: -18px;
+        padding: 0 10px;
+    }
+}
+@media (max-width: 400px) {
+    .mining-tool-side-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+    }
+    .mining-tool-side-btn .tool-icon {
+        font-size: 1.1rem;
+    }
+    .mining-tool-side-btn .tool-name {
+        display: none;
+    }
+    .mining-tool-side-btn .tool-count {
+        font-size: 0.3rem;
+        padding: 0 4px;
+    }
+    .mining-basket-btn {
+        width: 38px;
+        height: 36px;
+        font-size: 0.35rem;
+    }
+    .mining-basket-btn .basket-count {
+        font-size: 0.55rem;
+    }
+    .mining-cell {
+        font-size: 0.9rem;
+    }
+    .mining-cell .item-icon {
+        font-size: 1.1rem;
+    }
+    .mining-grid {
+        max-width: 260px;
+        padding: 3px;
+        gap: 2px;
+    }
+    .mining-row {
+        gap: 2px;
+    }
+    .mining-depth-number {
+        font-size: 0.45rem;
+        top: -14px;
+        right: 2px;
+        padding: 0 6px;
+    }
+}

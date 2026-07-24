@@ -1,0 +1,243 @@
+#fireworksCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+.upgrade-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.2s, opacity 0.2s;
+    pointer-events: none;
+}
+.upgrade-overlay.show {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+.upgrade-overlay.fade-out {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-out, visibility 0.5s;
+}
+.upgrade-card {
+    width: 460px;
+    max-width: 90vw;
+    background: rgba(30, 20, 15, 0.92);
+    backdrop-filter: blur(16px);
+    border-radius: 64px;
+    padding: 24px 28px;
+    box-shadow: 0 25px 40px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,120,0.6);
+    animation: cardPop 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+}
+@keyframes cardPop {
+    0% { transform: scale(0.92); opacity: 0; }
+    80% { transform: scale(1.02); }
+    100% { transform: scale(1); opacity: 1; }
+}
+.upgrade-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.upgrade-left {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.level-number-inner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    font-weight: 900;
+    color: #ffefb0;
+    text-shadow: 0 2px 4px #5a2e1c;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    padding: 6px 18px;
+    border-radius: 60px;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1;
+}
+.upgrade-right {
+    flex: 1;
+    min-width: 180px;
+}
+.reward-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #ffefb0;
+    border-left: 4px solid #ffb347;
+    padding-left: 12px;
+    margin-bottom: 16px;
+}
+.reward-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.reward-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 8px 14px;
+    border-radius: 60px;
+}
+.reward-icon {
+    font-size: 1.6rem;
+    width: 40px;
+    text-align: center;
+}
+.reward-text {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #ffefcf;
+}
+.reward-value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #ffd966;
+    margin-left: auto;
+}
+.light-toast {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    color: #b7ceee;
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    z-index: 10001;
+    pointer-events: none;
+    white-space: nowrap;
+    text-shadow: 0 0 2px black;
+}
+/* 升级卡片样式优化 - 防止过大 */
+.upgrade-card {
+    width: auto;
+    max-width: 90vw;
+    min-width: 280px;
+    background: rgba(30, 20, 15, 0.92);
+    backdrop-filter: blur(16px);
+    border-radius: 64px;
+    padding: 20px 24px;
+    box-shadow: 0 25px 40px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,120,0.6);
+    animation: cardPop 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+}
+
+.upgrade-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.upgrade-left {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.level-number-inner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    font-weight: 900;
+    color: #ffefb0;
+    text-shadow: 0 2px 4px #5a2e1c;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    padding: 4px 12px;
+    border-radius: 60px;
+    white-space: nowrap;
+}
+
+.upgrade-right {
+    flex: 1;
+    min-width: 160px;
+}
+
+.reward-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+}
+
+.reward-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.reward-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 6px 12px;
+    border-radius: 40px;
+    flex-wrap: nowrap;
+}
+
+.reward-icon {
+    font-size: 1.4rem;
+    width: 32px;
+    text-align: center;
+}
+
+.reward-text {
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.reward-value {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ffd966;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.energy-reward-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}

@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>📖 游戏说明 · 可可与嫑嫑</title>
+    <style>
+        /* ============================================================
+           书本翻页 · 暖黄羊皮纸质感
+           隐藏所有滚动条（保留滚动功能）
+           ============================================================ */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        /* 全局隐藏滚动条（但保留滚动功能） */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* 禁止页面级滚动，由 .page 内部滚动 */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #3d2b1a;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, #5a3f2a 0%, #2d1b0e 100%);
+            font-family: 'Georgia', 'Times New Roman', 'Segoe UI', serif;
+            padding: 12px;
+        }
+
+        /* ===== 书本容器 ===== */
+        .book-wrapper {
+            width: 100%;
+            max-width: 820px;
+            aspect-ratio: 4 / 3;
+            min-height: 460px;
+            max-height: 92vh;
+            perspective: 1800px;
+            position: relative;
+        }
+
+        .book {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            border-radius: 6px 20px 20px 6px;
+            box-shadow:
+                0 30px 70px rgba(0, 0, 0, 0.7),
+                0 0 0 2px #b8946a inset,
+                0 0 0 4px #e8d5b8 inset;
+        }
+
+        /* ===== 书脊 ===== */
+        .book-spine {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 18px;
+            height: 100%;
+            background: linear-gradient(90deg, #7a5a3a, #b8946a, #7a5a3a);
+            border-radius: 4px 0 0 4px;
+            z-index: 20;
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+        .book-spine::after {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 4px;
+            right: 4px;
+            height: 2px;
+            background: repeating-linear-gradient(90deg,
+                    transparent 0px,
+                    #c8a888 2px,
+                    transparent 4px);
+            opacity: 0.3;
+        }
+
+        /* ===== 页面容器 ===== */
+        .pages {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            overflow: hidden;
+            border-radius: 6px 20px 20px 6px;
+        }
+
+        /* ===== 单页 ===== */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 32px 44px 28px 44px;
+            background: #f5e6c8;
+            background-image:
+                radial-gradient(ellipse at 30% 20%, #faf0e0 0%, #f5e6c8 60%, #e8d5b8 100%);
+            box-shadow: inset 0 0 40px rgba(180, 140, 100, 0.12);
+            border-radius: 6px 20px 20px 6px;
+            transform-origin: left center;
+            backface-visibility: hidden;
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+                box-shadow 0.4s ease;
+            overflow-y: auto;
+            /* 保留滚动功能，但隐藏滚动条 */
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            will-change: transform;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #3d2b1a;
+        }
+        .page::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
+        .page * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 羊皮纸纹理（叠加） */
+        .page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background:
+                repeating-linear-gradient(0deg,
+                    transparent 0px,
+                    transparent 3px,
+                    rgba(180, 150, 120, 0.02) 3px,
+                    rgba(180, 150, 120, 0.02) 4px),
+                repeating-linear-gradient(90deg,
+                    transparent 0px,
+                    transparent 5px,
+                    rgba(180, 150, 120, 0.015) 5px,
+                    rgba(180, 150, 120, 0.015) 6px);
+            border-radius: 6px 20px 20px 6px;
+        }
+
+        /* 页面装饰线（顶部 & 底部） */
+        .page::after {
+            content: '';
+            position: absolute;
+            left: 30px;
+            right: 30px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d4b898, transparent);
+            opacity: 0.25;
+            bottom: 18px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .page .top-ornament {
+            position: absolute;
+            top: 14px;
+            left: 30px;
+            right: 30px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d4b898, transparent);
+            opacity: 0.2;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 页码 */
+        .page-number {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #b89a7a;
+            font-family: 'Georgia', serif;
+            letter-spacing: 2px;
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0.5;
+        }
+
+        /* ===== 页面状态 ===== */
+        .page.hidden {
+            display: none;
+        }
+        .page.flipped {
+            transform: rotateY(-180deg);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.05);
+        }
+        .page.active {
+            z-index: 10;
+        }
+        .page.stack {
+            z-index: 5;
+        }
+
+        /* ===== 内容样式 ===== */
+        .page h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #4a2a1a;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            font-family: 'Georgia', serif;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        .page h1 .sub {
+            font-size: 15px;
+            font-weight: 400;
+            color: #8b6b4a;
+            display: block;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+        .page h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4a2a1a;
+            margin: 12px 0 6px 0;
+            border-left: 4px solid #c98f5e;
+            padding-left: 12px;
+            font-family: 'Georgia', serif;
+        }
+        .page h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #5a3a2a;
+            margin: 8px 0 4px 0;
+            font-family: 'Georgia', serif;
+        }
+        .page p {
+            margin: 4px 0 8px 0;
+            color: #3d2b1a;
+            font-size: 13.5px;
+            line-height: 1.7;
+        }
+        .page .small {
+            font-size: 12px;
+            color: #7a5a3a;
+        }
+
+        /* 引用 / 提示框 */
+        .page .tip {
+            background: rgba(200, 160, 120, 0.12);
+            border-left: 3px solid #c98f5e;
+            padding: 6px 14px;
+            margin: 8px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 12.5px;
+            color: #4a2a1a;
+            font-style: italic;
+        }
+        .page .tip strong {
+            color: #8b5a3a;
+        }
+
+        /* 表格 */
+        .page table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 6px 0 10px 0;
+            background: rgba(255, 248, 240, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .page table th {
+            background: #dcc8b0;
+            color: #3d2b1a;
+            font-weight: 700;
+            padding: 4px 10px;
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        .page table td {
+            padding: 4px 10px;
+            border-bottom: 1px solid rgba(180, 150, 120, 0.15);
+            font-size: 12px;
+        }
+        .page table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 岛屿卡片（用于岛屿页面） */
+        .island-card {
+            background: rgba(255, 248, 240, 0.35);
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin: 6px 0 10px 0;
+            border: 1px solid rgba(200, 160, 120, 0.15);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+        }
+        .island-card .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .island-card .icon {
+            font-size: 28px;
+            width: 44px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .island-card .info {
+            flex: 1;
+            min-width: 0;
+        }
+        .island-card .info .name {
+            font-weight: 700;
+            font-size: 15px;
+            color: #4a2a1a;
+        }
+        .island-card .info .meta {
+            font-size: 11px;
+            color: #8b6b4a;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .island-card .info .desc {
+            font-size: 12.5px;
+            color: #3d2b1a;
+            margin-top: 2px;
+        }
+        .island-card .info .tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 0 8px;
+            border-radius: 12px;
+            background: #dcc8b0;
+            color: #4a2a1a;
+        }
+
+        /* 资源三列 */
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 8px 0 12px 0;
+        }
+        .resource-grid .item {
+            background: rgba(255, 248, 240, 0.3);
+            border-radius: 12px;
+            padding: 8px 10px;
+            text-align: center;
+            border: 1px solid rgba(200, 160, 120, 0.1);
+        }
+        .resource-grid .item .icon {
+            font-size: 28px;
+            display: block;
+        }
+        .resource-grid .item .label {
+            font-weight: 700;
+            font-size: 13px;
+            color: #4a2a1a;
+            margin-top: 2px;
+        }
+        .resource-grid .item .desc {
+            font-size: 11px;
+            color: #7a5a3a;
+        }
+
+        /* 升级列表 */
+        .upgrade-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 16px;
+            margin: 6px 0 10px 0;
+        }
+        .upgrade-list .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            padding: 2px 0;
+            border-bottom: 1px dashed rgba(180, 150, 120, 0.1);
+        }
+        .upgrade-list .item .icon {
+            font-size: 16px;
+            width: 24px;
+            text-align: center;
+        }
+        .upgrade-list .item .effect {
+            color: #7a5a3a;
+            font-size: 11.5px;
+        }
+
+        /* ===== 导航按钮 ===== */
+        .nav-area {
+            position: absolute;
+            bottom: 16px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 30;
+            pointer-events: none;
+        }
+        .nav-area button {
+            pointer-events: auto;
+            background: rgba(200, 160, 120, 0.2);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(200, 160, 120, 0.25);
+            border-radius: 30px;
+            padding: 6px 18px;
+            color: #4a2a1a;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            font-family: 'Georgia', serif;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            min-width: 80px;
+            text-align: center;
+        }
+        .nav-area button:hover:not(:disabled) {
+            background: rgba(200, 160, 120, 0.35);
+            border-color: #b8946a;
+            transform: scale(1.02);
+        }
+        .nav-area button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+        .nav-area button:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+        .nav-area .page-indicator {
+            pointer-events: none;
+            font-size: 12px;
+            color: #b89a7a;
+            font-family: 'Georgia', serif;
+            letter-spacing: 1px;
+            background: rgba(255, 248, 240, 0.3);
+            padding: 4px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ===== 封面特殊样式 ===== */
+        .page-cover {
+            background: #e8d5b8;
+            background-image:
+                radial-gradient(ellipse at 30% 20%, #f5e6c8 0%, #e8d5b8 60%, #dcc8b0 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .page-cover h1 {
+            font-size: 38px;
+            color: #3d2b1a;
+            letter-spacing: 3px;
+            text-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+        }
+        .page-cover .subtitle {
+            font-size: 18px;
+            color: #7a5a3a;
+            font-style: italic;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+        .page-cover .divider {
+            width: 120px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #b8946a, transparent);
+            margin: 12px auto;
+        }
+        .page-cover .avatars {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            margin: 12px 0 6px 0;
+        }
+        .page-cover .avatars img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            border-radius: 50%;
+            background: rgba(255, 248, 240, 0.3);
+            padding: 4px;
+            border: 2px solid rgba(180, 140, 100, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .page-cover .credit {
+            font-size: 12px;
+            color: #a08060;
+            margin-top: 12px;
+            font-style: italic;
+        }
+
+        /* ===== 封底头像 ===== */
+        .back-avatars {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0 6px 0;
+        }
+        .back-avatars img {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+            border-radius: 50%;
+            background: rgba(255, 248, 240, 0.3);
+            padding: 3px;
+            border: 2px solid rgba(180, 140, 100, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 700px) {
+            .book-wrapper {
+                aspect-ratio: auto;
+                min-height: 480px;
+                height: 92vh;
+            }
+            .page {
+                padding: 24px 28px 20px 28px;
+                font-size: 13px;
+            }
+            .page h1 {
+                font-size: 22px;
+            }
+            .page h2 {
+                font-size: 16px;
+            }
+            .resource-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .upgrade-list {
+                grid-template-columns: 1fr;
+                gap: 2px;
+            }
+            .page-cover h1 {
+                font-size: 28px;
+            }
+            .page-cover .subtitle {
+                font-size: 15px;
+            }
+            .page-cover .avatars img {
+                width: 48px;
+                height: 48px;
+            }
+            .back-avatars img {
+                width: 40px;
+                height: 40px;
+            }
+            .nav-area {
+                padding: 0 12px;
+                bottom: 10px;
+            }
+            .nav-area button {
+                font-size: 11px;
+                padding: 4px 12px;
+                min-width: 60px;
+            }
+            .nav-area .page-indicator {
+                font-size: 10px;
+                padding: 2px 10px;
+            }
+            .island-card .icon {
+                font-size: 22px;
+                width: 34px;
+            }
+            .island-card .info .name {
+                font-size: 13px;
+            }
+            .book-spine {
+                width: 12px;
+            }
+        }
+
+        @media (max-width: 450px) {
+            .page {
+                padding: 16px 16px 16px 16px;
+                font-size: 12px;
+            }
+            .page h1 {
+                font-size: 18px;
+            }
+            .page h2 {
+                font-size: 14px;
+                padding-left: 8px;
+            }
+            .resource-grid {
+                grid-template-columns: 1fr;
+                gap: 4px;
+            }
+            .page-cover h1 {
+                font-size: 22px;
+            }
+            .page-cover .subtitle {
+                font-size: 13px;
+            }
+            .page-cover .avatars img {
+                width: 40px;
+                height: 40px;
+            }
+            .back-avatars img {
+                width: 34px;
+                height: 34px;
+            }
+            .island-card {
+                padding: 6px 10px;
+            }
+            .island-card .row {
+                gap: 6px;
+            }
+            .island-card .icon {
+                font-size: 18px;
+                width: 28px;
+            }
+            .island-card .info .desc {
+                font-size: 11px;
+            }
+            .nav-area button {
+                font-size: 10px;
+                padding: 3px 10px;
+                min-width: 48px;
+            }
+            .book-spine {
+                width: 8px;
+            }
+        }
+
+        /* ===== 翻页动画辅助 ===== */
+        .page.flipping {
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="book-wrapper">
+        <div class="book" id="book">
+            <div class="book-spine"></div>
+            <div class="pages" id="pagesContainer">
+                <!-- ========== 页面由 JS 动态渲染 ========== -->
+            </div>
+            <!-- 导航 -->
+            <div class="nav-area" id="navArea">
+                <button id="prevBtn" disabled>◀ 上一页</button>
+                <span class="page-indicator" id="pageIndicator">1 / 18</span>
+                <button id="nextBtn">下一页 ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        // 数据：全部页面内容
+        // ================================================================
+
+        const PAGES = [];
+
+        // ---------- 封面 ----------
+        PAGES.push({
+            type: 'cover',
+            html: `
+            <div class="top-ornament"></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:10px 0;">
+              <div class="avatars">
+                <img src="images/cocotou.png" alt="可可" onerror="this.style.display='none'; this.parentElement.innerHTML='🐻‍🍫 🐧'">
+                <img src="images/nonotou.png" alt="嫑嫑" onerror="this.style.display='none'; this.parentElement.innerHTML='🐻‍🍫 🐧'">
+              </div>
+              <h1>🍫 可可与嫑嫑<br>甜点工坊</h1>
+              <div class="divider"></div>
+              <div class="subtitle">新手工坊主的小手册</div>
+              <div style="margin-top:16px;font-size:14px;color:#7a5a3a;font-style:italic;letter-spacing:0.5px;">
+                “风是朋友，浪是考验。”
+              </div>
+              <div class="credit">翻开这本小书，开始你的甜点冒险</div>
+            </div>
+            <div class="page-number">— 封面 —</div>
+          `
+        });
+
+        // ---------- 第1页：欢迎 + 三种资源 ----------
+        PAGES.push({
+            title: '欢迎来到工坊',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🌾 欢迎来到工坊</h1>
+            <p>你是 <strong>可可</strong> 和 <strong>嫑嫑</strong>，经营一家甜点工坊。<br>
+            目标：<strong>制作甜点 → 赚金币 → 升级技能 → 解锁新世界</strong></p>
+
+            <h2>🫘 三种核心资源</h2>
+            <div class="resource-grid">
+              <div class="item">
+                <span class="icon">🫘</span>
+                <div class="label">巧克力豆</div>
+                <div class="desc">制作产品的消耗品<br>农场产出 · 挂机获得</div>
+              </div>
+              <div class="item">
+                <span class="icon">🪙</span>
+                <div class="label">金币</div>
+                <div class="desc">升级技能 · 解锁工坊<br>商城消费</div>
+              </div>
+              <div class="item">
+                <span class="icon">⭐</span>
+                <div class="label">经验值</div>
+                <div class="desc">每升 1 级获得<br>金币 + 豆子 + 随机能量（5级起）</div>
+              </div>
+            </div>
+            <div class="tip">💡 升级时有华丽动画，还会随机获得一种 <strong>能量</strong> 哦！</div>
+            <div class="page-number">1</div>
+          `
+        });
+
+        // ---------- 第2页：工坊系统 ----------
+        PAGES.push({
+            title: '工坊系统',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🏭 工坊系统</h1>
+            <p style="font-size:13px;color:#5a3a2a;"><strong>可可的工作</strong> · 制作甜点</p>
+
+            <h2>⚙️ 工坊规则</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>共 <strong>6 个</strong> 工坊槽位，初始解锁 1 个</li>
+              <li>点击 <strong>空闲工坊</strong> → 选择产品 → 等待制作</li>
+              <li>制作完成后点击工坊 <strong>收取</strong>，产品存入仓库</li>
+              <li>⏩ <strong>加速券</strong> 可缩短生产时间（商城购买）</li>
+              <li>🔓 消耗金币解锁更多工坊，提高产量</li>
+            </ul>
+
+            <h2>📦 产品一览</h2>
+            <table>
+              <tr><th>产品</th><th>豆耗</th><th>时间</th><th>基础售价</th></tr>
+              <tr><td>🍫 查理的巧克力</td><td>9</td><td>10s</td><td>5</td></tr>
+              <tr><td>🍒 樱有尽有</td><td>29</td><td>30s</td><td>12</td></tr>
+              <tr><td>🍡 好事楂堆</td><td>99</td><td>60s</td><td>20</td></tr>
+              <tr><td>🍞 小太阳蛋元气吐司</td><td>299</td><td>180s</td><td>70</td></tr>
+              <tr><td>🧀 芝士可可</td><td>520</td><td>480s</td><td>160</td></tr>
+              <tr><td>🥛 万事米丽奶皮子</td><td>725</td><td>720s</td><td>220</td></tr>
+              <tr><td>🥜 好事花生</td><td>929</td><td>1200s</td><td>360</td></tr>
+              <tr><td>🥐 提拉米苏可颂</td><td>1699</td><td>3600s</td><td>999</td></tr>
+            </table>
+            <div class="tip">💡 等级达到 <strong>5 级</strong> 后解锁隐藏食谱，需要消耗能量制作！</div>
+            <div class="page-number">2</div>
+          `
+        });
+
+        // ---------- 第3页：销售 + 订单 ----------
+        PAGES.push({
+            title: '销售与订单',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>💰 销售与订单</h1>
+            <p style="font-size:13px;color:#5a3a2a;"><strong>嫑嫑的工作</strong> · 出售甜点</p>
+
+            <h2>⚡ 快速出售</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>在「快速出售」区域点击商品，直接卖出</li>
+              <li>支持批量出售，自由选择数量</li>
+              <li>📦 <strong>全部卖出</strong> 一键清空所有库存</li>
+            </ul>
+
+            <h2>📋 今日订单</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>每天 <strong>5 个</strong> 随机订单，凌晨 4 点刷新</li>
+              <li>完成后获得 <strong>额外金币 + 经验</strong> 奖励</li>
+              <li>🔄 <strong>刷新券</strong> 可立即更换订单（商城购买）</li>
+            </ul>
+
+            <h2>📈 售价加成</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>「<strong>金牌议价</strong>」升级：每级售价 <strong>+2</strong> 金币</li>
+              <li>满级 10 级，售价最高 +20 金币</li>
+            </ul>
+            <div class="tip">💡 优先升级「金牌议价」，赚钱效率提升最明显！</div>
+            <div class="page-number">3</div>
+          `
+        });
+
+        // ---------- 第4页：农场 + 升级 + 成就 ----------
+        PAGES.push({
+            title: '农场 · 升级 · 成就',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🌱 农场 · 全局升级 · 成就</h1>
+
+            <h2>🌾 种豆农场</h2>
+            <ul style="margin:4px 0 6px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>共 <strong>24 块</strong> 土地，达到对应等级解锁</li>
+              <li>🌱 新手区（1-6级）：种 1 豆 → 收 20 豆</li>
+              <li>🌿 成长区（7-12级）：种 5 豆 → 收 80 豆</li>
+              <li>🌳 丰产区（13-18级）：种 12 豆 → 收 160 豆</li>
+              <li>⭐ 大师区（19-24级）：种 20 豆 → 收 300 豆</li>
+              <li>支持 <strong>一键种植</strong> / <strong>一键收获</strong></li>
+            </ul>
+
+            <h2>🔧 全局升级（4 项）</h2>
+            <div class="upgrade-list">
+              <div class="item"><span class="icon">💰</span> 金牌议价 <span class="effect">每级售价 +2</span></div>
+              <div class="item"><span class="icon">⏱️</span> 自动化生产 <span class="effect">每级时间 -3%</span></div>
+              <div class="item"><span class="icon">⭐</span> 经验加成 <span class="effect">每级经验 +2%</span></div>
+              <div class="item"><span class="icon">⚡</span> 工作狂 <span class="effect">挂机产豆间隔缩短</span></div>
+            </div>
+
+            <h2>🏆 成就系统</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>自动追踪进度，达成后 <strong>弹出通知</strong></li>
+              <li>点击主界面 <strong>🏆</strong> 按钮查看并领取奖励</li>
+              <li>包含 7 大类：生产、销售、财富、等级、升级、特殊、小游戏</li>
+            </ul>
+            <div class="tip">💡 优先升级「金牌议价」和「自动化生产」收益最高！</div>
+            <div class="page-number">4</div>
+          `
+        });
+
+        // ---------- 第5页：商城 ----------
+        PAGES.push({
+            title: '🏪 商城',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🏪 商城 · 每日签到</h1>
+
+            <h2>📅 每日签到</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>连续签到 <strong>7 天</strong>，第 7 天获得特别奖励</li>
+              <li>断签后重新从第 1 天开始</li>
+              <li>签到奖励：豆子、金币、特殊礼包</li>
+            </ul>
+
+            <h2>🛒 道具商店</h2>
+            <table>
+              <tr><th>道具</th><th>价格</th><th>效果</th></tr>
+              <tr><td>⏩ 加速券</td><td>200 金币</td><td>加速工坊 929 秒</td></tr>
+              <tr><td>🔄 刷新券</td><td>150 金币</td><td>刷新今日订单</td></tr>
+              <tr><td>🎰 幸运盒子</td><td>50 金币</td><td>随机 10~99 金币</td></tr>
+              <tr><td>📖 经验书</td><td>60 金币</td><td>立即 +20 经验</td></tr>
+              <tr><td>🫘 豆子礼包</td><td>10 金币</td><td>立即 +29 豆子</td></tr>
+              <tr><td>🎁 能量宝箱</td><td>929 金币</td><td>随机 1 个能量</td></tr>
+            </table>
+            <div class="tip">💡 所有道具 <strong>即买即用</strong>，不用囤货！</div>
+            <div class="page-number">5</div>
+          `
+        });
+
+        // ---------- 第6页：小游戏 ----------
+        PAGES.push({
+            title: '🎮 小游戏',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🎮 游戏中心 · 小游戏</h1>
+
+            <h2>🃏 翻牌配对</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>记忆翻牌，配对所有卡片</li>
+              <li>基础奖励 <strong>30 豆</strong>，速度越快奖励越高</li>
+              <li>30 秒内完成额外 +10 豆，60 秒内 +5 豆</li>
+            </ul>
+
+            <h2>🧩 连连看</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>消除所有配对，路径最多拐两个弯</li>
+              <li>基础奖励 <strong>50 豆</strong>，速度越快奖励越高</li>
+              <li>60 秒内完成额外 +20 豆，120 秒内 +10 豆</li>
+            </ul>
+
+            <h2>💡 新手优先建议</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>1. 优先升级「<strong>金牌议价</strong>」→ 赚钱更快</li>
+              <li>2. 农场是豆子的主要来源，尽早解锁土地</li>
+              <li>3. 每日订单尽量全部完成，收益很高</li>
+              <li>4. 探险地图的声望可提升 <strong>冒险者等级</strong></li>
+              <li>5. 商城道具即买即用，不用囤</li>
+            </ul>
+            <div class="tip">💡 多探索各个岛屿，会有意想不到的收获！</div>
+            <div class="page-number">6</div>
+          `
+        });
+
+        // ---------- 第7页：探险地图总览 ----------
+        PAGES.push({
+            title: '🗺️ 探险地图 · 总览',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🗺️ 可可世界 · 探险地图</h1>
+            <p>从「欢迎米来湾」出发，乘船航行解锁各个岛屿。<br>
+            <strong>首次到达触发剧情，获得声望！</strong></p>
+
+            <table>
+              <tr><th>岛屿</th><th>解锁</th><th>玩法</th></tr>
+              <tr><td>🌊 欢迎米来湾</td><td>初始</td><td>新手村 · 喀哺爷爷</td></tr>
+              <tr><td>🎣 可以就这洋</td><td>Lv.5</td><td>钓鱼小游戏</td></tr>
+              <tr><td>🐧 嫑锅半岛</td><td>Lv.8</td><td>小王子剧情 + 三杯一球</td></tr>
+              <tr><td>🍳 煎蛋海</td><td>Lv.10</td><td>数独挑战</td></tr>
+              <tr><td>🥐 可颂大陆</td><td>Lv.13</td><td>交易中心</td></tr>
+              <tr><td>⛏️ 沙锅洲</td><td>Lv.16</td><td>挖矿小游戏</td></tr>
+              <tr><td>🧂 八仙锅海</td><td>Lv.22</td><td>粉碎机</td></tr>
+              <tr><td>🍚 大米洲</td><td>Lv.20</td><td>稻田 + 能量工坊</td></tr>
+              <tr><td>🥪 帕尼尼大陆</td><td>Lv.25</td><td>美食实验室</td></tr>
+              <tr><td>🐙 嫑界洋</td><td>Lv.28</td><td>终极海域 · 赛博巨兽</td></tr>
+            </table>
+            <div class="tip">💡 探索新岛屿可获得 <strong>声望</strong>，提升冒险者等级！</div>
+            <div class="page-number">7</div>
+          `
+        });
+
+        // ---------- 第8页：欢迎米来湾 ----------
+        PAGES.push({
+            title: '🌊 欢迎米来湾',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🌊 欢迎米来湾</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 初始解锁</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🧓 NPC：喀哺</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🌊</div>
+                <div class="info">
+                  <div class="name">欢迎米来湾 · 新手村</div>
+                  <div class="meta"><span>🎯 所有伟大航程的起点</span></div>
+                  <div class="desc">喀哺爷爷会赠送你 <strong>初航者海图</strong> 和 <strong>10 枚探险币</strong>，并为你指引方向。</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>📖 剧情</h2>
+            <p>可可和嫑嫑被海浪带到此地，遇到老船长喀哺。他认出了她们身上的“冒险者潜质”，赠予海图和探险币，鼓励她们出海探索。</p>
+
+            <h2>🎁 奖励</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>⚓ 探险币 +10</li>
+              <li>⭐ 声望 +20</li>
+              <li>🗺️ 海图（地图解锁）</li>
+            </ul>
+            <div class="tip">💡 每天回来找喀哺，有几率获得 <strong>藏宝图碎片</strong>！</div>
+            <div class="page-number">8</div>
+          `
+        });
+
+        // ---------- 第9页：可以就这洋 ----------
+        PAGES.push({
+            title: '🎣 可以就这洋',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🎣 可以就这洋</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.5</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🎣 NPC：渔夫·阿就</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🎣</div>
+                <div class="info">
+                  <div class="name">可以就这洋 · 钓鱼圣地</div>
+                  <div class="meta"><span>🐟 5 种鱼类 · 每日 10 次免费</span></div>
+                  <div class="desc">阿就爷爷会送你一根鱼竿。在波浪中抛竿，等浮标漂到金色区域时收杆，即可钓上鱼来！</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>🐠 鱼类图鉴</h2>
+            <table>
+              <tr><th>鱼</th><th>稀有度</th><th>声望</th><th>出售价</th></tr>
+              <tr><td>🐟 小丑鱼</td><td>普通</td><td>+1</td><td>1⚓</td></tr>
+              <tr><td>🐠 金枪鱼</td><td>普通</td><td>+1</td><td>1⚓</td></tr>
+              <tr><td>🐡 珍珠鱼</td><td>稀有</td><td>+2</td><td>3⚓</td></tr>
+              <tr><td>🐋 蓝鲸鱼</td><td>稀有</td><td>+2</td><td>3⚓</td></tr>
+              <tr><td>🐉 传说鱼</td><td>传说</td><td>+3</td><td>5⚓</td></tr>
+            </table>
+            <div class="tip">💡 钓到 <strong>传说鱼</strong> 会有特殊动画！鱼获可存入探险背包。</div>
+            <div class="page-number">9</div>
+          `
+        });
+
+        // ---------- 第10页：嫑锅半岛 ----------
+        PAGES.push({
+            title: '🐧 嫑锅半岛',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🐧 嫑锅半岛</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.8</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🐧 NPC：小王子</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🐧</div>
+                <div class="info">
+                  <div class="name">嫑锅半岛 · 沙丘星空</div>
+                  <div class="meta"><span>💬 小王子对话 · 🎮 三杯一球</span></div>
+                  <div class="desc">在沙漠中遇到小王子，听他讲述玫瑰的故事。完成对话后可在沙丘上玩 <strong>三杯一球</strong> 小游戏。</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>💬 小王子剧情</h2>
+            <p>小王子在等他的玫瑰。他会跟你分享关于驯养、星星和麦田的故事。全部听完可获得 <strong>玫瑰种子</strong> 线索。</p>
+
+            <h2>🎮 三杯一球</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>下注 <strong>探险币</strong>，猜中球在哪个杯子下</li>
+              <li>猜中 → 下注翻倍，连胜可继续翻倍</li>
+              <li>猜错 → 失去下注币，连胜终止</li>
+            </ul>
+            <div class="tip">💡 完成小王子对话后可获得 <strong>玫瑰种子</strong>，种在花盆里浇水 100 次可收获玫瑰！</div>
+            <div class="page-number">10</div>
+          `
+        });
+
+        // ---------- 第11页：煎蛋海 ----------
+        PAGES.push({
+            title: '🍳 煎蛋海',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🍳 煎蛋海</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.10</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🍳 NPC：煎蛋大师</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🍳</div>
+                <div class="info">
+                  <div class="name">煎蛋海 · 数独挑战</div>
+                  <div class="meta"><span>🧩 9×9 数独 · 赢取鸡蛋 / 金蛋</span></div>
+                  <div class="desc">煎蛋大师用秘制蛋液调出了这片海。完成数独挑战，就能获得他特制的煎蛋！</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>🧩 挑战规则</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li><strong>中等</strong>：35~40 空格，奖励 🥚 鸡蛋</li>
+              <li><strong>困难</strong>：45~50 空格，奖励 🥚✨ 金蛋</li>
+              <li>💡 提示功能消耗 <strong>2 探险币</strong> / 次</li>
+              <li>完成挑战获得 <strong>声望</strong>：中等 +5，困难 +8</li>
+            </ul>
+
+            <h2>🥚 鸡蛋用途</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>鸡蛋：可颂大陆出售 <strong>5⚓</strong> / 个</li>
+              <li>金蛋：可颂大陆出售 <strong>8⚓</strong> / 个</li>
+              <li>也是帕尼尼大陆烹饪的重要食材</li>
+            </ul>
+            <div class="page-number">11</div>
+          `
+        });
+
+        // ---------- 第12页：可颂大陆 ----------
+        PAGES.push({
+            title: '🥐 可颂大陆',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🥐 可颂大陆</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.13</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🥐 NPC：老可颂</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🥐</div>
+                <div class="info">
+                  <div class="name">可颂大陆 · 世界的贸易中心</div>
+                  <div class="meta"><span>🏪 出售 · 购买 · 金币兑换探险币</span></div>
+                  <div class="desc">老可颂在这里做了三十年生意。你可以在他这里出售背包物品，或购买各种道具。</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>🔄 交易功能</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li><strong>出售</strong>：鱼类、鸡蛋、矿石、黑暗料理等</li>
+              <li><strong>购买</strong>：玫瑰种子（48⚓）、镐头（5⚓）、鞭炮（8⚓）、炸药（10⚓）</li>
+              <li><strong>兑换</strong>：50 金币 → 1 探险币</li>
+            </ul>
+
+            <h2>💎 可购商品</h2>
+            <table>
+              <tr><th>物品</th><th>价格</th><th>备注</th></tr>
+              <tr><td>🌱 玫瑰种子</td><td>48⚓</td><td>嫑锅半岛种玫瑰</td></tr>
+              <tr><td>⛏️ 镐头</td><td>5⚓</td><td>沙锅洲挖矿</td></tr>
+              <tr><td>🧨 鞭炮</td><td>8⚓</td><td>沙锅洲炸一整行</td></tr>
+              <tr><td>💣 炸药</td><td>10⚓</td><td>沙锅洲炸 3×3 区域</td></tr>
+            </table>
+            <div class="page-number">12</div>
+          `
+        });
+
+        // ---------- 第13页：沙锅洲 ----------
+        PAGES.push({
+            title: '⛏️ 沙锅洲',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>⛏️ 沙锅洲</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.16</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">⛏️ NPC：锅叔</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">⛏️</div>
+                <div class="info">
+                  <div class="name">沙锅洲 · 矿井挖掘</div>
+                  <div class="meta"><span>🪨 铁矿 · 💎 钻石</span></div>
+                  <div class="desc">锅叔送你一把旧镐头。每天可领取 <strong>10 个免费镐头</strong>，越往下挖，好东西越多！</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>⛏️ 挖掘机制</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>网格 7×6，每挖掘一格，深度 +1</li>
+              <li><strong>镐头</strong>：挖掘单个格子（10 免费/天）</li>
+              <li><strong>鞭炮</strong>：挖掘整行（可颂购买）</li>
+              <li><strong>炸药</strong>：挖掘 3×3 区域（可颂购买）</li>
+            </ul>
+
+            <h2>📦 产出</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>🪨 铁矿：概率 20%，声望 +2</li>
+              <li>💎 钻石：概率 10%，声望 +5</li>
+              <li>🟫 土块：概率 70%</li>
+            </ul>
+            <div class="tip">💡 铁矿可去八仙锅海粉碎成 <strong>燃料</strong>，钻石在可颂大陆卖 8⚓/颗！</div>
+            <div class="page-number">13</div>
+          `
+        });
+
+        // ---------- 第14页：八仙锅海 ----------
+        PAGES.push({
+            title: '🧂 八仙锅海',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🧂 八仙锅海</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.22</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🤖 NPC：小楼</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🧂</div>
+                <div class="info">
+                  <div class="name">八仙锅海 · 粉碎工厂</div>
+                  <div class="meta"><span>⚙️ 材料升级 · 万能粉碎机</span></div>
+                  <div class="desc">小楼是这里的机器人管理员。万能粉碎机可以把原材料变成更高级的材料！</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>⚙️ 粉碎配方</h2>
+            <table>
+              <tr><th>输入</th><th>数量</th><th>→</th><th>输出</th><th>探险币</th></tr>
+              <tr><td>🫘 可可豆</td><td>9</td><td>→</td><td>🍫 可可粉</td><td>2/份</td></tr>
+              <tr><td>🌱 米米苗苗</td><td>1</td><td>→</td><td>🌾 面粉</td><td>2/份</td></tr>
+              <tr><td>🪨 铁矿</td><td>9</td><td>→</td><td>⛽ 燃料</td><td>2/份</td></tr>
+            </table>
+
+            <h2>📦 产出用途</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>可可粉 + 面粉：帕尼尼大陆烹饪食材</li>
+              <li>燃料：帕尼尼大陆烹饪消耗（每次 6 个）</li>
+              <li>支持 <strong>批量制作</strong>，产出物存入探险背包</li>
+            </ul>
+            <div class="tip">💡 每份粉碎消耗 <strong>2 探险币</strong> 作为机器维护费。</div>
+            <div class="page-number">14</div>
+          `
+        });
+
+        // ---------- 第15页：大米洲 ----------
+        PAGES.push({
+            title: '🍚 大米洲',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🍚 大米洲</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.20</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">👨‍🌾 NPC：农民</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🍚</div>
+                <div class="info">
+                  <div class="name">大米洲 · 能量工坊</div>
+                  <div class="meta"><span>🌾 稻田种植 · ⚡ 6 种能量生产</span></div>
+                  <div class="desc">用可可豆种出稻谷，再加工成能量。农民会送你 <strong>10 个稻谷</strong> 作为启动资金！</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>🌾 稻田种植</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>共 36 块地，消耗 <strong>10 可可豆</strong> 种植</li>
+              <li>5 分钟后收获 <strong>1~3 稻谷</strong></li>
+              <li>5% 概率获得 <strong>金色稻穗</strong>（价值更高）</li>
+            </ul>
+
+            <h2>⚡ 能量工坊</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>消耗 <strong>10 稻谷 + 9 探险币</strong>，29 分钟产出 1 能量</li>
+              <li>投入金色稻穗可提升 <strong>双倍概率</strong>（每颗 +5%，上限 50%）</li>
+              <li>可产出 6 种能量：高塔芝士粉、灵感啫喱、米米苗苗、时光布丁、温暖黄油、星晶雪花</li>
+            </ul>
+            <div class="tip">💡 能量是制作 <strong>隐藏产品</strong> 的必备材料！</div>
+            <div class="page-number">15</div>
+          `
+        });
+
+        // ---------- 第16页：帕尼尼大陆 ----------
+        PAGES.push({
+            title: '🥪 帕尼尼大陆',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🥪 帕尼尼大陆</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.25</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🍳 NPC：老帕</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🥪</div>
+                <div class="info">
+                  <div class="name">帕尼尼大陆 · 美食实验室</div>
+                  <div class="meta"><span>🧪 自由搭配 · 探索配方</span></div>
+                  <div class="desc">老帕会送你一些燃料作为启动资金。把 6 种食材放进锅里，5 秒后就能得到一份美食！</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>🧪 烹饪规则</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>每次放入 <strong>6 种食材</strong>，消耗 <strong>6 个燃料</strong></li>
+              <li>烹饪耗时 <strong>5 秒</strong>（测试版）</li>
+              <li>特定搭配 → 解锁 <strong>29 种美食</strong> 之一</li>
+              <li>错误搭配 → 💀 <strong>黑暗料理</strong></li>
+            </ul>
+
+            <h2>📖 食谱书</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>首次烹饪出某种食物 → <strong>自动解锁食谱</strong></li>
+              <li>点击「食谱书」查看已解锁的配方</li>
+              <li>烹饪食物可获得 <strong>声望 +3</strong></li>
+            </ul>
+            <div class="tip">💡 食材包括：🐠金枪鱼、🐉传说鱼、🥚鸡蛋、🍫可可粉、🌾面粉、🧊温暖黄油、🧀高塔芝士粉、⌛时光布丁</div>
+            <div class="page-number">16</div>
+          `
+        });
+
+        // ---------- 第17页：嫑界洋 ----------
+        PAGES.push({
+            title: '🐙 嫑界洋',
+            html: `
+            <div class="top-ornament"></div>
+            <h1>🐙 嫑界洋</h1>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🔓 Lv.28</span>
+              <span style="background:#dcc8b0;padding:1px 12px;border-radius:20px;font-size:12px;">🐙 终极海域</span>
+            </div>
+
+            <div class="island-card">
+              <div class="row">
+                <div class="icon">🐙</div>
+                <div class="info">
+                  <div class="name">嫑界洋 · 赛博巨兽</div>
+                  <div class="meta"><span>🌊 深海 · 星际信使</span></div>
+                  <div class="desc">这里是可可世界的终极海域。一只巨大的赛博章鱼在此沉睡，它需要 <strong>92 份食物</strong> 和 <strong>29 种不同食物</strong> 来唤醒。</div>
+                </div>
+              </div>
+            </div>
+
+            <h2>🍽️ 投喂系统</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>投喂帕尼尼大陆烹饪的美食和黑暗料理</li>
+              <li>每投喂一次，章鱼会回应一句 <strong>随机对话</strong></li>
+              <li>投喂 <strong>黑暗料理</strong> 会触发特殊反应</li>
+            </ul>
+
+            <h2>🌠 完成奖励</h2>
+            <ul style="margin:4px 0 8px 18px;font-size:13px;line-height:1.8;color:#3d2b1a;">
+              <li>集齐 92 份 + 29 种 → 唤醒星际信使</li>
+              <li>触发 <strong>史诗级结局剧情</strong></li>
+              <li>获得大量声望和探险币</li>
+            </ul>
+            <div class="tip">💡 章鱼说：“当九颗星辰连成一线，那扇门就会打开……”</div>
+            <div class="page-number">17</div>
+          `
+        });
+
+        // ---------- 第18页：封底 ----------
+        PAGES.push({
+            type: 'back',
+            html: `
+            <div class="top-ornament"></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:10px 0;">
+              <div style="font-size:48px;line-height:1.2;">🍫</div>
+              <h1 style="font-size:24px;margin-top:8px;">愿你的甜点之旅<br>温暖而甜蜜</h1>
+              <div class="divider" style="width:80px;"></div>
+              <p style="font-size:14px;color:#7a5a3a;max-width:80%;font-style:italic;margin:8px 0;">
+                “真正重要的东西，用眼睛是看不见的。”
+              </p>
+              <p style="font-size:12px;color:#a08060;margin-top:12px;">
+                — 小王子
+              </p>
+              <div class="back-avatars">
+                <img src="images/cocotou.png" alt="可可" onerror="this.style.display='none'; this.parentElement.innerHTML='🐻‍🍫 可可 &nbsp;&nbsp;🐧 嫑嫑'">
+                <img src="images/nonotou.png" alt="嫑嫑" onerror="this.style.display='none'; this.parentElement.innerHTML='🐻‍🍫 可可 &nbsp;&nbsp;🐧 嫑嫑'">
+              </div>
+              <div style="font-size:13px;color:#8b6b4a;margin-top:4px;">
+                可可 &nbsp;&nbsp;·&nbsp;&nbsp; 嫑嫑
+              </div>
+              <div style="font-size:11px;color:#b89a7a;margin-top:8px;letter-spacing:1px;">
+                ~ 感谢阅读，祝你好运 ~
+              </div>
+            </div>
+            <div class="page-number">— 封底 —</div>
+          `
+        });
+
+        // ================================================================
+        // 翻页引擎
+        // ================================================================
+
+        const TOTAL = PAGES.length;
+        let currentPage = 0;
+        let isFlipping = false;
+
+        const container = document.getElementById('pagesContainer');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const indicator = document.getElementById('pageIndicator');
+
+        function renderPages() {
+            container.innerHTML = '';
+            PAGES.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'page';
+                if (i === 0) div.classList.add('page-cover');
+                if (i === TOTAL - 1) div.classList.add('page-cover');
+                if (i === currentPage) div.classList.add('active');
+                else div.classList.add('hidden');
+                div.dataset.index = i;
+                div.innerHTML = p.html;
+                container.appendChild(div);
+            });
+            updateNav();
+        }
+
+        function updateNav() {
+            indicator.textContent = (currentPage + 1) + ' / ' + TOTAL;
+            prevBtn.disabled = (currentPage === 0);
+            nextBtn.disabled = (currentPage === TOTAL - 1);
+        }
+
+        function goToPage(index) {
+            if (isFlipping) return;
+            if (index < 0 || index >= TOTAL) return;
+            if (index === currentPage) return;
+
+            isFlipping = true;
+            const pages = container.querySelectorAll('.page');
+            const from = currentPage;
+            const to = index;
+
+            // 翻页方向
+            const forward = to > from;
+
+            // 隐藏所有，只保留当前和下一页
+            pages.forEach((p, i) => {
+                p.classList.add('hidden');
+                p.classList.remove('active', 'flipped', 'stack');
+            });
+
+            const currentEl = pages[from];
+            const nextEl = pages[to];
+
+            // 定位当前页和下一页
+            currentEl.classList.remove('hidden');
+            currentEl.classList.add('active');
+            nextEl.classList.remove('hidden');
+            nextEl.classList.add('active');
+
+            // 如果是向前翻，当前页翻转；向后翻，下一页翻转
+            if (forward) {
+                // 当前页向左翻转
+                currentEl.style.transform = 'rotateY(-180deg)';
+                currentEl.style.transformOrigin = 'left center';
+                currentEl.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                nextEl.style.transform = 'rotateY(0deg)';
+                nextEl.style.transformOrigin = 'left center';
+                nextEl.style.transition = 'none';
+                // 强制重排
+                void nextEl.offsetHeight;
+                nextEl.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                // 动画结束后更新状态
+                setTimeout(() => {
+                    currentEl.classList.add('hidden');
+                    currentEl.classList.remove('active');
+                    currentEl.style.transform = '';
+                    currentEl.style.transition = '';
+                    nextEl.classList.remove('flipped');
+                    nextEl.style.transform = '';
+                    nextEl.style.transition = '';
+                    currentPage = to;
+                    updateNav();
+                    isFlipping = false;
+                    // 隐藏其他所有页
+                    pages.forEach((p, i) => {
+                        if (i !== currentPage) p.classList.add('hidden');
+                        else p.classList.remove('hidden');
+                    });
+                    // 更新 active
+                    pages.forEach((p, i) => {
+                        if (i === currentPage) p.classList.add('active');
+                        else p.classList.remove('active');
+                    });
+                }, 650);
+            } else {
+                // 向后翻：上一页从左边翻回
+                nextEl.style.transform = 'rotateY(180deg)';
+                nextEl.style.transformOrigin = 'left center';
+                nextEl.style.transition = 'none';
+                void nextEl.offsetHeight;
+                nextEl.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                nextEl.style.transform = 'rotateY(0deg)';
+
+                currentEl.style.transform = 'rotateY(0deg)';
+                currentEl.style.transformOrigin = 'left center';
+                currentEl.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+
+                setTimeout(() => {
+                    currentEl.classList.add('hidden');
+                    currentEl.classList.remove('active');
+                    currentEl.style.transform = '';
+                    currentEl.style.transition = '';
+                    nextEl.classList.remove('flipped');
+                    nextEl.style.transform = '';
+                    nextEl.style.transition = '';
+                    currentPage = to;
+                    updateNav();
+                    isFlipping = false;
+                    pages.forEach((p, i) => {
+                        if (i !== currentPage) p.classList.add('hidden');
+                        else p.classList.remove('hidden');
+                    });
+                    pages.forEach((p, i) => {
+                        if (i === currentPage) p.classList.add('active');
+                        else p.classList.remove('active');
+                    });
+                }, 650);
+            }
+        }
+
+        // 键盘 + 点击翻页
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                e.preventDefault();
+                if (currentPage > 0) goToPage(currentPage - 1);
+            } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+                e.preventDefault();
+                if (currentPage < TOTAL - 1) goToPage(currentPage + 1);
+            }
+        });
+
+        // 点击页面左右区域翻页
+        document.addEventListener('click', (e) => {
+            const book = document.getElementById('book');
+            if (!book.contains(e.target)) return;
+            const rect = book.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const ratio = x / rect.width;
+            if (ratio < 0.3 && currentPage > 0) {
+                goToPage(currentPage - 1);
+            } else if (ratio > 0.7 && currentPage < TOTAL - 1) {
+                goToPage(currentPage + 1);
+            }
+        });
+
+        // 按钮事件
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 0) goToPage(currentPage - 1);
+        });
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < TOTAL - 1) goToPage(currentPage + 1);
+        });
+
+        // 触摸滑动
+        let touchStartX = 0;
+        let touchStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (touchStartX === 0) return;
+            const rect = document.getElementById('book').getBoundingClientRect();
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            const dx = endX - touchStartX;
+            const dy = endY - touchStartY;
+            if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy) * 0.5) return;
+            if (dx < 0 && currentPage < TOTAL - 1) {
+                goToPage(currentPage + 1);
+            } else if (dx > 0 && currentPage > 0) {
+                goToPage(currentPage - 1);
+            }
+            touchStartX = 0;
+        }, { passive: true });
+
+        // ===== 初始化 =====
+        renderPages();
+
+        console.log('📖 游戏说明已加载，共 ' + TOTAL + ' 页');
+    </script>
+</body>
+</html>

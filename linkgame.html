@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🧩 甜点连连看 · 可可巧克力工坊</title>
+    <style>
+        /* ... 样式保持不变 ... */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: linear-gradient(145deg, #f9e7c2 0%, #f5cba0 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Quicksand', system-ui, sans-serif;
+            padding: 16px;
+        }
+        .game-container {
+            max-width: 580px;
+            width: 100%;
+            background: #fffaf0;
+            border-radius: 48px;
+            box-shadow: 0 20px 35px rgba(100,50,10,0.2);
+            padding: 20px 20px 24px;
+            display: flex;
+            flex-direction: column;
+            max-height: 98vh;
+        }
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .game-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #5a2e1c;
+        }
+        .reward-display {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #6f9e3f;
+            background: #eaf7e0;
+            padding: 2px 12px;
+            border-radius: 20px;
+            border: 1.5px solid #a8d88a;
+            white-space: nowrap;
+        }
+        .reward-display .reward-icon { font-size: 0.9rem; }
+        .reward-display .reward-amount { color: #2d7a1e; }
+        .reward-display .reward-bonus { color: #ff8c00; }
+        .reward-display .reward-total { color: #1a6b0e; font-weight: 900; }
+        .game-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .game-stats span { color: #7b4a2a; }
+        .game-stats .stat-value { color: #c4651e; }
+        .game-result {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            min-height: 36px;
+            color: #c4651e;
+            background: #fff8f0;
+            border-radius: 16px;
+            padding: 5px 12px;
+            border: 1px solid #f1dbb2;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grid-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #f0e6d8;
+            border-radius: 16px;
+            padding: 4px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 3px;
+            width: 100%;
+            height: 100%;
+        }
+        .cell {
+            background: #d4c0b0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.15s;
+            position: relative;
+        }
+        .cell img {
+            width: 90%;
+            height: 90%;
+            object-fit: contain;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+        .cell.selected {
+            outline: 3px solid #ffb347;
+            outline-offset: -3px;
+            transform: scale(1.02);
+        }
+        .cell.empty {
+            background: transparent;
+            cursor: default;
+        }
+        .cell.empty img { display: none; }
+        .cell:hover:not(.empty) { transform: scale(1.04); }
+        /* 移除 popOut 动画 */
+        .game-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            padding-top: 4px;
+        }
+        .game-actions button {
+            border: none;
+            border-radius: 30px;
+            padding: 8px 22px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.1s;
+            font-size: 0.85rem;
+        }
+        .game-actions button:active { transform: scale(0.96); }
+        .btn-restart { background: #e7a05e; color: white; }
+        .btn-restart:hover { background: #c98f5e; }
+        .btn-back { background: #c98f5e; color: white; }
+        .btn-back:hover { background: #a05e3a; }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #ffefb0;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            z-index: 999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+        @media (max-width: 500px) {
+            .game-container { padding: 14px; }
+            .game-title { font-size: 1rem; }
+            .game-stats { font-size: 0.65rem; gap: 8px; }
+            .grid-wrapper { padding: 2px; }
+            .grid { gap: 2px; }
+            .cell { border-radius: 4px; }
+            .game-actions button { padding: 5px 14px; font-size: 0.7rem; }
+            .game-result { font-size: 0.7rem; min-height: 30px; padding: 4px 10px; }
+            .reward-display { font-size: 0.6rem; padding: 1px 8px; }
+        }
+        @media (max-width: 400px) {
+            .grid { gap: 1px; }
+            .cell { border-radius: 2px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-header">
+        <div class="game-title">🧩 甜点连连看</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <div class="reward-display">
+                <span class="reward-icon">🫘</span>
+                <span>基础</span>
+                <span class="reward-amount">+50</span>
+                <span class="reward-bonus" id="bonusDisplay">+0</span>
+                <span style="color:#aaa;margin:0 2px;">|</span>
+                <span style="color:#1a6b0e;font-weight:900;" id="totalRewardDisplay">累计:0</span>
+            </div>
+            <div class="game-stats">
+                <span>⏱️ <span id="matchTimer" class="stat-value">0s</span></span>
+                <span>🧩 <span id="matchPairs" class="stat-value">0/32</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-result" id="matchResult">点击两张相同图片，路径最多拐两个弯</div>
+
+    <div class="grid-wrapper">
+        <div class="grid" id="gridContainer"></div>
+    </div>
+
+    <div class="game-actions">
+        <button class="btn-restart" id="restartBtn">🔄 重新开始</button>
+        <button class="btn-back" id="backBtn">← 返回游戏</button>
+    </div>
+</div>
+
+<div id="toastMsg" class="toast"></div>
+
+<script>
+    // ============================================
+    // 配置
+    // ============================================
+    var ROWS = 8;
+    var COLS = 8;
+    var TOTAL_PAIRS = 32;
+    var IMAGE_COUNT = 32;
+    var IMAGE_BASE_PATH = 'images/linkgame/';
+
+    var imageNames = [];
+    for (var i = 1; i <= IMAGE_COUNT; i++) {
+        imageNames.push(i + '.png');
+    }
+
+    // ============================================
+    // 状态
+    // ============================================
+    var grid = [];
+    var selectedRow = -1, selectedCol = -1;
+    var pairsMatched = 0;
+    var timer = 0;
+    var timerInterval = null;
+    var isPlaying = false;
+    var isComplete = false;
+    var isProcessing = false;
+
+    var gridContainer = document.getElementById('gridContainer');
+    var timerEl = document.getElementById('matchTimer');
+    var pairsEl = document.getElementById('matchPairs');
+    var resultEl = document.getElementById('matchResult');
+    var toastEl = document.getElementById('toastMsg');
+    var cellElements = [];
+    var bonusDisplayEl = document.getElementById('bonusDisplay');
+    var totalRewardDisplayEl = document.getElementById('totalRewardDisplay');
+
+    // ============================================
+    // 奖励相关函数
+    // ============================================
+    function getTotalRewardFromStorage() {
+        try {
+            var stored = localStorage.getItem('cardmatch_reward_beans');
+            return stored ? parseInt(stored) : 0;
+        } catch(e) { return 0; }
+    }
+    function updateTotalRewardDisplay() {
+        if (totalRewardDisplayEl) {
+            var total = getTotalRewardFromStorage();
+            totalRewardDisplayEl.textContent = '累计:' + total;
+        }
+    }
+    function calculateBonus(currentTime) {
+        if (currentTime <= 60) return 20;
+        else if (currentTime <= 120) return 10;
+        else if (currentTime <= 180) return 5;
+        else return 0;
+    }
+    function updateRewardDisplay() {
+        var bonus = calculateBonus(timer);
+        if (bonusDisplayEl) {
+            bonusDisplayEl.textContent = '+' + bonus;
+            bonusDisplayEl.style.color = bonus > 0 ? '#ff8c00' : '#999';
+        }
+        updateTotalRewardDisplay();
+    }
+
+    // ============================================
+    // 工具
+    // ============================================
+    function shuffle(array) {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+        return array;
+    }
+    function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        setTimeout(function() { toastEl.classList.remove('show'); }, 2500);
+    }
+
+    // ============================================
+    // 网格数据
+    // ============================================
+    function generateGrid() {
+        var deck = [];
+        for (var i = 0; i < IMAGE_COUNT; i++) {
+            deck.push(i, i);
+        }
+        shuffle(deck);
+        var newGrid = [];
+        var idx = 0;
+        for (var r = 0; r < ROWS; r++) {
+            var row = [];
+            for (var c = 0; c < COLS; c++) {
+                row.push(deck[idx++]);
+            }
+            newGrid.push(row);
+        }
+        return newGrid;
+    }
+
+    // ============================================
+    // 构建DOM元素
+    // ============================================
+    function buildGridElements() {
+        gridContainer.innerHTML = '';
+        cellElements = [];
+        for (var r = 0; r < ROWS; r++) {
+            cellElements[r] = [];
+            for (var c = 0; c < COLS; c++) {
+                var cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                cell.addEventListener('click', function(e) {
+                    var row = parseInt(this.dataset.row);
+                    var col = parseInt(this.dataset.col);
+                    if (!isPlaying && !isComplete) {
+                        startTimer();
+                    }
+                    onCellClick(row, col);
+                });
+                gridContainer.appendChild(cell);
+                cellElements[r][c] = cell;
+            }
+        }
+    }
+
+    // ============================================
+    // 更新单个格子
+    // ============================================
+    function updateCell(r, c) {
+        var cell = cellElements[r][c];
+        if (!cell) return;
+        var val = grid[r][c];
+        cell.innerHTML = '';
+        cell.className = 'cell';
+        if (val === -1) {
+            cell.classList.add('empty');
+        } else {
+            var img = document.createElement('img');
+            img.src = IMAGE_BASE_PATH + imageNames[val];
+            img.alt = '图片' + (val + 1);
+            img.onerror = function() {
+                this.style.display = 'none';
+                this.parentElement.textContent = '?';
+            };
+            cell.appendChild(img);
+        }
+        if (selectedRow === r && selectedCol === c && val !== -1) {
+            cell.classList.add('selected');
+        }
+        // 清除可能残留的边框
+        cell.style.border = '';
+    }
+
+    // ============================================
+    // 全量渲染
+    // ============================================
+    function renderGrid() {
+        if (cellElements.length === 0) {
+            buildGridElements();
+        }
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                updateCell(r, c);
+            }
+        }
+        updateStats();
+        updateRewardDisplay();
+    }
+
+    // ============================================
+    // 更新统计
+    // ============================================
+    function updateStats() {
+        pairsEl.textContent = pairsMatched + '/' + TOTAL_PAIRS;
+        timerEl.textContent = timer + 's';
+    }
+
+    // ============================================
+    // 路径检查（支持边界外）
+    // ============================================
+    function getCellValue(row, col) {
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
+            return -1;
+        }
+        return grid[row][col];
+    }
+    function isRowClear(row, c1, c2) {
+        if (row < 0 || row >= ROWS) return true;
+        var minC = Math.min(c1, c2);
+        var maxC = Math.max(c1, c2);
+        for (var c = minC + 1; c < maxC; c++) {
+            if (c >= 0 && c < COLS && grid[row][c] !== -1) return false;
+        }
+        return true;
+    }
+    function isColClear(col, r1, r2) {
+        if (col < 0 || col >= COLS) return true;
+        var minR = Math.min(r1, r2);
+        var maxR = Math.max(r1, r2);
+        for (var r = minR + 1; r < maxR; r++) {
+            if (r >= 0 && r < ROWS && grid[r][col] !== -1) return false;
+        }
+        return true;
+    }
+    function findPath(r1, c1, r2, c2) {
+        if (r1 === r2 && c1 === c2) return false;
+        var val1 = getCellValue(r1, c1);
+        var val2 = getCellValue(r2, c2);
+        if (val1 === -1 || val2 === -1) return false;
+        if (val1 !== val2) return false;
+
+        if (r1 === r2 && isRowClear(r1, c1, c2)) return true;
+        if (c1 === c2 && isColClear(c1, r1, r2)) return true;
+
+        if (getCellValue(r1, c2) === -1 && isRowClear(r1, c1, c2) && isColClear(c2, r1, r2)) return true;
+        if (getCellValue(r2, c1) === -1 && isRowClear(r2, c1, c2) && isColClear(c1, r1, r2)) return true;
+
+        for (var r = -1; r <= ROWS; r++) {
+            if (r === r1 || r === r2) continue;
+            if (getCellValue(r, c1) === -1 && getCellValue(r, c2) === -1) {
+                if (isColClear(c1, r1, r) && isRowClear(r, c1, c2) && isColClear(c2, r, r2)) {
+                    return true;
+                }
+            }
+        }
+        for (var c = -1; c <= COLS; c++) {
+            if (c === c1 || c === c2) continue;
+            if (getCellValue(r1, c) === -1 && getCellValue(r2, c) === -1) {
+                if (isRowClear(r1, c1, c) && isColClear(c, r1, r2) && isRowClear(r2, c, c2)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function hasValidPair() {
+        for (var r1 = 0; r1 < ROWS; r1++) {
+            for (var c1 = 0; c1 < COLS; c1++) {
+                if (grid[r1][c1] === -1) continue;
+                for (var r2 = 0; r2 < ROWS; r2++) {
+                    for (var c2 = 0; c2 < COLS; c2++) {
+                        if (r1 === r2 && c1 === c2) continue;
+                        if (grid[r2][c2] === -1) continue;
+                        if (grid[r1][c1] !== grid[r2][c2]) continue;
+                        if (findPath(r1, c1, r2, c2)) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function reshuffle() {
+        var remaining = [];
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (grid[r][c] !== -1) remaining.push(grid[r][c]);
+            }
+        }
+        if (remaining.length % 2 !== 0) {
+            showToast('❌ 剩余图片数量异常，请重新开始');
+            return;
+        }
+        shuffle(remaining);
+        var idx = 0;
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (grid[r][c] !== -1) {
+                    grid[r][c] = remaining[idx++];
+                }
+            }
+        }
+        selectedRow = -1;
+        selectedCol = -1;
+        renderGrid();
+        if (!hasValidPair()) {
+            reshuffle();
+        }
+    }
+
+    // ============================================
+    // 点击逻辑（修改版）
+    // ============================================
+    function onCellClick(row, col) {
+        if (isProcessing) return;
+        if (isComplete) return;
+        if (grid[row][col] === -1) return;
+
+        if (selectedRow === -1 && selectedCol === -1) {
+            selectedRow = row;
+            selectedCol = col;
+            updateCell(row, col);
+            return;
+        }
+
+        if (selectedRow === row && selectedCol === col) {
+            var oldR = selectedRow, oldC = selectedCol;
+            selectedRow = -1;
+            selectedCol = -1;
+            updateCell(oldR, oldC);
+            return;
+        }
+
+        var r1 = selectedRow, c1 = selectedCol;
+        var r2 = row, c2 = col;
+
+        // 图片不同 → 切换选中并提示
+        if (grid[r1][c1] !== grid[r2][c2]) {
+            showToast('❌ 图片不同，请选择相同图片');
+            var oldR2 = selectedRow, oldC2 = selectedCol;
+            selectedRow = row;
+            selectedCol = col;
+            updateCell(oldR2, oldC2);
+            updateCell(row, col);
+            return;
+        }
+
+        // 图片相同，检查路径
+        isProcessing = true;
+        if (findPath(r1, c1, r2, c2)) {
+            // 消除：直接更新格子，不加动画
+            grid[r1][c1] = -1;
+            grid[r2][c2] = -1;
+            pairsMatched++;
+
+            // 直接更新格子，无动画
+            updateCell(r1, c1);
+            updateCell(r2, c2);
+
+            selectedRow = -1;
+            selectedCol = -1;
+            updateStats();
+
+            if (pairsMatched === TOTAL_PAIRS) {
+                setTimeout(function() {
+                    completeGame();
+                }, 400);
+                isProcessing = false;
+                return;
+            }
+
+            // 检查是否有有效配对
+            setTimeout(function() {
+                if (!hasValidPair()) {
+                    showToast('🔄 没有可消除的配对，重新洗牌...');
+                    setTimeout(function() {
+                        reshuffle();
+                    }, 500);
+                }
+                isProcessing = false;
+            }, 200);
+
+        } else {
+            // 路径不通：红色边框反馈 + 提示
+            var cell1 = cellElements[r1][c1];
+            var cell2 = cellElements[r2][c2];
+            if (cell1) cell1.style.border = '3px solid #ff4444';
+            if (cell2) cell2.style.border = '3px solid #ff4444';
+            setTimeout(function() {
+                if (cell1) cell1.style.border = '';
+                if (cell2) cell2.style.border = '';
+            }, 500);
+
+            selectedRow = -1;
+            selectedCol = -1;
+            updateCell(r1, c1);
+            updateCell(r2, c2);
+            showToast('❌ 无法连接，请选择其他配对');
+            isProcessing = false;
+        }
+    }
+
+    // ============================================
+    // 计时器
+    // ============================================
+    function startTimer() {
+        if (timerInterval) return;
+        isPlaying = true;
+        timer = 0;
+        timerInterval = setInterval(function() {
+            timer++;
+            timerEl.textContent = timer + 's';
+            updateRewardDisplay();
+        }, 1000);
+    }
+
+    // ============================================
+    // 完成
+    // ============================================
+    function completeGame() {
+        isComplete = true;
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        var baseReward = 50;
+        var bonus = calculateBonus(timer);
+        var total = baseReward + bonus;
+
+        try {
+            var current = parseInt(localStorage.getItem('cardmatch_reward_beans') || '0');
+            var newTotal = current + total;
+            localStorage.setItem('cardmatch_reward_beans', String(newTotal));
+            localStorage.setItem('cardmatch_reward_time', String(Date.now()));
+            console.log('💾 连连看奖励已累加: +' + total + ' 豆子，累计: ' + newTotal);
+        } catch(e) {
+            console.warn('保存奖励失败:', e);
+        }
+
+        var bonusText = bonus > 0 ? ' ⭐ 速度奖励 +' + bonus : '';
+        resultEl.innerHTML = '🎉 全部消除完成！ 获得 🫘 ' + total + ' 颗豆子！' + bonusText;
+        showToast('🎉 获得 ' + total + ' 颗豆子！返回主游戏自动到账');
+
+        if (bonusDisplayEl) {
+            bonusDisplayEl.textContent = '+' + bonus;
+            bonusDisplayEl.style.color = '#28a745';
+        }
+        updateTotalRewardDisplay();
+    }
+
+    // ============================================
+    // 重新开始
+    // ============================================
+    function restartGame() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        grid = generateGrid();
+        selectedRow = -1;
+        selectedCol = -1;
+        pairsMatched = 0;
+        timer = 0;
+        isPlaying = false;
+        isComplete = false;
+        isProcessing = false;
+        timerEl.textContent = '0s';
+        pairsEl.textContent = '0/' + TOTAL_PAIRS;
+        resultEl.innerHTML = '点击两张相同图片，路径最多拐两个弯';
+        if (bonusDisplayEl) {
+            bonusDisplayEl.textContent = '+0';
+            bonusDisplayEl.style.color = '#999';
+        }
+        updateTotalRewardDisplay();
+        renderGrid();
+        if (!hasValidPair()) {
+            reshuffle();
+        }
+        showToast('🔄 游戏已重置');
+    }
+
+    function goBack() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        window.location.href = 'index.html';
+    }
+
+    // ============================================
+    // 初始化
+    // ============================================
+    function initGame() {
+        grid = generateGrid();
+        selectedRow = -1;
+        selectedCol = -1;
+        pairsMatched = 0;
+        timer = 0;
+        isPlaying = false;
+        isComplete = false;
+        isProcessing = false;
+        timerEl.textContent = '0s';
+        pairsEl.textContent = '0/' + TOTAL_PAIRS;
+        resultEl.innerHTML = '点击两张相同图片，路径最多拐两个弯';
+        if (bonusDisplayEl) {
+            bonusDisplayEl.textContent = '+0';
+            bonusDisplayEl.style.color = '#999';
+        }
+        updateTotalRewardDisplay();
+        buildGridElements();
+        renderGrid();
+        if (!hasValidPair()) {
+            reshuffle();
+        }
+    }
+
+    // ============================================
+    // 事件绑定
+    // ============================================
+    document.getElementById('restartBtn').addEventListener('click', restartGame);
+    document.getElementById('backBtn').addEventListener('click', goBack);
+
+    // 启动
+    initGame();
+    console.log('🧩 连连看游戏已加载 (路径可超出边界，消除无闪烁)');
+</script>
+</body>
+</html>

@@ -1,0 +1,437 @@
+/* ============================================
+   成就系统样式 · 羊皮纸卡片网格版
+   固定高度 · 无稀有度
+   ============================================ */
+
+/* ===== 成就模态框 - 固定高度 ===== */
+.achievement-modal-content {
+    max-width: 680px;
+    width: 95%;
+    height: 75vh;                
+    max-height: 620px;           
+    background: #faf0e0;
+    background-image: radial-gradient(ellipse at 30% 20%, #faf0e0 0%, #f5e6c8 60%, #e8d5b8 100%);
+    border-radius: 48px;
+    padding: 24px 28px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(60, 40, 20, 0.25);
+    border: 1px solid #dcc8b0;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden;
+}
+
+.achievement-modal-content::-webkit-scrollbar {
+    width: 0;
+    display: none;
+}
+
+/* ===== 所有直接子元素默认不伸缩 ===== */
+.achievement-modal-content > * {
+    flex-shrink: 0;
+}
+
+/* ===== 头部标题 ===== */
+.achievement-modal-content h3 {
+    color: #4a2a1a;
+    font-family: 'Georgia', serif;
+    letter-spacing: 0.5px;
+    margin: 0 0 4px 0;
+}
+
+/* ===== 成就统计 ===== */
+#achievementStats {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+    color: #5a3a2a;
+    padding: 4px 0;
+    background: rgba(255, 248, 240, 0.3);
+    border-radius: 30px;
+    border: 1px solid rgba(200, 160, 120, 0.1);
+    flex-shrink: 0;
+}
+#achievementStats strong {
+    color: #c98f5e;
+}
+
+/* ===== 分类标签容器 ===== */
+.category-tabs-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    min-height: 34px;
+    flex-shrink: 0;
+    overflow: hidden !important;
+}
+
+/* ===== 可滚动的标签区域 ===== */
+.category-tabs-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+.category-tabs-scroll::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+}
+
+/* ===== 左右滚动按钮 ===== */
+.category-tab-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #dcc8b0;
+    border: none;
+    color: #4a2a1a;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+.category-tab-btn:hover:not(:disabled) {
+    background: #c98f5e;
+    color: white;
+    transform: scale(1.05);
+}
+.category-tab-btn:active:not(:disabled) {
+    transform: scale(0.9);
+}
+.category-tab-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+/* ===== 分类标签（单个） ===== */
+.category-tab {
+    display: inline-block;
+    padding: 4px 16px;
+    margin-right: 6px;
+    border-radius: 24px;
+    background: rgba(255, 248, 240, 0.5);
+    border: 1px solid #dcc8b0;
+    color: #5a3a2a;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+    user-select: none;
+    vertical-align: middle;
+}
+.category-tab:hover {
+    background: #ede0d2;
+    transform: scale(1.02);
+}
+.category-tab.active {
+    background: #c98f5e;
+    border-color: #b8946a;
+    color: white;
+}
+
+/* ===== 成就列表 - 占据剩余空间并滚动 ===== */
+#achievementList {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+    gap: 14px !important;
+    padding: 8px 2px 4px 2px !important;
+    scrollbar-width: thin;
+    scrollbar-color: #d4b898 #f5ede4;
+    align-content: start;
+}
+
+#achievementList::-webkit-scrollbar {
+    width: 4px;
+}
+#achievementList::-webkit-scrollbar-track {
+    background: #f5ede4;
+    border-radius: 10px;
+}
+#achievementList::-webkit-scrollbar-thumb {
+    background: #d4b898;
+    border-radius: 10px;
+}
+
+/* ===== 成就卡片 ===== */
+.achievement-card {
+    background: #f5ede4;
+    background-image: radial-gradient(ellipse at 30% 20%, #faf0e0 0%, #f5ede4 80%, #e8d5b8 100%);
+    border-radius: 16px;
+    padding: 14px 12px 12px;
+    border: 1px solid #dcc8b0;
+    box-shadow: 0 2px 8px rgba(140, 100, 70, 0.06);
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    min-height: 150px;
+    height: 100%;
+}
+.achievement-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(140, 100, 70, 0.12);
+}
+
+/* 图标 */
+.achievement-card .card-icon {
+    font-size: 2.2rem;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+/* 名称 */
+.achievement-card .card-name {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #4a2a1a;
+    margin-bottom: 2px;
+}
+
+/* 隐藏成就标记 */
+.achievement-card .card-name .hidden-badge {
+    font-size: 0.55rem;
+    color: #f39c12;
+}
+
+/* 描述 */
+.achievement-card .card-desc {
+    font-size: 0.62rem;
+    color: #7a5a3a;
+    margin-bottom: 6px;
+    line-height: 1.3;
+    flex: 1;
+}
+
+/* 奖励预览 */
+.achievement-card .card-reward {
+    font-size: 0.55rem;
+    color: #6f9e3f;
+    margin-bottom: 4px;
+    min-height: 1.2em;
+}
+
+/* 进度条 */
+.achievement-card .card-progress-track {
+    width: 100%;
+    max-width: 140px;
+    height: 4px;
+    background: rgba(180, 150, 120, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 4px auto 3px;
+}
+.achievement-card .card-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+    background: linear-gradient(90deg, #d4a050, #c98f5e);
+}
+.achievement-card .card-progress-text {
+    font-size: 0.5rem;
+    color: #8b7a6a;
+}
+
+/* 状态徽章 */
+.achievement-card .card-status {
+    font-size: 0.55rem;
+    font-weight: 600;
+    padding: 2px 12px;
+    border-radius: 20px;
+    margin-top: 3px;
+    display: inline-block;
+}
+.achievement-card .status-locked {
+    background: rgba(180, 150, 120, 0.12);
+    color: #8b7a6a;
+}
+.achievement-card .status-unlocked {
+    background: rgba(255, 215, 0, 0.15);
+    color: #b8860b;
+}
+.achievement-card .status-claimed {
+    background: rgba(46, 204, 113, 0.12);
+    color: #2d7a3a;
+}
+
+/* 领取按钮 */
+.achievement-card .claim-btn {
+    margin-top: 4px;
+    padding: 3px 18px;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(135deg, #6f9e3f, #4c7a2a);
+    color: white;
+    transition: 0.15s;
+    font-family: 'Georgia', serif;
+}
+.achievement-card .claim-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 12px rgba(111, 158, 63, 0.2);
+}
+.achievement-card .claim-btn:active {
+    transform: scale(0.95);
+}
+
+/* ===== 空状态 ===== */
+.achievement-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 0;
+    color: #8b7a6a;
+    font-size: 0.85rem;
+    font-style: italic;
+    align-self: center;
+}
+
+/* ===== 导航栏红点 ===== */
+#achievementBadge {
+    display: none;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #d9534f;
+    color: white;
+    font-size: 0.5rem;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+
+@media (max-width: 700px) {
+    .achievement-modal-content {
+        height: 80vh;
+        max-height: 560px;
+        padding: 18px 16px;
+        border-radius: 36px;
+    }
+    #achievementList {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+        gap: 12px !important;
+    }
+    .achievement-card {
+        min-height: 130px;
+        padding: 12px 10px;
+    }
+    .achievement-card .card-icon {
+        font-size: 1.9rem;
+    }
+    .achievement-card .card-name {
+        font-size: 0.75rem;
+    }
+    .achievement-card .card-desc {
+        font-size: 0.55rem;
+    }
+    .category-tab {
+        font-size: 0.6rem;
+        padding: 3px 12px;
+    }
+    .category-tab-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 0.65rem;
+    }
+    #achievementStats {
+        font-size: 0.7rem;
+        padding: 3px 0;
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .achievement-modal-content {
+        height: 85vh;
+        max-height: 480px;
+        padding: 12px 10px;
+        border-radius: 28px;
+    }
+    #achievementList {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        padding: 4px 2px 2px 2px !important;
+    }
+    .achievement-card {
+        min-height: 110px;
+        padding: 8px 6px;
+        border-radius: 12px;
+    }
+    .achievement-card .card-icon {
+        font-size: 1.5rem;
+    }
+    .achievement-card .card-name {
+        font-size: 0.65rem;
+    }
+    .achievement-card .card-desc {
+        font-size: 0.5rem;
+    }
+    .achievement-card .card-reward {
+        font-size: 0.5rem;
+    }
+    .achievement-card .card-status {
+        font-size: 0.5rem;
+        padding: 1px 10px;
+    }
+    .achievement-card .claim-btn {
+        font-size: 0.5rem;
+        padding: 2px 12px;
+    }
+    .category-tab {
+        font-size: 0.55rem;
+        padding: 2px 10px;
+        margin-right: 4px;
+    }
+    .category-tabs-wrapper {
+        margin-bottom: 6px;
+        gap: 4px;
+        min-height: 28px;
+    }
+    .category-tab-btn {
+        width: 20px;
+        height: 20px;
+        font-size: 0.55rem;
+    }
+    #achievementStats {
+        font-size: 0.6rem;
+        padding: 2px 0;
+        margin-bottom: 6px;
+        border-radius: 20px;
+    }
+    .achievement-modal-content h3 {
+        font-size: 1rem;
+    }
+}

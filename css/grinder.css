@@ -1,0 +1,463 @@
+/* ============================================================
+   grinder.css · 八仙锅海 · 粉碎机（蒸汽朋克·亮色版）
+   ============================================================ */
+
+#grinderMode {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    z-index: 4;
+    padding: 16px 20px 60px 20px;
+    overflow-y: auto;
+    border: 3px solid #b89a6a;
+    box-shadow: inset 0 0 80px rgba(0,0,0,0.5), 0 0 40px rgba(184,154,106,0.15);
+    background: 
+        radial-gradient(ellipse at 20% 80%, rgba(184,154,106,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(184,154,106,0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #2a1f18 0%, #3d2d20 40%, #4d3828 70%, #2a1f18 100%);
+    border-radius: 16px;
+    color: #f0e8d8;
+    font-family: 'Courier New', 'Segoe UI', monospace;
+    box-sizing: border-box;
+}
+#grinderMode::-webkit-scrollbar { display: none; }
+
+/* ----- 金属纹理叠加（更亮） ----- */
+#grinderMode::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    background: 
+        repeating-linear-gradient(45deg, transparent 0px, transparent 2px, rgba(184,154,106,0.04) 2px, rgba(184,154,106,0.04) 3px),
+        repeating-linear-gradient(-45deg, transparent 0px, transparent 3px, rgba(184,154,106,0.03) 3px, rgba(184,154,106,0.03) 4px);
+    border-radius: 16px;
+}
+
+/* ----- 蒸汽粒子（保留） ----- */
+.steam-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: 16px;
+}
+.steam-particle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(220,210,190,0.06), rgba(220,210,190,0) 70%);
+    animation: steamFloat linear infinite;
+}
+.steam-particle:nth-child(1) { width: 80px; height: 80px; top: 10%; left: 5%; animation-duration: 18s; animation-delay: 0s; }
+.steam-particle:nth-child(2) { width: 120px; height: 120px; top: 60%; left: 80%; animation-duration: 22s; animation-delay: -5s; }
+.steam-particle:nth-child(3) { width: 60px; height: 60px; top: 30%; left: 50%; animation-duration: 15s; animation-delay: -10s; }
+.steam-particle:nth-child(4) { width: 100px; height: 100px; top: 75%; left: 20%; animation-duration: 20s; animation-delay: -3s; }
+.steam-particle:nth-child(5) { width: 70px; height: 70px; top: 15%; left: 75%; animation-duration: 16s; animation-delay: -7s; }
+.steam-particle:nth-child(6) { width: 90px; height: 90px; top: 50%; left: 40%; animation-duration: 19s; animation-delay: -12s; }
+
+@keyframes steamFloat {
+    0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+    20% { opacity: 0.6; }
+    80% { opacity: 0.6; }
+    100% { transform: translate(-40px, -120px) scale(1.4); opacity: 0; }
+}
+
+/* ----- 齿轮装饰（仅左下角一个大齿轮） ----- */
+.gear-deco {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+    color: rgba(184,154,106,0.15);
+    font-size: 8rem;
+    bottom: 12%;
+    left: 2%;
+    animation: gearSpin 25s linear infinite;
+}
+@keyframes gearSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ----- 管道装饰（保留一条） ----- */
+.pipe-line {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+    border: 2px solid rgba(184,154,106,0.04);
+    border-radius: 50%;
+}
+.pipe-line:nth-child(8) {
+    bottom: 25%;
+    right: -40px;
+    width: 200px;
+    height: 80px;
+    border-color: rgba(184,154,106,0.03);
+    border-top-color: transparent;
+    border-right-color: transparent;
+}
+
+/* ===== 所有内容在 z-index 2 以上 ===== */
+.grinder-header,
+.grinder-stats,
+.grinder-recipes,
+.grinder-action-wrapper,
+.grinder-footer {
+    position: relative;
+    z-index: 2;
+}
+
+/* ----- 标题栏（亮金属） ----- */
+.grinder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(184,154,106,0.3);
+    margin-bottom: 16px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(60,40,25,0.25), transparent);
+    border-radius: 12px 12px 0 0;
+}
+.grinder-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #e8d5b8;
+    text-shadow: 0 0 30px rgba(184,154,106,0.2), 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 2px;
+    font-family: 'Georgia', serif;
+}
+.grinder-title::before {
+    content: '⚙ ';
+    font-size: 1rem;
+}
+.grinder-btn-close {
+    background: rgba(184,154,106,0.12);
+    border: 1px solid rgba(184,154,106,0.2);
+    border-radius: 30px;
+    padding: 2px 14px;
+    color: rgba(200,180,160,0.6);
+    cursor: pointer;
+    font-size: 0.65rem;
+    line-height: 26px;
+    transition: 0.15s;
+    font-family: 'Courier New', monospace;
+}
+.grinder-btn-close:hover {
+    background: rgba(184,154,106,0.25);
+    color: #e8d5b8;
+}
+
+/* ----- 统计栏（更亮半透明） ----- */
+.grinder-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    padding: 8px 16px;
+    background: rgba(30,20,15,0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
+    font-size: 0.8rem;
+    margin: 0 0 12px 0;
+    flex-shrink: 0;
+    border: 1px solid rgba(184,154,106,0.1);
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.2);
+    color: #f0e8d8;
+}
+.grinder-stats strong {
+    color: #e8d5b8;
+    font-weight: 700;
+}
+.grinder-stats img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    vertical-align: middle;
+    border-radius: 4px;
+}
+
+/* ----- 配方卡片（更大，更清晰） ----- */
+.grinder-recipes {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 8px 0 16px 0;
+    flex-shrink: 0;
+}
+
+.grinder-recipe-card {
+    flex: 0 1 180px;        /* 增大 */
+    max-width: 210px;
+    background: rgba(30,20,15,0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 2px solid rgba(184,154,106,0.15);
+    border-radius: 16px;
+    padding: 16px 14px;      /* 内边距增大 */
+    text-align: center;
+    cursor: pointer;
+    transition: 0.25s;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2), inset 0 0 40px rgba(184,154,106,0.02);
+    position: relative;
+    overflow: hidden;
+}
+.grinder-recipe-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(184,154,106,0.03), transparent, rgba(184,154,106,0.03), transparent);
+    animation: gearSpin 30s linear infinite;
+    pointer-events: none;
+}
+.grinder-recipe-card:hover {
+    border-color: rgba(184,154,106,0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 30px rgba(184,154,106,0.12), inset 0 0 40px rgba(184,154,106,0.04);
+}
+.grinder-recipe-card.selected {
+    border-color: #e8d5b8;
+    background: rgba(40,30,20,0.6);
+    box-shadow: 0 0 30px rgba(184,154,106,0.1), inset 0 0 40px rgba(184,154,106,0.04);
+}
+.grinder-recipe-card.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.grinder-recipe-card.disabled:hover {
+    transform: none;
+    border-color: rgba(184,154,106,0.15);
+}
+
+.grinder-recipe-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.grinder-recipe-img {
+    width: 52px;            /* 更大 */
+    height: 52px;
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+    margin: 0 auto 8px;
+    filter: drop-shadow(0 0 10px rgba(184,154,106,0.05));
+}
+.grinder-recipe-icon {
+    font-size: 2.8rem;      /* 更大 */
+    display: block;
+    margin: 0 auto 8px;
+}
+.grinder-recipe-name {
+    font-weight: 700;
+    font-size: 1.05rem;     /* 更大 */
+    color: #f0e8d8;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.grinder-recipe-cost {
+    font-size: 0.7rem;
+    color: rgba(200,180,160,0.5);
+    margin-top: 2px;
+}
+.grinder-recipe-status {
+    font-size: 0.65rem;
+    margin-top: 4px;
+    color: rgba(200,180,160,0.4);
+}
+.grinder-recipe-card.selected .grinder-recipe-status {
+    color: #e8d5b8;
+}
+
+/* ----- 操作区（半透明面板，更亮） ----- */
+.grinder-action-wrapper {
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+    margin: 4px 0 0 0;
+}
+.grinder-action {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(30,20,15,0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(184,154,106,0.1);
+    border-radius: 16px;
+    padding: 16px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.2), inset 0 0 60px rgba(184,154,106,0.02);
+}
+.grinder-action-placeholder {
+    text-align: center;
+    color: rgba(200,180,160,0.4);
+    font-size: 0.95rem;
+    padding: 16px 0;
+    width: 100%;
+    max-width: 480px;
+    background: rgba(30,20,15,0.45);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(184,154,106,0.06);
+}
+.grinder-action-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.grinder-action-label {
+    font-weight: 700;
+    font-size: 1rem;        /* 更大 */
+    color: #e8d5b8;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.grinder-qty-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.grinder-qty-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(184,154,106,0.2);
+    background: rgba(184,154,106,0.06);
+    color: #e8d5b8;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s;
+}
+.grinder-qty-btn:hover {
+    background: rgba(184,154,106,0.15);
+    border-color: rgba(184,154,106,0.35);
+}
+#grinderQtyInput {
+    width: 50px;
+    text-align: center;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(184,154,106,0.1);
+    border-radius: 30px;
+    color: #f0e8d8;
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 2px 4px;
+    -moz-appearance: textfield;
+}
+#grinderQtyInput::-webkit-outer-spin-button,
+#grinderQtyInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+#grinderQtyInput:focus {
+    outline: none;
+    border-color: rgba(184,154,106,0.3);
+}
+.grinder-action-cost {
+    font-size: 0.8rem;
+    color: rgba(200,180,160,0.55);
+}
+.grinder-action-cost img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+    border-radius: 4px;
+}
+.grinder-action-output {
+    font-size: 0.85rem;
+    color: #a8d080;
+    font-weight: 600;
+}
+.grinder-btn-grind {
+    padding: 6px 24px;
+    border: 2px solid rgba(184,154,106,0.2);
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+    background: linear-gradient(135deg, rgba(184,154,106,0.15), rgba(184,154,106,0.05));
+    color: #e8d5b8;
+    align-self: center;
+    min-width: 150px;
+    text-shadow: 0 0 20px rgba(184,154,106,0.05);
+    letter-spacing: 1px;
+    font-family: 'Georgia', serif;
+}
+.grinder-btn-grind:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(184,154,106,0.25), rgba(184,154,106,0.1));
+    border-color: rgba(184,154,106,0.4);
+    transform: scale(1.02);
+    box-shadow: 0 0 30px rgba(184,154,106,0.06);
+}
+.grinder-btn-grind:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.grinder-btn-grind:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+/* ----- 底部提示（固定在底部） ----- */
+.grinder-footer {
+    position: absolute;
+    bottom: 14px;
+    left: 20px;
+    right: 20px;
+    padding: 6px 12px;
+    background: rgba(30,20,15,0.3);
+    backdrop-filter: blur(4px);
+    border-radius: 10px;
+    font-size: 0.65rem;
+    color: rgba(200,180,160,0.25);
+    text-align: center;
+    border-top: 1px solid rgba(184,154,106,0.04);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ----- 响应式 ----- */
+@media (max-width: 600px) {
+    #grinderMode { padding: 12px 14px 52px 14px; }
+    .grinder-title { font-size: 1rem; }
+    .grinder-stats { font-size: 0.65rem; gap: 4px 10px; }
+    .grinder-recipe-card { flex: 0 1 140px; padding: 12px 10px; }
+    .grinder-recipe-name { font-size: 0.85rem; }
+    .grinder-recipe-img { width: 40px; height: 40px; }
+    .grinder-recipe-icon { font-size: 2.2rem; }
+    .grinder-action { padding: 12px 16px; max-width: 100%; }
+    .grinder-action-label { font-size: 0.85rem; }
+    .grinder-btn-grind { font-size: 0.75rem; padding: 4px 16px; min-width: 110px; }
+    .gear-deco { font-size: 5rem; bottom: 8%; left: 0; }
+    .pipe-line { display: none; }
+}
+@media (max-width: 400px) {
+    .grinder-recipes { flex-direction: column; align-items: center; }
+    .grinder-recipe-card { max-width: 100%; width: 100%; flex: 0 1 auto; }
+    .grinder-action { max-width: 100%; }
+    .gear-deco { font-size: 4rem; bottom: 5%; left: -2%; }
+}

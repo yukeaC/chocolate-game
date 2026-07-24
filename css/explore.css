@@ -1,0 +1,1582 @@
+/* ============================================================
+   explore.css · 可可世界探险地图样式
+   ============================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+html {
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+html::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+body {
+    background: #0d1b2a;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', 'Quicksand', system-ui, sans-serif;
+    padding: 12px;
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.map-container {
+    width: 100%;
+    max-width: 1100px;
+    background: #0a1620;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(255, 215, 150, 0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ===== 顶部标题栏 ===== */
+.map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    background: rgba(10, 22, 32, 0.95);
+    border-bottom: 1px solid rgba(255, 215, 150, 0.06);
+    flex-shrink: 0;
+}
+.map-header .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #f5ede4;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+.map-header .title span {
+    font-size: 0.65rem;
+    color: rgba(255, 215, 150, 0.4);
+    font-weight: normal;
+}
+.map-header .stats {
+    display: flex;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.65rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.map-header .stats strong {
+    color: #ffd700;
+    font-weight: bold;
+}
+#adventurerDisplay {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 215, 0, 0.08);
+    padding: 2px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 215, 0, 0.12);
+    cursor: pointer;
+    transition: 0.15s;
+    font-size: 0.6rem;
+}
+#adventurerDisplay:hover {
+    background: rgba(255, 215, 0, 0.18);
+    transform: scale(1.02);
+}
+#adventurerTitle {
+    color: #ffd700;
+    font-weight: bold;
+}
+#adventurerRep {
+    color: #8bc34a;
+    font-weight: bold;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-backpack {
+    background: rgba(255, 215, 0, 0.12);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 30px;
+    padding: 4px 14px;
+    color: #ffd700;
+    font-size: 0.65rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.15s;
+    white-space: nowrap;
+}
+.btn-backpack:hover {
+    background: rgba(255, 215, 0, 0.22);
+    transform: scale(1.04);
+}
+.btn-backpack:active {
+    transform: scale(0.95);
+}
+
+.btn-close-map {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+    padding: 4px 14px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 0.65rem;
+    transition: 0.15s;
+}
+.btn-close-map:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* ===== 地图区域 ===== */
+.map-area {
+    position: relative;
+    width: 100%;
+    background: #0a1620;
+    aspect-ratio: 2910 / 1280;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.map-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.map-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+.map-overlay > * {
+    pointer-events: auto;
+}
+
+/* ===== 区域标记 ===== */
+.region-marker {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s;
+}
+.region-marker:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+    z-index: 10;
+}
+
+.region-marker .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.region-marker .dot.locked {
+    background: #5a4a3a;
+    border-color: #7a6a5a;
+}
+.region-marker .dot.unlocked {
+    background: #c98f5e;
+    border-color: #f5d4a0;
+}
+.region-marker .dot.current {
+    background: #ffd700;
+    border-color: #fff4c0;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    animation: currentPulse 2s ease-in-out infinite;
+}
+.region-marker .dot.completed {
+    background: #66bb6a;
+    border-color: #a5d6a7;
+}
+
+@keyframes currentPulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.6); }
+}
+
+.region-marker .label {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.5rem;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9), 0 1px 4px rgba(0, 0, 0, 0.7);
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 1px 8px;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+    display: none;
+    transition: opacity 0.2s;
+}
+.region-marker:hover .label {
+    display: block;
+}
+
+/* ===== 小船 ===== */
+.ship-marker {
+    position: absolute;
+    font-size: 1.4rem;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
+    transition: all 1.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    animation: shipBob 2.5s ease-in-out infinite;
+}
+@keyframes shipBob {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-2deg); }
+    50% { transform: translate(-50%, -50%) rotate(2deg); }
+}
+
+/* ===== 航行进度条 ===== */
+.travel-progress {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    max-width: 320px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 16px;
+    padding: 6px 14px;
+    z-index: 12;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    display: none;
+}
+.travel-progress .bar-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.travel-progress .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6f9e3f, #ffd700);
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+.travel-progress .text {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.5rem;
+    text-align: center;
+    margin-top: 3px;
+}
+
+/* ===== Toast ===== */
+.toast {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    color: #ffefb0;
+    padding: 4px 16px;
+    border-radius: 40px;
+    font-size: 0.7rem;
+    z-index: 30;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    border: 1px solid rgba(255, 215, 0, 0.06);
+    white-space: nowrap;
+}
+.toast.show {
+    opacity: 1;
+}
+
+/* ============================================================
+   底部信息面板（再高一丢丢：600px → 620px）
+   ============================================================ */
+.info-panel {
+    padding: 0;
+    background: rgba(10, 22, 32, 0.95);
+    border-top: 1px solid rgba(255, 215, 150, 0.06);
+    flex-shrink: 0;
+    position: relative;
+    height: 620px;
+    min-height: 620px;
+    max-height: 620px;
+    overflow: hidden;
+}
+
+#infoMode {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 8px;
+    padding: 16px 22px;
+    background-image: url('../images/fishing_bg.jpg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: #0a1620;
+    border: 2px solid rgba(255, 215, 150, 0.25);
+    border-radius: 16px;
+    z-index: 1;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+#infoMode::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+#infoMode::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 16px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#infoMode > * {
+    position: relative;
+    z-index: 1;
+}
+
+.info-text {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.75rem;
+    text-align: left !important;
+    line-height: 1.4;
+    flex: 0 1 auto;
+    min-width: 160px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    margin: 0 !important;
+}
+.info-text .name {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+.info-text .sub {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.55rem;
+}
+.info-text .status-badge {
+    display: inline-block;
+    font-size: 0.5rem;
+    padding: 1px 8px;
+    border-radius: 30px;
+    background: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+    margin-left: 4px;
+}
+.info-text .unlock-info {
+    display: block;
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 2px;
+}
+
+.actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end !important;
+    z-index: 3;
+    margin: 0 !important;
+    padding: 0 !important;
+    align-self: flex-start;
+}
+.actions button {
+    border: none;
+    border-radius: 30px;
+    padding: 5px 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.15s;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.actions button:active {
+    transform: scale(0.95);
+}
+
+.btn-travel {
+    background: #6f9e3f;
+    color: white;
+}
+.btn-travel:hover:not(:disabled) {
+    background: #5a8a2a;
+}
+.btn-travel:disabled {
+    background: #3a4a3a;
+    color: #6a7a6a;
+    cursor: not-allowed;
+}
+
+.btn-unlock {
+    background: #ffd700;
+    color: #2d1a0e;
+}
+.btn-unlock:hover {
+    background: #f5c400;
+    transform: scale(1.04);
+}
+.btn-unlock:active {
+    transform: scale(0.95);
+}
+
+.btn-fishing {
+    background: rgba(52, 152, 219, 0.3);
+    border: 1px solid rgba(52, 152, 219, 0.4);
+    border-radius: 30px;
+    padding: 5px 14px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.65rem;
+    color: #5bc0de;
+    white-space: nowrap;
+    transition: 0.15s;
+    z-index: 10;
+}
+.btn-fishing:hover {
+    background: rgba(52, 152, 219, 0.5);
+    transform: scale(1.04);
+}
+.btn-fishing:active {
+    transform: scale(0.95);
+}
+
+.btn-bounty {
+    background: rgba(255, 215, 0, 0.15);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 30px;
+    padding: 5px 14px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.65rem;
+    color: #ffd700;
+    white-space: nowrap;
+    transition: 0.15s;
+}
+.btn-bounty:hover {
+    background: rgba(255, 215, 0, 0.25);
+    transform: scale(1.04);
+}
+.btn-bounty:active {
+    transform: scale(0.95);
+}
+
+/* ============================================================
+   钓鱼模式样式（适配更矮的面板）
+   ============================================================ */
+#fishingMode {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: none;
+    background: linear-gradient(180deg, #0a2a4a 0%, #1a5a7a 45%, #2d7a9a 70%, #4a9aba 100%);
+    border: 2px solid rgba(255, 215, 150, 0.25);
+    border-radius: 16px;
+    z-index: 2;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding: 6px 10px;
+}
+#fishingMode::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+#fishingContainer {
+    width: 100%;
+    height: 100%;
+}
+
+.fishing-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 3px;
+    padding: 2px 0;
+}
+
+.fishing-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.fishing-stats-bar .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+.fishing-stats-bar .stat-icon {
+    font-size: 0.65rem;
+}
+.fishing-stats-bar .stat-label {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.4rem;
+}
+.fishing-stats-bar .stat-value {
+    font-weight: bold;
+    color: #ffd700;
+    font-size: 0.55rem;
+    min-width: 12px;
+}
+.btn-fishing-close {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px;
+    padding: 1px 8px;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    font-size: 0.45rem;
+    line-height: 18px;
+    transition: 0.15s;
+}
+.btn-fishing-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.fishing-water-area {
+    position: relative;
+    flex: 1;
+    min-height: 190px;
+    max-height: 250px;
+    background: linear-gradient(180deg, #1a5a7a 0%, #0d3a5a 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.wave-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 100%;
+    background: repeating-linear-gradient(90deg, transparent 0px, rgba(255, 255, 255, 0.03) 30px, transparent 60px);
+    animation: waterFlow 4s linear infinite;
+    pointer-events: none;
+}
+.wave-layer.wave1 {
+    animation-duration: 4s;
+    opacity: 0.6;
+}
+.wave-layer.wave2 {
+    animation-duration: 6s;
+    animation-delay: -2s;
+    opacity: 0.3;
+}
+@keyframes waterFlow {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.track-horizontal {
+    position: absolute;
+    bottom: 12px;
+    left: 8%;
+    right: 8%;
+    height: 22px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.track-horizontal .target-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 14px;
+    background: rgba(255, 215, 0, 0.2);
+    box-shadow: inset 0 0 20px rgba(255, 215, 0, 0.3), 0 0 15px rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    transition: width 0.3s, left 0.3s;
+    display: none;
+}
+.track-horizontal .target-zone.visible {
+    display: block;
+}
+.track-horizontal .target-zone.hit {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: #4caf50;
+    box-shadow: inset 0 0 20px rgba(76, 175, 80, 0.4), 0 0 25px rgba(76, 175, 80, 0.2);
+}
+.track-horizontal .target-zone.miss {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: #f44336;
+    box-shadow: inset 0 0 20px rgba(244, 67, 54, 0.3);
+}
+.track-horizontal .float-icon {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.3rem;
+    filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
+    z-index: 2;
+    left: 5%;
+    pointer-events: none;
+    transition: none;
+}
+.track-horizontal .float-icon.bobbing {
+    animation: floatBob 1.2s ease-in-out infinite;
+}
+@keyframes floatBob {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
+    50% { transform: translate(-50%, -50%) rotate(4deg) scale(1.06); }
+}
+
+.status-text {
+    text-align: center;
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.5);
+    min-height: 14px;
+    transition: 0.2s;
+    padding: 0 4px;
+}
+.status-text.success {
+    color: #8bc34a;
+}
+.status-text.fail {
+    color: #ef5350;
+}
+.status-text.highlight {
+    color: #ffd700;
+}
+
+.fishing-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0 4px;
+}
+.fish-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.15s;
+    font-size: 0.6rem;
+    color: white;
+    min-height: 30px;
+    max-width: 90px;
+    width: 100%;
+    flex: 0 1 auto;
+}
+.fish-btn:active {
+    transform: scale(0.95);
+}
+.fish-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.fish-btn .btn-icon {
+    font-size: 0.75rem;
+}
+.fish-btn .btn-text {
+    font-size: 0.6rem;
+    font-weight: bold;
+}
+
+.fish-btn-main {
+    background: linear-gradient(135deg, #e7a05e, #c98f5e);
+}
+.fish-btn-main:hover:not(:disabled) {
+    transform: scale(1.02);
+    background: linear-gradient(135deg, #f0b070, #d4a06a);
+}
+.fish-btn-main.fish-btn-reel {
+    background: linear-gradient(135deg, #6f9e3f, #4c7a2a);
+    animation: reelPulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes reelPulse {
+    0% { box-shadow: 0 0 0 0 rgba(111, 158, 63, 0); }
+    100% { box-shadow: 0 0 16px 4px rgba(111, 158, 63, 0.2); }
+}
+
+.fish-btn-basket {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+}
+.fish-btn-basket:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.catch-popup {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 10px 16px;
+    z-index: 10;
+    text-align: center;
+    border: 2px solid rgba(255, 215, 0, 0.15);
+    min-width: 70px;
+    animation: popIn 0.35s ease;
+}
+@keyframes popIn {
+    0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    80% { transform: translate(-50%, -50%) scale(1.05); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.catch-popup .icon {
+    font-size: 2rem;
+    line-height: 1.2;
+}
+.catch-popup .name {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #ffd700;
+    margin-top: 2px;
+}
+
+/* ============================================================
+   小王子 · 三杯一球游戏样式
+   ============================================================ */
+
+#princeGameContainer {
+    /* 背景已在 JS 中内联设置，这里作为后备 */
+    background: linear-gradient(145deg, #2d1b0e, #4a2c1a);
+}
+
+.pg-btn-glow {
+    animation: pgGlowPulse 1.8s ease-in-out infinite;
+}
+@keyframes pgGlowPulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(247, 151, 30, 0.25); }
+    50% { box-shadow: 0 4px 28px rgba(247, 151, 30, 0.5), 0 0 50px rgba(247, 151, 30, 0.1); }
+}
+
+.pg-hidden {
+    display: none !important;
+}
+
+.pg-cup-wrapper.pg-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.pg-cup-wrapper.pg-raised .pg-cup {
+    transform: translateY(-30px) scale(0.92);
+}
+
+.pg-cup-wrapper.pg-show-ball .pg-ball {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+}
+
+.pg-ball.pg-ball-hidden {
+    transform: translateX(-50%) scale(0.3);
+    opacity: 0;
+}
+
+.pg-highlight-correct {
+    box-shadow: 0 0 24px rgba(46, 204, 113, 0.5);
+}
+.pg-highlight-wrong {
+    box-shadow: 0 0 24px rgba(231, 76, 60, 0.5);
+}
+.pg-shake {
+    animation: pgShake 0.5s ease;
+}
+@keyframes pgShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px) rotate(-2deg); }
+    40% { transform: translateX(8px) rotate(2deg); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* ============================================================
+   冒险者详情面板
+   ============================================================ */
+.adventurer-modal-content {
+    max-width: 420px;
+    width: 95%;
+    background: #fffaf0;
+    border-radius: 48px;
+    padding: 24px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.adventurer-modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+.adventurer-modal-content::-webkit-scrollbar-track {
+    background: #f5ede4;
+    border-radius: 10px;
+}
+.adventurer-modal-content::-webkit-scrollbar-thumb {
+    background: #d4b898;
+    border-radius: 10px;
+}
+
+/* ============================================================
+   探险背包模态框
+   ============================================================ */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal.hidden {
+    display: none;
+}
+.modal-open {
+    overflow: hidden;
+}
+
+.backpack-modal-content {
+    max-width: 500px;
+    width: 95%;
+    background: #fffaf0;
+    border-radius: 48px;
+    padding: 24px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.backpack-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.backpack-header h3 {
+    margin: 0;
+    color: #5a2e1c;
+}
+.btn-close-backpack {
+    background: #c98f5e;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 14px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: white;
+    font-weight: bold;
+    transition: 0.15s;
+}
+.btn-close-backpack:hover {
+    background: #b07a4a;
+}
+.backpack-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    min-height: 100px;
+}
+.backpack-grid .empty-slot {
+    background: #f5ede4;
+    border-radius: 12px;
+    border: 1px dashed #e7c29e;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #d4c8b8;
+}
+.backpack-modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+.backpack-modal-content::-webkit-scrollbar-track {
+    background: #f5ede4;
+    border-radius: 10px;
+}
+.backpack-modal-content::-webkit-scrollbar-thumb {
+    background: #d4b898;
+    border-radius: 10px;
+}
+
+/* ============================================================
+   藏宝图标记动画
+   ============================================================ */
+.treasure-marker {
+    animation: treasurePulse 1.5s ease-in-out infinite;
+    z-index: 6 !important;
+}
+@keyframes treasurePulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media (max-width: 600px) {
+    body { padding: 6px; }
+    .map-container { border-radius: 20px; }
+    .map-header { padding: 6px 12px; }
+    .map-header .title { font-size: 0.85rem; }
+    .map-header .stats { font-size: 0.5rem; gap: 6px; }
+    .region-marker .dot { width: 8px; height: 8px; }
+    .region-marker .label { font-size: 0.4rem; padding: 0 6px; bottom: calc(100% + 4px); }
+    .ship-marker { font-size: 1rem; }
+    .btn-close-map { font-size: 0.5rem; padding: 2px 10px; }
+    .toast { font-size: 0.55rem; padding: 3px 12px; top: 10px; }
+
+    .info-panel {
+        height: 500px !important;
+        min-height: 500px !important;
+        max-height: 500px !important;
+    }
+    #infoMode {
+        padding: 12px 16px;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    .info-text {
+        font-size: 0.65rem;
+        min-width: 0;
+    }
+    .info-text .name { font-size: 0.8rem; }
+    .actions {
+        justify-content: flex-start !important;
+        align-self: stretch;
+        margin-top: 6px !important;
+    }
+    .actions button {
+        font-size: 0.55rem;
+        padding: 3px 10px;
+    }
+
+    #fishingMode {
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+    .fishing-wrapper {
+        gap: 2px;
+    }
+    .fishing-stats-bar {
+        padding: 2px 6px;
+        gap: 4px;
+    }
+    .fishing-stats-bar .stat-item {
+        font-size: 0.4rem;
+    }
+    .fishing-stats-bar .stat-value {
+        font-size: 0.45rem;
+    }
+    .fishing-water-area {
+        min-height: 150px !important;
+        max-height: 190px !important;
+    }
+    .track-horizontal {
+        height: 18px;
+        bottom: 10px;
+        left: 6%;
+        right: 6%;
+    }
+    .track-horizontal .float-icon {
+        font-size: 1.1rem;
+    }
+    .status-text {
+        font-size: 0.45rem;
+        min-height: 12px;
+    }
+    .fish-btn {
+        padding: 4px 8px;
+        font-size: 0.5rem;
+        min-height: 26px;
+        max-width: 75px;
+    }
+    .fish-btn .btn-icon {
+        font-size: 0.6rem;
+    }
+    .fish-btn .btn-text {
+        font-size: 0.5rem;
+    }
+    .fishing-actions {
+        gap: 3px;
+    }
+    .btn-fishing-close {
+        font-size: 0.4rem;
+        padding: 1px 6px;
+        line-height: 14px;
+    }
+    .catch-popup {
+        padding: 6px 12px;
+        min-width: 60px;
+    }
+    .catch-popup .icon {
+        font-size: 1.5rem;
+    }
+    .catch-popup .name {
+        font-size: 0.65rem;
+    }
+
+    .backpack-modal-content { padding: 16px; border-radius: 32px; }
+    .backpack-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .travel-progress { width: 70%; bottom: 12px; }
+
+    .adventurer-modal-content { padding: 16px; border-radius: 32px; }
+}
+
+@media (max-width: 400px) {
+    .region-marker .dot { width: 6px; height: 6px; }
+    .region-marker .label { font-size: 0.35rem; padding: 0 4px; bottom: calc(100% + 3px); }
+    .ship-marker { font-size: 0.8rem; }
+    .map-header .title { font-size: 0.7rem; }
+    .map-header .stats { font-size: 0.4rem; gap: 4px; }
+    .info-panel {
+        height: 420px !important;
+        min-height: 420px !important;
+        max-height: 420px !important;
+    }
+    #infoMode {
+        padding: 10px 12px;
+    }
+    .info-text { font-size: 0.55rem; }
+
+    .fishing-water-area {
+        min-height: 120px !important;
+        max-height: 150px !important;
+    }
+    .track-horizontal {
+        height: 14px;
+        bottom: 8px;
+    }
+    .track-horizontal .float-icon {
+        font-size: 0.9rem;
+    }
+    .fish-btn {
+        padding: 3px 6px;
+        font-size: 0.4rem;
+        min-height: 22px;
+        max-width: 60px;
+    }
+    .fish-btn .btn-icon {
+        font-size: 0.5rem;
+    }
+    .fish-btn .btn-text {
+        font-size: 0.4rem;
+    }
+    .status-text {
+        font-size: 0.4rem;
+    }
+    .backpack-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============================================================
+   小王子对话样式（princeDialogue.js）
+   ============================================================ */
+
+/* ---- 星空 ---- */
+.pd-stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+}
+.pd-star {
+    position: absolute;
+    border-radius: 50%;
+    background: white;
+    animation: pdTwinkle 2s ease-in-out infinite alternate;
+}
+@keyframes pdTwinkle {
+    0% { opacity: 0.2; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ---- 月亮 ---- */
+.pd-moon {
+    position: absolute;
+    top: 14px;
+    right: 22px;
+    font-size: 2.6rem;
+    z-index: 1;
+    filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.12));
+    animation: pdMoonGlow 3s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+@keyframes pdMoonGlow {
+    0% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.06)); }
+    100% { filter: drop-shadow(0 0 40px rgba(255, 215, 0, 0.18)); }
+}
+
+/* ---- 沙丘 ---- */
+.pd-dunes {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+}
+.pd-dune {
+    position: absolute;
+    bottom: 0;
+    left: -10%;
+    width: 120%;
+    border-radius: 50%;
+    background: rgba(180, 140, 100, 0.06);
+}
+
+/* ---- 小王子动画 ---- */
+@keyframes pdPrinceFloat {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-6px) rotate(2deg); }
+}
+@keyframes pdBubbleFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-6px) scale(1.08); }
+}
+
+/* ---- 对话气泡 ---- */
+.pd-bubble {
+    transition: min-height 0.2s;
+}
+.pd-text .highlight {
+    color: #c98f5e;
+    font-weight: 600;
+}
+.pd-text .highlight-cocoa {
+    color: #6f9e3f;
+    font-weight: 600;
+}
+
+/* ---- 进度点 ---- */
+.pd-dot.active {
+    background: #c98f5e !important;
+    width: 7px !important;
+    height: 7px !important;
+}
+.pd-dot.done {
+    background: #6f9e3f !important;
+}
+
+/* ---- 按钮 ---- */
+.pd-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(247, 151, 30, 0.25);
+}
+.pd-btn-primary:active {
+    transform: scale(0.95);
+}
+.pd-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ---- 响应式 ---- */
+@media (max-width: 520px) {
+    .pd-avatar { font-size: 3rem !important; }
+    .pd-text { font-size: 0.8rem !important; }
+    .pd-moon { font-size: 2.2rem !important; top: 10px !important; right: 16px !important; }
+    .pd-title { font-size: 0.5rem !important; }
+    .pd-badge { font-size: 0.4rem !important; padding: 0 8px !important; }
+    .pd-bubble { padding: 8px 12px !important; min-height: 60px !important; }
+    .pd-btn-primary { font-size: 0.6rem !important; padding: 3px 16px !important; }
+}
+@media (max-width: 400px) {
+    .pd-avatar { font-size: 2.4rem !important; }
+    .pd-text { font-size: 0.72rem !important; }
+    .pd-thought { font-size: 0.9rem !important; }
+    .pd-bubble { padding: 6px 10px !important; min-height: 52px !important; }
+    .pd-speaker span { font-size: 0.5rem !important; }
+    .pd-speaker .icon { font-size: 0.8rem !important; }
+}
+
+/* ============================================================
+   小王子背景动画
+   ============================================================ */
+
+@keyframes pdTwinkle {
+    0% { opacity: 0.2; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes pdMoonGlow {
+    0% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.06)); }
+    100% { filter: drop-shadow(0 0 40px rgba(255, 215, 0, 0.18)); }
+}
+
+/* ============================================================
+   数独游戏样式（煎蛋海）
+   ============================================================ */
+
+#sudokuContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    background: linear-gradient(145deg, #2d1b0e, #4a2c1a);
+    border-radius: 16px;
+    z-index: 4;
+    padding: 12px 16px;
+    overflow-y: auto;
+    border: 2px solid #c98f5e;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+}
+#sudokuContainer::-webkit-scrollbar {
+    display: none;
+}
+
+.sd-game-container {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ---- 头部 ---- */
+.sd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 215, 150, 0.08);
+}
+.sd-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ffefcf;
+    font-size: 16px;
+    font-weight: 700;
+}
+.sd-icon {
+    font-size: 20px;
+}
+.sd-mode-badge {
+    background: linear-gradient(135deg, #f7971e, #ffd200);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 10px;
+    border-radius: 40px;
+    color: #1a1a2e;
+}
+.sd-stats {
+    display: flex;
+    gap: 8px;
+}
+.sd-stat {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 10px 2px 8px;
+    border-radius: 30px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+.sd-stat-label {
+    opacity: 0.5;
+}
+.sd-stat-value {
+    font-weight: 700;
+    color: #ffd700;
+    font-size: 12px;
+}
+.sd-btn-close {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px;
+    padding: 1px 14px;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 26px;
+    transition: 0.15s;
+}
+.sd-btn-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+/* ---- 数独棋盘 ---- */
+.sd-board-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+}
+.sd-board {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 2px;
+    border: 2px solid rgba(255, 215, 150, 0.08);
+}
+.sd-row {
+    display: flex;
+}
+.sd-cell {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffefcf;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: 0.1s;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.sd-cell:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+.sd-cell.sd-given {
+    color: #d4c5a0;
+    font-weight: 700;
+}
+.sd-cell.sd-selected {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: rgba(255, 215, 0, 0.2);
+}
+.sd-cell.sd-error {
+    background: rgba(231, 76, 60, 0.2);
+    color: #ef5350;
+    border-color: rgba(231, 76, 60, 0.3);
+}
+.sd-cell.sd-border-top { border-top: 2px solid rgba(255, 215, 150, 0.15); }
+.sd-cell.sd-border-bottom { border-bottom: 2px solid rgba(255, 215, 150, 0.15); }
+.sd-cell.sd-border-left { border-left: 2px solid rgba(255, 215, 150, 0.15); }
+.sd-cell.sd-border-right { border-right: 2px solid rgba(255, 215, 150, 0.15); }
+
+/* ---- 操作区 ---- */
+.sd-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+}
+.sd-number-pad {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.sd-num-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #ffefcf;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.1s;
+}
+.sd-num-btn:hover {
+    background: rgba(255, 215, 0, 0.12);
+    border-color: rgba(255, 215, 0, 0.15);
+}
+.sd-num-btn:active {
+    transform: scale(0.92);
+}
+.sd-erase-btn {
+    background: rgba(231, 76, 60, 0.1);
+    border-color: rgba(231, 76, 60, 0.1);
+    color: #ef5350;
+}
+.sd-erase-btn:hover {
+    background: rgba(231, 76, 60, 0.2);
+}
+
+.sd-controls {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.sd-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+    color: #1a1a2e;
+}
+.sd-btn:active {
+    transform: scale(0.95);
+}
+.sd-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.sd-btn-hint {
+    background: linear-gradient(135deg, #7ecfff, #54a0ff);
+    color: #fff;
+}
+.sd-btn-hint:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(84, 160, 255, 0.3);
+}
+.sd-btn-submit {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    color: #fff;
+}
+.sd-btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 206, 201, 0.3);
+}
+.sd-btn-reset {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sd-btn-reset:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* ---- 消息 ---- */
+.sd-message {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 4px 0;
+    min-height: 28px;
+}
+.sd-msg-success {
+    color: #8bc34a !important;
+}
+.sd-msg-error {
+    color: #ef5350 !important;
+}
+.sd-msg-info {
+    color: #7ecfff !important;
+}
+
+
+
+/* ---- 响应式 ---- */
+@media (max-width: 520px) {
+    #sudokuContainer { padding: 8px 10px; }
+    .sd-cell { width: 32px; height: 32px; font-size: 14px; }
+    .sd-title { font-size: 14px; }
+    .sd-stat { font-size: 10px; padding: 1px 8px; }
+    .sd-num-btn { width: 30px; height: 30px; font-size: 14px; }
+    .sd-btn { font-size: 11px; padding: 4px 12px; }
+    .sd-mode-badge { font-size: 9px; }
+}
+@media (max-width: 400px) {
+    .sd-cell { width: 28px; height: 28px; font-size: 12px; }
+    .sd-num-btn { width: 26px; height: 26px; font-size: 12px; }
+    .sd-btn { font-size: 10px; padding: 3px 10px; }
+}
+@media (max-width: 360px) {
+    .sd-cell { width: 24px; height: 24px; font-size: 10px; }
+    .sd-num-btn { width: 22px; height: 22px; font-size: 10px; }
+    .sd-stats { gap: 4px; }
+    .sd-stat { font-size: 8px; padding: 1px 5px; }
+}

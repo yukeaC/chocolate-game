@@ -1,0 +1,137 @@
+/* ============================================
+   index.html 主页面样式
+   路径: css/main.css
+   ============================================ */
+
+/* ===== 卡片分割线 ===== */
+.card-divider {
+    border: none;
+    height: 2px;
+    margin: 8px 0 10px 0;
+    width: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        #d4b898 0px,
+        #d4b898 8px,
+        transparent 8px,
+        transparent 12px
+    );
+    background-size: 30px 100%;
+    opacity: 0.7;
+}
+
+/* ===== 全部卖出按钮 ===== */
+.sell-all-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 0;
+    background: #e7a05e;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.15s;
+    box-shadow: 0 2px 8px rgba(231, 160, 94, 0.3);
+}
+.sell-all-btn:hover {
+    background: #c98f5e;
+    transform: scale(1.01);
+}
+.sell-all-btn:active {
+    transform: scale(0.97);
+}
+
+/* ===== 隐藏嫑嫑卡片中的原全部卖出按钮 ===== */
+#miaoCard .action-btn {
+    display: none;
+}
+
+/* ===== 游戏中心按钮样式 ===== */
+.game-center-btn {
+    background: linear-gradient(135deg, #6f9e3f, #4c7a2a);
+    border-radius: 24px;
+    padding: 20px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+    border: 2px solid transparent;
+}
+.game-center-btn:hover {
+    transform: scale(1.02);
+    border-color: #ffb347;
+}
+.game-center-btn:active {
+    transform: scale(0.97);
+}
+.game-center-btn-locked {
+    background: #e8ddd0;
+    border-radius: 24px;
+    padding: 20px 12px;
+    text-align: center;
+    opacity: 0.5;
+    border: 2px dashed #b8a898;
+    cursor: default;
+}
+
+/* ===== 确保 .slots-area 没有上边框 ===== */
+.slots-area {
+    border-top: none !important;
+    padding-top: 4px;
+}
+
+/* ============================================================
+   导航栏图标调小（覆盖 components.css）
+   ============================================================ */
+
+/* ===== 资源栏图标 ===== */
+.resource-item span:first-child {
+    font-size: 0.9rem !important;  /* 从 1.2rem 调小到 0.9rem */
+}
+
+/* ===== 右侧按钮图标 ===== */
+.icon-btn {
+    font-size: 0.85rem !important;  /* 从 1.1rem 调小到 0.85rem */
+    width: 30px !important;         /* 从 36px 调小到 30px */
+    height: 30px !important;        /* 从 36px 调小到 30px */
+    border-radius: 15px !important; /* 从 18px 调小到 15px */
+}
+
+/* ===== 经验卡片中的图标 ===== */
+.exp-card .exp-level {
+    font-size: 0.7rem !important;
+}
+/* ===== 游戏说明模态框滚动条美化 ===== */
+.help-modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+.help-modal-content::-webkit-scrollbar-track {
+    background: #f5ede4;
+    border-radius: 10px;
+}
+.help-modal-content::-webkit-scrollbar-thumb {
+    background: #d4b898;
+    border-radius: 10px;
+}
+
+/* ===== 游戏说明按钮 ===== */
+.help-btn {
+    background: #6f9e3f;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 16px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: 0.15s;
+}
+.help-btn:hover {
+    background: #5a8a2a;
+    transform: scale(1.02);
+}
+.help-btn:active {
+    transform: scale(0.95);
+}
