@@ -4,11 +4,18 @@ const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
-// 配置日志
+// ===== 配置日志 =====
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
+// ===== 开发模式强制启用更新检查 =====
+if (!app.isPackaged) {
+    autoUpdater.forceDevUpdateConfig = true;
+    console.log('🔧 开发模式：已强制启用更新检查 (forceDevUpdateConfig=true)');
+}
+
 let mainWindow = null;
+let updateCheckTimer = null; // 超时定时器
 
 function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -38,7 +45,7 @@ function createMainWindow() {
         mainWindow = null;
     });
 
-    // 开发时可取消注释以打开开发者工具
+    // 开发时打开开发者工具（可选）
     // mainWindow.webContents.openDevTools();
 }
 
@@ -59,36 +66,74 @@ app.on('activate', () => {
 });
 
 // ============================================
-// 更新相关 IPC
+// 更新相关 IPC（带超时保护）
 // ============================================
 
 ipcMain.on('check-for-updates', () => {
-    if (!mainWindow) return;
-    
-    // 发送检查中状态
+    if (!mainWindow) {
+        console.warn('⚠️ 主窗口不存在，无法检查更新');
+        return;
+    }
+
+    // 清除之前的超时定时器
+    if (updateCheckTimer) {
+        clearTimeout(updateCheckTimer);
+        updateCheckTimer = null;
+    }
+
+    // 发送"检查中"状态
     mainWindow.webContents.send('update-status', 'checking');
-    
-    // 执行检查更新（会触发 autoUpdater 事件）
+    console.log('🔍 [用户触发] 开始检查更新...');
+
+    // ===== 超时保护：15秒后如果没有任何响应，发送超时错误 =====
+    let isUpdateCheckCompleted = false;
+
+    const onComplete = () => {
+        if (!isUpdateCheckCompleted) {
+            isUpdateCheckCompleted = true;
+            if (updateCheckTimer) {
+                clearTimeout(updateCheckTimer);
+                updateCheckTimer = null;
+            }
+        }
+    };
+
+    updateCheckTimer = setTimeout(() => {
+        if (!isUpdateCheckCompleted) {
+            console.warn('⏰ 更新检查超时（15秒），可能网络问题');
+            if (mainWindow) {
+                mainWindow.webContents.send('update-error', {
+                    message: '检查更新超时，请检查网络连接后重试'
+                });
+                mainWindow.webContents.send('update-status', 'error');
+            }
+            onComplete();
+        }
+    }, 15000);
+
+    // 执行检查更新
     autoUpdater.checkForUpdatesAndNotify();
 });
 
 ipcMain.on('install-update', () => {
+    console.log('📦 用户确认安装更新，应用将重启...');
     autoUpdater.quitAndInstall();
 });
 
 // ============================================
-// 自动更新事件（所有事件都发送到渲染进程）
+// 自动更新事件（完整日志 + 发送到渲染进程）
 // ============================================
 
-// 正在检查更新
 autoUpdater.on('checking-for-update', () => {
+    console.log('🔍 [autoUpdater] 正在检查更新...');
     if (mainWindow) {
         mainWindow.webContents.send('update-status', 'checking');
     }
 });
 
-// 发现新版本
 autoUpdater.on('update-available', (info) => {
+    console.log('🎉 [autoUpdater] 发现新版本:', info.version);
+    console.log('   📝 更新内容:', info.releaseNotes || '无');
     if (mainWindow) {
         mainWindow.webContents.send('update-available', {
             version: info.version,
@@ -96,18 +141,29 @@ autoUpdater.on('update-available', (info) => {
             releaseNotes: info.releaseNotes
         });
     }
+    // 标记完成
+    if (updateCheckTimer) {
+        clearTimeout(updateCheckTimer);
+        updateCheckTimer = null;
+    }
 });
 
-// 没有新版本（当前已是最新）
-autoUpdater.on('update-not-available', () => {
+autoUpdater.on('update-not-available', (info) => {
+    console.log('✅ [autoUpdater] 已是最新版本，当前版本:', info.version);
     if (mainWindow) {
         mainWindow.webContents.send('update-not-available');
         mainWindow.webContents.send('update-status', 'not-available');
     }
+    // 标记完成
+    if (updateCheckTimer) {
+        clearTimeout(updateCheckTimer);
+        updateCheckTimer = null;
+    }
 });
 
-// 下载进度
 autoUpdater.on('download-progress', (progress) => {
+    const percent = Math.round(progress.percent);
+    console.log(`⬇️ [autoUpdater] 下载进度: ${percent}%`);
     if (mainWindow) {
         mainWindow.webContents.send('download-progress', {
             percent: progress.percent,
@@ -118,20 +174,31 @@ autoUpdater.on('download-progress', (progress) => {
     }
 });
 
-// 更新下载完成
-autoUpdater.on('update-downloaded', () => {
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('✅ [autoUpdater] 更新已下载完成');
     if (mainWindow) {
         mainWindow.webContents.send('update-downloaded');
     }
+    // 标记完成
+    if (updateCheckTimer) {
+        clearTimeout(updateCheckTimer);
+        updateCheckTimer = null;
+    }
 });
 
-// 更新出错
 autoUpdater.on('error', (err) => {
+    console.error('❌ [autoUpdater] 错误:', err.message);
+    console.error('  堆栈:', err.stack);
     if (mainWindow) {
         mainWindow.webContents.send('update-error', {
             message: err.message || '更新检查失败，请检查网络连接'
         });
         mainWindow.webContents.send('update-status', 'error');
+    }
+    // 标记完成
+    if (updateCheckTimer) {
+        clearTimeout(updateCheckTimer);
+        updateCheckTimer = null;
     }
 });
 
