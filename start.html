@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可可巧克力工坊 · 启动器</title>
+    <link rel="stylesheet" href="css/start.css">
+</head>
+<body>
+<div class="start-container" style="background-image: url('images/start-bg.png');">
+    <div class="overlay"></div>
+    <div class="start-panel">
+        <h1 class="game-title">🍫 可可与嫑嫑</h1>
+        <div class="menu-buttons">
+            <button id="startBtn" class="start-btn">✨ 开始游戏</button>
+            <button id="exitBtn" class="start-btn">🚪 退出游戏</button>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById('startBtn').onclick = () => {
+        window.location.href = 'index.html';
+    };
+    document.getElementById('exitBtn').onclick = () => {
+        if (window.require) {
+            try {
+                const { remote } = window.require('electron');
+                remote.app.quit();
+            } catch(e) { window.close(); }
+        } else {
+            window.close();
+        }
+    };
+</script>
+</body>
+</html>

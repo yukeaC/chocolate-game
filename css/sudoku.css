@@ -1,0 +1,285 @@
+/* ============================================================
+   sudoku.css · 煎蛋海 · 数独游戏样式
+   独立文件，方便管理
+   ============================================================ */
+
+#sudokuContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    background: linear-gradient(145deg, #2d1b0e, #4a2c1a);
+    border-radius: 16px;
+    z-index: 4;
+    padding: 12px 16px;
+    overflow-y: auto;
+    border: 2px solid #c98f5e;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+}
+#sudokuContainer::-webkit-scrollbar {
+    display: none;
+}
+
+.sd-game-container {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ---- 头部 ---- */
+.sd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 215, 150, 0.08);
+}
+.sd-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ffefcf;
+    font-size: 16px;
+    font-weight: 700;
+}
+.sd-icon {
+    font-size: 20px;
+}
+.sd-mode-badge {
+    background: linear-gradient(135deg, #f7971e, #ffd200);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 10px;
+    border-radius: 40px;
+    color: #1a1a2e;
+}
+.sd-stats {
+    display: flex;
+    gap: 8px;
+}
+.sd-stat {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 10px 2px 8px;
+    border-radius: 30px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+.sd-stat-label {
+    opacity: 0.5;
+}
+.sd-stat-value {
+    font-weight: 700;
+    color: #ffd700;
+    font-size: 12px;
+}
+.sd-btn-close {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px;
+    padding: 1px 14px;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 26px;
+    transition: 0.15s;
+}
+.sd-btn-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+/* ---- 数独棋盘 ---- */
+.sd-board-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+}
+.sd-board {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 2px;
+    border: 2px solid rgba(255, 215, 150, 0.08);
+}
+.sd-row {
+    display: flex;
+}
+.sd-cell {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffefcf;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: 0.1s;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.sd-cell:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+.sd-cell.sd-given {
+    color: #d4c5a0;
+    font-weight: 700;
+}
+.sd-cell.sd-selected {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: rgba(255, 215, 0, 0.2);
+}
+.sd-cell.sd-error {
+    background: rgba(231, 76, 60, 0.2);
+    color: #ef5350;
+    border-color: rgba(231, 76, 60, 0.3);
+}
+.sd-cell.sd-border-top { border-top: 2px solid rgba(255, 215, 150, 0.15); }
+.sd-cell.sd-border-bottom { border-bottom: 2px solid rgba(255, 215, 150, 0.15); }
+.sd-cell.sd-border-left { border-left: 2px solid rgba(255, 215, 150, 0.15); }
+.sd-cell.sd-border-right { border-right: 2px solid rgba(255, 215, 150, 0.15); }
+
+/* ---- 操作区 ---- */
+.sd-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+}
+.sd-number-pad {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.sd-num-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #ffefcf;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.1s;
+}
+.sd-num-btn:hover {
+    background: rgba(255, 215, 0, 0.12);
+    border-color: rgba(255, 215, 0, 0.15);
+}
+.sd-num-btn:active {
+    transform: scale(0.92);
+}
+.sd-erase-btn {
+    background: rgba(231, 76, 60, 0.1);
+    border-color: rgba(231, 76, 60, 0.1);
+    color: #ef5350;
+}
+.sd-erase-btn:hover {
+    background: rgba(231, 76, 60, 0.2);
+}
+
+.sd-controls {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.sd-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+    color: #1a1a2e;
+}
+.sd-btn:active {
+    transform: scale(0.95);
+}
+.sd-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.sd-btn-hint {
+    background: linear-gradient(135deg, #7ecfff, #54a0ff);
+    color: #fff;
+}
+.sd-btn-hint:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(84, 160, 255, 0.3);
+}
+.sd-btn-submit {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    color: #fff;
+}
+.sd-btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 206, 201, 0.3);
+}
+.sd-btn-reset {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sd-btn-reset:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* ---- 消息 ---- */
+.sd-message {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 4px 0;
+    min-height: 28px;
+}
+.sd-msg-success {
+    color: #8bc34a !important;
+}
+.sd-msg-error {
+    color: #ef5350 !important;
+}
+.sd-msg-info {
+    color: #7ecfff !important;
+}
+
+/* ---- 响应式 ---- */
+@media (max-width: 520px) {
+    #sudokuContainer { padding: 8px 10px; }
+    .sd-cell { width: 32px; height: 32px; font-size: 14px; }
+    .sd-title { font-size: 14px; }
+    .sd-stat { font-size: 10px; padding: 1px 8px; }
+    .sd-num-btn { width: 30px; height: 30px; font-size: 14px; }
+    .sd-btn { font-size: 11px; padding: 4px 12px; }
+    .sd-mode-badge { font-size: 9px; }
+}
+@media (max-width: 400px) {
+    .sd-cell { width: 28px; height: 28px; font-size: 12px; }
+    .sd-num-btn { width: 26px; height: 26px; font-size: 12px; }
+    .sd-btn { font-size: 10px; padding: 3px 10px; }
+}
+@media (max-width: 360px) {
+    .sd-cell { width: 24px; height: 24px; font-size: 10px; }
+    .sd-num-btn { width: 22px; height: 22px; font-size: 10px; }
+    .sd-stats { gap: 4px; }
+    .sd-stat { font-size: 8px; padding: 1px 5px; }
+}

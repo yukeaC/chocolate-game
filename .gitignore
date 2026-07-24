@@ -1,0 +1,22 @@
+# Node.js / Electron
+node_modules/
+dist/
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 本地配置文件（如果存在）
+*.local
+.env
+
+# 临时文件
+*.tmp
+*.bak

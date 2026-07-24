@@ -1,0 +1,497 @@
+/* ============================================================
+   rice.css · 大米洲 · 能量工坊样式
+   ============================================================ */
+
+#riceMode {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 4;
+    padding: 12px 16px 50px 16px;
+    overflow-y: auto;
+    border: 2px solid #c98f5e;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+    background: linear-gradient(145deg, #3d2b1f, #6a4a2a);
+    border-radius: 16px;
+    color: #ffefcf;
+    font-family: 'Georgia', 'Segoe UI', serif;
+    box-sizing: border-box;
+}
+#riceMode::-webkit-scrollbar { display: none; }
+
+.rice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 215, 150, 0.08);
+}
+.rice-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffefcf;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.rice-header-actions {
+    display: flex;
+    gap: 6px;
+}
+.rice-btn-close {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px;
+    padding: 2px 14px;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    font-size: 0.65rem;
+    line-height: 26px;
+    transition: 0.15s;
+}
+.rice-btn-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.rice-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+}
+.rice-stats strong {
+    color: #ffd700;
+    font-weight: 700;
+}
+
+.rice-energy-stock {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
+}
+.rice-energy-stock-label {
+    color: rgba(255, 255, 255, 0.4);
+}
+.rice-energy-stock-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.rice-energy-stock-img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+.rice-energy-stock-count {
+    font-weight: 700;
+    color: #ffd700;
+    font-size: 0.8rem;
+}
+
+.rice-main-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;  /* 改为靠上，整体下移 */
+    align-items: center;
+    padding: 24px 0 4px 0;        /* 增加顶部 padding 下移内容 */
+    overflow: hidden;
+}
+
+/* 稻田面板 */
+.rice-paddy-container {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.rice-paddy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+.rice-paddy-actions {
+    display: flex;
+    gap: 8px;
+}
+.rice-btn-sm {
+    padding: 6px 20px;
+    border: none;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+    background: #7a5a3a;
+    color: #f0e0c8;
+    box-shadow: 0 2px 0 #3a2a1a;
+}
+.rice-btn-sm:hover {
+    background: #8a6a4a;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #3a2a1a;
+}
+.rice-btn-sm:active {
+    transform: scale(0.95);
+}
+
+.rice-paddy-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 4px;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.rice-paddy-cell {
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: 0.15s;
+    text-align: center;
+    line-height: 1.2;
+    background-image: url('../images/land.png');
+    background-size: cover;
+    background-position: center;
+    background-color: #7a5a3a;
+    border: 2px solid #6a4a2a;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
+    color: #f0e0c8;
+    position: relative;
+    overflow: hidden;
+}
+.rice-paddy-cell::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+.rice-paddy-cell > * {
+    position: relative;
+    z-index: 1;
+}
+.rice-paddy-cell.idle::after {
+    background: rgba(60, 40, 25, 0.3);
+}
+.rice-paddy-cell.idle:hover::after {
+    background: rgba(60, 40, 25, 0.15);
+}
+.rice-paddy-cell.growing::after {
+    background: rgba(46, 125, 50, 0.25);
+    border: 2px solid rgba(76, 175, 80, 0.3);
+}
+.rice-paddy-cell.growing .rice-timer {
+    color: #d4e8b0;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.rice-paddy-cell.ready::after {
+    background: rgba(255, 215, 0, 0.2);
+    border: 2px solid #d4a040;
+    animation: riceReadyPulse 1.2s ease-in-out infinite;
+}
+@keyframes riceReadyPulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(212, 160, 64, 0.1); }
+    50% { box-shadow: 0 0 20px rgba(212, 160, 64, 0.25); }
+}
+.rice-paddy-cell.locked::after {
+    background: rgba(0, 0, 0, 0.5);
+}
+.rice-paddy-cell.locked {
+    cursor: pointer;
+    font-size: 0.7rem;
+    color: #b89a7a;
+}
+.rice-paddy-cell.locked:hover::after {
+    background: rgba(0, 0, 0, 0.35);
+}
+.rice-paddy-cell .rice-price {
+    font-size: 0.55rem;
+    color: #ffd700;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+.rice-paddy-cell .rice-timer {
+    font-size: 0.55rem;
+    color: #c8d8b0;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.rice-paddy-cell .rice-ready-label {
+    font-size: 0.5rem;
+    color: #ffd700;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* 工坊面板 */
+.workshop-panel-3 {
+    background: #3d2b1f;
+    background-image: repeating-linear-gradient(45deg, rgba(255,215,140,0.02) 0px, rgba(255,215,140,0.02) 2px, transparent 2px, transparent 6px);
+    border-radius: 20px;
+    padding: 16px;
+    color: #f0e0c8;
+    font-family: 'Georgia', serif;
+    border: 2px solid #8b6b4a;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+.workshop-panel-3 .workshop-card {
+    background: rgba(60, 40, 25, 0.7);
+    border: 1px solid #7a5a3a;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    transition: 0.15s;
+}
+.workshop-panel-3 .workshop-card.idle { border-color: #7a5a3a; }
+.workshop-panel-3 .workshop-card.processing { border-color: #d4a050; background: rgba(80, 60, 35, 0.8); }
+.workshop-panel-3 .workshop-card.completed { border-color: #6f9e3f; background: rgba(60, 80, 40, 0.5); }
+.workshop-panel-3 .workshop-card.locked { opacity: 0.6; }
+.workshop-panel-3 .workshop-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.workshop-panel-3 .workshop-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #f5d4a0;
+}
+.workshop-panel-3 .workshop-status {
+    font-size: 0.7rem;
+    color: #b89a7a;
+}
+.workshop-panel-3 .workshop-action button {
+    background: #7a5a3a;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 16px;
+    color: #f0e0c8;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-family: 'Georgia', serif;
+    transition: 0.1s;
+    box-shadow: 0 2px 0 #3a2a1a;
+}
+.workshop-panel-3 .workshop-action button:hover {
+    background: #8a6a4a;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #3a2a1a;
+}
+.workshop-panel-3 .workshop-action button.primary {
+    background: #c98f5e;
+    color: #2a1a0e;
+    font-weight: 700;
+    box-shadow: 0 2px 0 #7a5a3a;
+}
+.workshop-panel-3 .workshop-action button.primary:hover {
+    background: #d9a06e;
+}
+.workshop-panel-3 .workshop-action button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.workshop-panel-3 .energy-selector {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(40, 30, 20, 0.8);
+    border-radius: 10px;
+    border: 1px solid #7a5a3a;
+    margin-bottom: 10px;
+}
+.workshop-panel-3 .energy-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.workshop-panel-3 .energy-option {
+    background: rgba(60, 40, 25, 0.6);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    color: #c8b098;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: 0.1s;
+}
+.workshop-panel-3 .energy-option:hover {
+    border-color: #d4a050;
+    color: #f5d4a0;
+}
+.workshop-panel-3 .energy-option.selected {
+    border-color: #d4a050;
+    background: rgba(80, 60, 35, 0.6);
+    color: #f5d4a0;
+}
+.workshop-panel-3 .energy-option img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+.workshop-panel-3 .golden-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: #b89a7a;
+    flex-wrap: wrap;
+}
+.workshop-panel-3 .golden-input label {
+    color: #b89a7a;
+}
+.workshop-panel-3 .golden-input input[type="range"] {
+    flex: 1;
+    min-width: 60px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #7a5a3a;
+    border-radius: 4px;
+    outline: none;
+}
+.workshop-panel-3 .golden-input input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #d4a050;
+    cursor: pointer;
+}
+.workshop-panel-3 .golden-input input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #d4a050;
+    cursor: pointer;
+    border: none;
+}
+.workshop-panel-3 .golden-input span {
+    font-weight: 700;
+    color: #f5d4a0;
+    min-width: 16px;
+    text-align: center;
+}
+.workshop-panel-3 .golden-input button.primary {
+    background: #c98f5e;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 16px;
+    color: #2a1a0e;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-family: 'Georgia', serif;
+    box-shadow: 0 2px 0 #7a5a3a;
+    transition: 0.1s;
+}
+.workshop-panel-3 .golden-input button.primary:hover {
+    background: #d9a06e;
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #7a5a3a;
+}
+
+.rice-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 0 0 10px 10px;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+@media (max-width: 600px) {
+    .rice-paddy-grid {
+        gap: 3px;
+        max-width: 100%;
+    }
+    .rice-paddy-cell {
+        font-size: 0.9rem;
+        border-radius: 6px;
+    }
+    .rice-paddy-cell .rice-timer,
+    .rice-paddy-cell .rice-price {
+        font-size: 0.45rem;
+    }
+    .workshop-panel-3 {
+        padding: 12px;
+        max-width: 100%;
+    }
+    .workshop-panel-3 .workshop-card {
+        padding: 8px 12px;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .rice-btn-sm {
+        padding: 4px 14px;
+        font-size: 0.7rem;
+    }
+}
+@media (max-width: 400px) {
+    .rice-paddy-grid {
+        gap: 2px;
+    }
+    .rice-paddy-cell {
+        font-size: 0.75rem;
+        border-radius: 4px;
+    }
+    .rice-paddy-cell .rice-timer {
+        font-size: 0.35rem;
+    }
+    .rice-stats {
+        font-size: 0.6rem;
+        gap: 4px 8px;
+    }
+    .rice-title {
+        font-size: 0.9rem;
+    }
+    .rice-btn-sm {
+        padding: 3px 10px;
+        font-size: 0.6rem;
+    }
+}

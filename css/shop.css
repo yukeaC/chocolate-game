@@ -1,0 +1,120 @@
+/* ============================================
+   商城样式
+   路径: css/shop.css
+   ============================================ */
+
+/* ===== 商城模态框容器 ===== */
+.shop-modal-content {
+    max-width: 500px;
+    width: 95%;
+    background: #fffaf0;
+    border-radius: 48px;
+    padding: 24px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+/* ===== 签到格子状态 ===== */
+.sign-day-done {
+    background: #d4edda !important;
+    border-color: #28a745 !important;
+    opacity: 0.7;
+    cursor: default;
+}
+
+.sign-day-today {
+    border-color: #e7a05e !important;
+    box-shadow: 0 0 0 2px #ffb347;
+}
+
+.sign-day-locked {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* ===== 购买按钮禁用状态 ===== */
+.shop-buy-btn:disabled {
+    background: #ccc !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.shop-buy-btn:hover:not(:disabled) {
+    background: #5a8a2a !important;
+    transform: scale(1.03);
+}
+
+.shop-buy-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+/* ===== 签到按钮禁用状态 ===== */
+#signInBtn:disabled {
+    background: #ccc !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+#signInBtn:hover:not(:disabled) {
+    background: #c98f5e !important;
+    transform: scale(1.02);
+}
+
+/* ===== 道具卡片悬浮效果 ===== */
+.shop-item-card {
+    transition: 0.15s;
+}
+.shop-item-card:hover {
+    transform: scale(1.01);
+    border-color: #c98f5e;
+}
+
+/* ===== 滚动条美化 ===== */
+.shop-modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+.shop-modal-content::-webkit-scrollbar-track {
+    background: #f5ede4;
+    border-radius: 10px;
+}
+.shop-modal-content::-webkit-scrollbar-thumb {
+    background: #d4b898;
+    border-radius: 10px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 450px) {
+    .shop-modal-content {
+        padding: 16px;
+        border-radius: 32px;
+        max-height: 95vh;
+    }
+    .shop-modal-content .shop-item-card {
+        padding: 8px 10px;
+    }
+    .shop-modal-content .shop-item-card .item-icon {
+        font-size: 1.4rem;
+    }
+    .shop-modal-content .shop-item-card .item-name {
+        font-size: 0.75rem;
+    }
+    .shop-modal-content .shop-item-card .item-desc {
+        font-size: 0.55rem;
+    }
+    .shop-modal-content .shop-item-card .item-price {
+        font-size: 0.65rem;
+    }
+    .shop-modal-content .shop-item-card .item-stock {
+        font-size: 0.5rem;
+    }
+    .shop-modal-content .shop-item-card .buy-btn {
+        font-size: 0.6rem;
+        padding: 3px 12px;
+    }
+    #signInBtn {
+        font-size: 0.7rem;
+        padding: 4px 16px;
+    }
+}
