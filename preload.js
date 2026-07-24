@@ -1,11 +1,13 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
-// 暴露安全的 API 给渲染进程
+console.log('🔒 [preload] preload.js 加载成功');
+
+// ===== 暴露安全的 API 给渲染进程 =====
 contextBridge.exposeInMainWorld('electronAPI', {
     // 发送消息到主进程
     send: (channel, data) => {
-        // 白名单通道
+        console.log('📤 [preload] send 调用: 通道=', channel, '数据=', data);
         const validSendChannels = [
             'check-for-updates',
             'install-update',
@@ -15,10 +17,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ];
         if (validSendChannels.includes(channel)) {
             ipcRenderer.send(channel, data);
+            console.log('✅ [preload] 已发送到主进程:', channel);
+        } else {
+            console.warn('⚠️ [preload] 非法通道，已拒绝:', channel);
         }
     },
     // 监听主进程消息
     on: (channel, func) => {
+        console.log('📥 [preload] on 调用: 通道=', channel);
         const validReceiveChannels = [
             'update-available',
             'download-progress',
@@ -30,11 +36,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
         if (validReceiveChannels.includes(channel)) {
             // 移除之前的监听器避免重复
             ipcRenderer.removeAllListeners(channel);
-            ipcRenderer.on(channel, (event, ...args) => func(...args));
+            ipcRenderer.on(channel, (event, ...args) => {
+                console.log('📨 [preload] 收到事件:', channel, args);
+                func(...args);
+            });
+            console.log('✅ [preload] 已注册监听:', channel);
+        } else {
+            console.warn('⚠️ [preload] 非法监听通道，已拒绝:', channel);
         }
     },
-    // 移除监听器（可选）
+    // 移除监听器
     off: (channel, func) => {
+        console.log('📤 [preload] off 调用: 通道=', channel);
         const validReceiveChannels = [
             'update-available',
             'download-progress',
@@ -45,8 +58,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ];
         if (validReceiveChannels.includes(channel)) {
             ipcRenderer.off(channel, func);
+            console.log('✅ [preload] 已移除监听:', channel);
         }
-    }
+    },
+    // 检查 API 是否可用（用于前端判断）
+    isAvailable: true
 });
 
-console.log('🔒 预加载脚本已加载，IPC 安全通道已建立');
+console.log('✅ [preload] electronAPI 已暴露到渲染进程');

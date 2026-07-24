@@ -15,7 +15,7 @@ if (!app.isPackaged) {
 }
 
 let mainWindow = null;
-let updateCheckTimer = null; // 超时定时器
+let updateCheckTimer = null;
 
 function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -30,12 +30,26 @@ function createMainWindow() {
         },
         resizable: true,
         backgroundColor: '#fffaf0',
-        title: '可可与嫑嫑甜点工坊',
+        title: '可可的巧克力工坊',
         show: false,
         icon: path.join(__dirname, 'icon.ico')
     });
 
     mainWindow.loadFile('index.html');
+
+    // ===== 自动打开开发者工具（调试用） =====
+    mainWindow.webContents.openDevTools();
+
+    // ===== 快捷键打开开发者工具（Ctrl+Shift+I） =====
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.control && input.shift && input.key === 'I') {
+            mainWindow.webContents.openDevTools();
+        }
+        // Ctrl+R 刷新（方便调试）
+        if (input.control && input.key === 'r') {
+            mainWindow.reload();
+        }
+    });
 
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
@@ -45,11 +59,11 @@ function createMainWindow() {
         mainWindow = null;
     });
 
-    // 开发时打开开发者工具（可选）
-    // mainWindow.webContents.openDevTools();
+    console.log('✅ 主窗口已创建');
 }
 
 app.whenReady().then(() => {
+    console.log('🚀 应用已就绪，创建主窗口...');
     createMainWindow();
 });
 
@@ -66,10 +80,11 @@ app.on('activate', () => {
 });
 
 // ============================================
-// 更新相关 IPC（带超时保护）
+// 更新相关 IPC（带完整日志）
 // ============================================
 
 ipcMain.on('check-for-updates', () => {
+    console.log('🔍 [IPC] 收到 check-for-updates 消息');
     if (!mainWindow) {
         console.warn('⚠️ 主窗口不存在，无法检查更新');
         return;
@@ -83,20 +98,10 @@ ipcMain.on('check-for-updates', () => {
 
     // 发送"检查中"状态
     mainWindow.webContents.send('update-status', 'checking');
-    console.log('🔍 [用户触发] 开始检查更新...');
+    console.log('🔍 开始检查更新...');
 
     // ===== 超时保护：15秒后如果没有任何响应，发送超时错误 =====
     let isUpdateCheckCompleted = false;
-
-    const onComplete = () => {
-        if (!isUpdateCheckCompleted) {
-            isUpdateCheckCompleted = true;
-            if (updateCheckTimer) {
-                clearTimeout(updateCheckTimer);
-                updateCheckTimer = null;
-            }
-        }
-    };
 
     updateCheckTimer = setTimeout(() => {
         if (!isUpdateCheckCompleted) {
@@ -107,7 +112,7 @@ ipcMain.on('check-for-updates', () => {
                 });
                 mainWindow.webContents.send('update-status', 'error');
             }
-            onComplete();
+            isUpdateCheckCompleted = true;
         }
     }, 15000);
 
@@ -121,7 +126,7 @@ ipcMain.on('install-update', () => {
 });
 
 // ============================================
-// 自动更新事件（完整日志 + 发送到渲染进程）
+// 自动更新事件（完整日志）
 // ============================================
 
 autoUpdater.on('checking-for-update', () => {
@@ -154,7 +159,6 @@ autoUpdater.on('update-not-available', (info) => {
         mainWindow.webContents.send('update-not-available');
         mainWindow.webContents.send('update-status', 'not-available');
     }
-    // 标记完成
     if (updateCheckTimer) {
         clearTimeout(updateCheckTimer);
         updateCheckTimer = null;
@@ -179,7 +183,6 @@ autoUpdater.on('update-downloaded', (info) => {
     if (mainWindow) {
         mainWindow.webContents.send('update-downloaded');
     }
-    // 标记完成
     if (updateCheckTimer) {
         clearTimeout(updateCheckTimer);
         updateCheckTimer = null;
@@ -188,14 +191,12 @@ autoUpdater.on('update-downloaded', (info) => {
 
 autoUpdater.on('error', (err) => {
     console.error('❌ [autoUpdater] 错误:', err.message);
-    console.error('  堆栈:', err.stack);
     if (mainWindow) {
         mainWindow.webContents.send('update-error', {
             message: err.message || '更新检查失败，请检查网络连接'
         });
         mainWindow.webContents.send('update-status', 'error');
     }
-    // 标记完成
     if (updateCheckTimer) {
         clearTimeout(updateCheckTimer);
         updateCheckTimer = null;
@@ -223,3 +224,5 @@ ipcMain.on('maximize-window', () => {
         }
     }
 });
+
+console.log('✅ main.js 加载完成');

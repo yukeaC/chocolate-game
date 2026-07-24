@@ -1,21 +1,22 @@
 {
   "name": "chocolate-game",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win --publish never"
+    "dist:win": "electron-builder --win"
   },
   "build": {
     "appId": "com.yukea.chocolate",
-    "productName": "可可与嫑嫑甜点工坊",
+    "productName": "可可的巧克力工坊",
     "directories": {
       "output": "dist"
     },
     "win": {
       "target": "nsis",
-      "icon": "icon.ico"
+      "icon": "icon.ico",
+      "artifactName": "chocolate-game-setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -42,7 +43,7 @@
     "electron-builder": "^24.6.4"
   },
   "dependencies": {
-    "electron-log": "^5.4.4",
-    "electron-updater": "^6.8.9"
+    "electron-log": "^5.0.1",
+    "electron-updater": "^6.1.1"
   }
 }
