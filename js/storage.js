@@ -1,10 +1,29 @@
 // js/storage.js
 
-function getTodayDateStr() {
-    const today = new Date();
-    return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+// ============================================
+// 防御性检查：确保全局变量已定义（不用 var 重新声明）
+// ============================================
+if (typeof workaholicLevel === 'undefined') {
+    console.warn('⚠️ storage.js: workaholicLevel 未定义，初始化为 0');
+    workaholicLevel = 0;
+}
+if (typeof expBoostLevel === 'undefined') {
+    console.warn('⚠️ storage.js: expBoostLevel 未定义，初始化为 0');
+    expBoostLevel = 0;
 }
 
+// ============================================
+// 日期工具
+// ============================================
+function getTodayDateStr() {
+    const today = new Date();
+    return today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+}
+window.getTodayDateStr = getTodayDateStr;
+
+// ============================================
+// 保存游戏
+// ============================================
 function saveGameToLocal() {
     if (!autoSaveEnabled) return;
     const now = Date.now();
@@ -18,26 +37,46 @@ function saveGameToLocal() {
         }
     }
     const saveData = {
-        cocoaBeans, gold, miaoBargainLevel, productionSpeedLevel, workaholicLevel, expBoostLevel,
-        totalProduced, totalSold, totalEarned, totalBeansHarvested,
-        inventory, energies, hiddenInventory,
-        slots: slots.map(slot => ({
-            unlocked: slot.unlocked,
-            productId: slot.productId,
-            remainingSec: slot.remainingSec,
-            totalProductionTime: slot.totalProductionTime,
-            productionStartTime: slot.productionStartTime,
-            status: slot.status
-        })),
-        autoSaveEnabled, exp, level, userProfile,
-        currentOrders, orderDate: getTodayDateStr(),
+        cocoaBeans: cocoaBeans || 0,
+        gold: gold || 0,
+        miaoBargainLevel: miaoBargainLevel || 0,
+        productionSpeedLevel: productionSpeedLevel || 0,
+        workaholicLevel: workaholicLevel || 0,
+        expBoostLevel: expBoostLevel || 0,
+        totalProduced: totalProduced || 0,
+        totalSold: totalSold || 0,
+        totalEarned: totalEarned || 0,
+        totalBeansHarvested: totalBeansHarvested || 0,
+        inventory: inventory || {},
+        energies: energies || {},
+        hiddenInventory: hiddenInventory || {},
+        slots: slots.map(function(slot) {
+            return {
+                unlocked: slot.unlocked,
+                productId: slot.productId,
+                remainingSec: slot.remainingSec,
+                totalProductionTime: slot.totalProductionTime,
+                productionStartTime: slot.productionStartTime,
+                status: slot.status
+            };
+        }),
+        autoSaveEnabled: autoSaveEnabled !== undefined ? autoSaveEnabled : true,
+        exp: exp || 0,
+        level: level || 1,
+        userProfile: userProfile || { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 },
+        currentOrders: currentOrders || [],
+        orderDate: getTodayDateStr(),
         lastSyncTime: Date.now()
     };
     const key = 'chocolate_save';
     localStorage.setItem(key, JSON.stringify(saveData));
     console.log('📀 本地存档已保存');
 }
+window.saveGameToLocal = saveGameToLocal;
 
+// ============================================
+// 加载游戏数据
+// ============================================
 function loadGameFromData(data) {
     try {
         cocoaBeans = data.cocoaBeans ?? 0;
@@ -57,7 +96,7 @@ function loadGameFromData(data) {
         autoSaveEnabled = data.autoSaveEnabled !== undefined ? data.autoSaveEnabled : true;
         exp = data.exp ?? 0;
         level = data.level ?? 1;
-        
+
         if (data.userProfile && data.userProfile.nickname) {
             userProfile = {
                 nickname: data.userProfile.nickname,
@@ -67,7 +106,7 @@ function loadGameFromData(data) {
         } else {
             userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
         }
-        
+
         if (data.slots) {
             for (let i = 0; i < TOTAL_SLOTS; i++) {
                 if (data.slots[i]) slots[i] = data.slots[i];
@@ -75,7 +114,7 @@ function loadGameFromData(data) {
             }
         }
         recalcAllProducingSlots();
-        
+
         currentOrders = data.currentOrders || generateFreshOrders();
         localStorage.setItem('order_date', data.orderDate || getTodayDateStr());
         if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
@@ -85,7 +124,11 @@ function loadGameFromData(data) {
         return false;
     }
 }
+window.loadGameFromData = loadGameFromData;
 
+// ============================================
+// 从 localStorage 加载
+// ============================================
 function loadGameFromLocal() {
     const key = 'chocolate_save';
     const raw = localStorage.getItem(key);
@@ -94,11 +137,15 @@ function loadGameFromLocal() {
         const data = JSON.parse(raw);
         return loadGameFromData(data);
     } catch(e) {
-        console.warn(e);
+        console.warn('解析存档失败:', e);
         return false;
     }
 }
+window.loadGameFromLocal = loadGameFromLocal;
 
+// ============================================
+// 重新计算所有生产中的槽位
+// ============================================
 function recalcAllProducingSlots() {
     const now = Date.now();
     let needSave = false;
@@ -111,61 +158,84 @@ function recalcAllProducingSlots() {
             if (remaining === 0) {
                 slot.status = 'completed';
                 needSave = true;
-                console.log(`📦 槽位 ${i+1} 离线期间已完成生产`);
+                console.log('📦 槽位 ' + (i+1) + ' 离线期间已完成生产');
             } else {
-                console.log(`📦 槽位 ${i+1} 剩余 ${remaining} 秒`);
+                console.log('📦 槽位 ' + (i+1) + ' 剩余 ' + remaining + ' 秒');
             }
         }
     }
     if (needSave && autoSaveEnabled) saveGame();
 }
+window.recalcAllProducingSlots = recalcAllProducingSlots;
 
-// ============================================================
-// clearAllGameDataLocal - 完整清除所有游戏数据（含探险地图）
-// ============================================================
+// ============================================
+// 清除所有游戏数据（完整版）
+// ============================================
 function clearAllGameDataLocal() {
-    // ===== 主游戏数据 =====
-    localStorage.removeItem('chocolate_save');
-    localStorage.removeItem('order_date');
-    localStorage.removeItem('savedOrders');
-    localStorage.removeItem('farm_data');
-    localStorage.removeItem('cardmatch_reward_beans');
-    localStorage.removeItem('cardmatch_reward_amount');
-    localStorage.removeItem('cardmatch_reward_time');
-    localStorage.removeItem('double_gold_active');
-    localStorage.removeItem('shop_data');
-    localStorage.removeItem('player_bag');
-    localStorage.removeItem('achievement_data');
+    console.log('🗑️ 开始清除所有游戏数据...');
 
-    // ===== 探险地图数据 =====
-    localStorage.removeItem('adventurer_data');
-    localStorage.removeItem('explore_region_status');
-    localStorage.removeItem('explore_visited');
-    localStorage.removeItem('explore_coins');
-    localStorage.removeItem('explore_backpack');
-    localStorage.removeItem('treasure_data');
-    localStorage.removeItem('prince_dialogue_state');
-    localStorage.removeItem('croissant_state');
-    localStorage.removeItem('story_progress');
-    localStorage.removeItem('fishing_daily');
-    localStorage.removeItem('sudoku_rewards');
-    localStorage.removeItem('last_refresh_date');
+    // ===== 1. 清除所有 localStorage 游戏数据 =====
+    var keysToRemove = [
+        // 主游戏
+        'chocolate_save',
+        'order_date',
+        'savedOrders',
+        'farm_data',
+        'cardmatch_reward_beans',
+        'cardmatch_reward_amount',
+        'cardmatch_reward_time',
+        'double_gold_active',
+        'shop_data',
+        'player_bag',
+        'achievement_data',
+        'last_refresh_date',
+        // 探险地图 + 子系统
+        'adventurer_data',
+        'explore_region_status',
+        'explore_visited',
+        'explore_coins',
+        'explore_backpack',
+        'treasure_data',
+        'prince_dialogue_state',
+        'croissant_state',
+        'story_progress',
+        'fishing_daily',
+        'fishing_stats',
+        'mining_data',
+        'panini_data',
+        'rice_data',
+        'bounty_data',
+        'nomo_feed_data',
+        'nomo_completed',
+        'rose_plant_data',
+        'rose_seed_dialogue_played',
+        'rose_pot_unlocked',
+        'trade_total_count',
+        'explore_travel_state',
+        'tower_data',
+        'sudoku_rewards'
+    ];
 
-    // ===== 重置游戏变量 =====
-    if (typeof cocoaBeans !== 'undefined') cocoaBeans = 0;
-    if (typeof gold !== 'undefined') gold = 0;
-    if (typeof miaoBargainLevel !== 'undefined') miaoBargainLevel = 0;
-    if (typeof productionSpeedLevel !== 'undefined') productionSpeedLevel = 0;
-    if (typeof workaholicLevel !== 'undefined') workaholicLevel = 0;
-    if (typeof expBoostLevel !== 'undefined') expBoostLevel = 0;
-    if (typeof totalProduced !== 'undefined') totalProduced = 0;
-    if (typeof totalSold !== 'undefined') totalSold = 0;
-    if (typeof totalEarned !== 'undefined') totalEarned = 0;
-    if (typeof totalBeansHarvested !== 'undefined') totalBeansHarvested = 0;
-    if (typeof exp !== 'undefined') exp = 0;
-    if (typeof level !== 'undefined') level = 1;
+    for (var i = 0; i < keysToRemove.length; i++) {
+        localStorage.removeItem(keysToRemove[i]);
+    }
+    console.log('🗑️ localStorage 数据已清除');
 
-    // ===== 重置库存 =====
+    // ===== 2. 重置所有全局变量 =====
+    cocoaBeans = 0;
+    gold = 0;
+    miaoBargainLevel = 0;
+    productionSpeedLevel = 0;
+    workaholicLevel = 0;
+    expBoostLevel = 0;
+    totalProduced = 0;
+    totalSold = 0;
+    totalEarned = 0;
+    totalBeansHarvested = 0;
+    exp = 0;
+    level = 1;
+
+    // 重置库存
     if (typeof inventory !== 'undefined') {
         for (var id in PRODUCTS) inventory[id] = 0;
     }
@@ -176,7 +246,7 @@ function clearAllGameDataLocal() {
         for (var e of ENERGY_TYPES) energies[e.id] = 0;
     }
 
-    // ===== 重置工坊槽位 =====
+    // 重置工坊槽位
     if (typeof slots !== 'undefined') {
         for (var i = 0; i < TOTAL_SLOTS; i++) {
             slots[i] = { unlocked: (i === 0), productId: null, remainingSec: 0, status: 'idle' };
@@ -187,25 +257,25 @@ function clearAllGameDataLocal() {
         }
     }
 
-    // ===== 重置用户昵称 =====
+    // 重置昵称
     if (typeof userProfile !== 'undefined') {
         userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
     }
 
-    // ===== 重置订单 =====
+    // 重置订单
     if (typeof currentOrders !== 'undefined') {
         currentOrders = generateFreshOrders();
     }
     localStorage.setItem('order_date', getTodayDateStr());
     if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
 
-    // ===== 重置农场 =====
+    // 重置农场
     if (typeof resetFarmLands === 'function') resetFarmLands();
 
-    // ===== 重置成就 =====
+    // 重置成就
     if (typeof clearAchievementData === 'function') clearAchievementData();
 
-    // ===== 重置商城背包 =====
+    // 重置商城背包
     if (typeof shopState !== 'undefined') {
         shopState = {
             signIn: { lastDate: null, consecutiveDays: 0, signedToday: false },
@@ -222,7 +292,7 @@ function clearAllGameDataLocal() {
         }
     }
 
-    // ===== 重置探险地图变量 =====
+    // 重置探险地图变量
     if (typeof adventurerState !== 'undefined') {
         adventurerState = {
             rank: 1,
@@ -254,9 +324,7 @@ function clearAllGameDataLocal() {
             }
         }
     }
-    if (typeof visitedRegions !== 'undefined') {
-        visitedRegions = [];
-    }
+    if (typeof visitedRegions !== 'undefined') visitedRegions = [];
     if (typeof STORY_DATA !== 'undefined') {
         for (var key in STORY_DATA) {
             STORY_DATA[key].completed = false;
@@ -274,31 +342,67 @@ function clearAllGameDataLocal() {
         fishingState.basket = [];
     }
 
-    // ===== 刷新 UI =====
+    // 重置挑战塔
+    if (typeof towerState !== 'undefined') {
+        towerState = {
+            currentFloor: 1,
+            highestFloor: 0,
+            stars: {},
+            claimedFirstReward: {},
+            lastResetDate: '',
+            totalStars: 0,
+            history: [],
+            challengeStatus: 'idle',
+            challengeFloor: 0,
+            challengeStartTime: 0,
+            challengeTimeLimit: 0,
+            challengeTarget: null,
+            _snapshot: {},
+            _ordersCompletedSinceStart: 0,
+            _farmHarvestsSinceStart: 0,
+            _fishCaughtSinceStart: 0,
+            _mineCountSinceStart: 0,
+            _cookCountSinceStart: 0,
+            _tradeCountSinceStart: 0,
+            _perfectCountSinceStart: 0,
+            _historyView: 'list'
+        };
+    }
+
+    console.log('🗑️ 所有游戏数据已清除（含探险、挖矿、挑战塔等）');
+
+    // ===== 3. 刷新 UI =====
     if (typeof refreshUI === 'function') refreshUI();
     if (typeof renderSlots === 'function') renderSlots();
     if (typeof renderQuickSell === 'function') renderQuickSell();
     if (typeof renderShopUI === 'function') renderShopUI();
-
-    console.log('🗑️ 所有游戏数据已清除（含探险地图、冒险者等级）');
 }
+window.clearAllGameDataLocal = clearAllGameDataLocal;
 
+// ============================================
+// 保存/加载主函数
+// ============================================
 async function saveGame() {
     saveGameToLocal();
 }
+window.saveGame = saveGame;
 
 async function loadGame() {
     let loaded = loadGameFromLocal();
     if (!loaded) {
         clearAllGameDataLocal();
         await saveGame();
-        if (typeof showMessage === 'function') showMessage("✨ 欢迎！开始你的甜点工坊之旅", false);
+        if (typeof showMessage === 'function') showMessage('✨ 欢迎！开始你的甜点工坊之旅', false);
     }
     recalcAllProducingSlots();
     if (typeof refreshUI === 'function') refreshUI();
     return loaded;
 }
+window.loadGame = loadGame;
 
+// ============================================
+// 重启槽位计时器
+// ============================================
 function restartSlotTimer(slotIndex) {
     const slot = slots[slotIndex];
     if (!slot || slot.status !== 'producing' || slot.remainingSec <= 0) {
@@ -314,7 +418,7 @@ function restartSlotTimer(slotIndex) {
     }
     const startTime = Date.now();
     const initialRemaining = slot.remainingSec;
-    slotIntervals[slotIndex] = setInterval(() => {
+    slotIntervals[slotIndex] = setInterval(function() {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         const remaining = Math.max(0, initialRemaining - elapsed);
         slot.remainingSec = remaining;
@@ -328,19 +432,34 @@ function restartSlotTimer(slotIndex) {
         }
     }, 1000);
 }
+window.restartSlotTimer = restartSlotTimer;
 
+// ============================================
+// 初始化游戏
+// ============================================
 function initGame() {
+    console.log('🎮 开始初始化游戏...');
+
+    // 清理旧的计时器
     for (let i = 0; i < TOTAL_SLOTS; i++) {
         if (slotTimers[i]) clearTimeout(slotTimers[i]);
         if (slotIntervals[i]) clearInterval(slotIntervals[i]);
         slotTimers[i] = null;
         slotIntervals[i] = null;
     }
+
+    // 加载存档
     loadGame();
+
+    // 确保用户昵称存在
     if (!userProfile || !userProfile.nickname) {
         userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
     }
+
+    // 重新计算离线生产
     recalcAllProducingSlots();
+
+    // 重启正在生产的槽位
     for (let i = 0; i < TOTAL_SLOTS; i++) {
         if (slots[i] && slots[i].status === 'producing' && slots[i].remainingSec > 0) {
             restartSlotTimer(i);
@@ -349,25 +468,30 @@ function initGame() {
             if (typeof renderSlots === 'function') renderSlots();
         }
     }
+
+    // 启动全局生产计时器
     if (typeof startGlobalProductionTimer === 'function') {
         startGlobalProductionTimer();
         console.log('⏰ 全局生产计时器已启动');
     }
+
+    // 初始化 UI
     if (typeof window.initGameUI === 'function') {
         window.initGameUI();
     }
+
     console.log('✅ 单机版游戏初始化完成');
 }
-
-window.clearAllGameDataLocal = clearAllGameDataLocal;
-window.recalcAllProducingSlots = recalcAllProducingSlots;
-window.restartSlotTimer = restartSlotTimer;
-window.saveGame = saveGame;
-window.loadGame = loadGame;
 window.initGame = initGame;
 
+// ============================================
+// 页面加载时自动初始化
+// ============================================
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initGame);
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initGame, 100);
+    });
 } else {
-    initGame();
+    setTimeout(initGame, 100);
 }
+console.log('✅ storage.js 加载完成（防御性检查已添加）');

@@ -1,126 +1,158 @@
+// main.js
 const { app, BrowserWindow, ipcMain } = require('electron');
-const { autoUpdater } = require('electron-updater');  // 新增
+const path = require('path');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 
-let startWindow = null;
-let gameWindow = null;
-let mainWindow = null;  // 新增：保存主窗口引用，用于更新事件
+// 配置日志
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
 
-// ============================================
-// 自动更新配置
-// ============================================
-autoUpdater.logger = console;
-autoUpdater.autoDownload = false;  // 只检查，不自动下载
+let mainWindow = null;
 
-// 检查更新
-ipcMain.on('check-for-updates', () => {
-  autoUpdater.checkForUpdatesAndNotify();
-});
+function createMainWindow() {
+    mainWindow = new BrowserWindow({
+        width: 850,
+        height: 950,
+        minWidth: 700,
+        minHeight: 800,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
+        },
+        resizable: true,
+        backgroundColor: '#fffaf0',
+        title: '可可与嫑嫑甜点工坊',
+        show: false,
+        icon: path.join(__dirname, 'icon.ico')
+    });
 
-// 立即安装更新
-ipcMain.on('install-update', () => {
-  autoUpdater.quitAndInstall();
-});
+    mainWindow.loadFile('index.html');
 
-// ===== 更新事件（通知渲染进程） =====
-autoUpdater.on('update-available', (info) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-available', info);
-  }
-});
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.show();
+    });
 
-autoUpdater.on('download-progress', (progressObj) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('download-progress', progressObj);
-  }
-});
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
 
-autoUpdater.on('update-downloaded', () => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-downloaded');
-  }
-});
-
-autoUpdater.on('error', (err) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-error', err.message);
-  }
-});
-
-// ============================================
-// 创建窗口
-// ============================================
-
-function createStartWindow() {
-  startWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-    resizable: true,
-    backgroundColor: '#f9e7c2',
-    title: '可可巧克力工坊',
-    show: true,
-  });
-  startWindow.loadFile('start.html');
-  startWindow.setMenu(null);
-  startWindow.on('closed', () => { startWindow = null; });
+    // 开发时可取消注释以打开开发者工具
+    // mainWindow.webContents.openDevTools();
 }
 
-function createGameWindow(mode = 'new') {
-  if (gameWindow) {
-    gameWindow.close();
-  }
-  gameWindow = new BrowserWindow({
-    width: 700,
-    height: 800,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-    resizable: true,
-    backgroundColor: '#fffaf0',
-    title: '可可巧克力工坊',
-    show: false,
-  });
-  // 保存主窗口引用
-  mainWindow = gameWindow;
-  gameWindow.loadFile('index.html', { query: { mode: mode } });
-  gameWindow.once('ready-to-show', () => {
-    gameWindow.show();
-    if (startWindow) startWindow.hide();
-  });
-  gameWindow.on('closed', () => {
-    gameWindow = null;
-    mainWindow = null;
-    if (startWindow) startWindow.show();
-  });
-}
-
-// ============================================
-// IPC 事件监听
-// ============================================
-ipcMain.on('start-new-game', () => createGameWindow('new'));
-ipcMain.on('continue-game', () => createGameWindow('continue'));
-ipcMain.on('guest-mode', () => createGameWindow('guest'));
-ipcMain.on('exit-game', () => app.quit());
-
-// ============================================
-// 应用生命周期
-// ============================================
 app.whenReady().then(() => {
-  createStartWindow();
+    createMainWindow();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
 });
 
 app.on('activate', () => {
-  if (startWindow === null && gameWindow === null) {
-    createStartWindow();
-  }
+    if (mainWindow === null) {
+        createMainWindow();
+    }
+});
+
+// ============================================
+// 更新相关 IPC
+// ============================================
+
+ipcMain.on('check-for-updates', () => {
+    if (!mainWindow) return;
+    
+    // 发送检查中状态
+    mainWindow.webContents.send('update-status', 'checking');
+    
+    // 执行检查更新（会触发 autoUpdater 事件）
+    autoUpdater.checkForUpdatesAndNotify();
+});
+
+ipcMain.on('install-update', () => {
+    autoUpdater.quitAndInstall();
+});
+
+// ============================================
+// 自动更新事件（所有事件都发送到渲染进程）
+// ============================================
+
+// 正在检查更新
+autoUpdater.on('checking-for-update', () => {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-status', 'checking');
+    }
+});
+
+// 发现新版本
+autoUpdater.on('update-available', (info) => {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-available', {
+            version: info.version,
+            releaseDate: info.releaseDate,
+            releaseNotes: info.releaseNotes
+        });
+    }
+});
+
+// 没有新版本（当前已是最新）
+autoUpdater.on('update-not-available', () => {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-not-available');
+        mainWindow.webContents.send('update-status', 'not-available');
+    }
+});
+
+// 下载进度
+autoUpdater.on('download-progress', (progress) => {
+    if (mainWindow) {
+        mainWindow.webContents.send('download-progress', {
+            percent: progress.percent,
+            bytesPerSecond: progress.bytesPerSecond,
+            transferred: progress.transferred,
+            total: progress.total
+        });
+    }
+});
+
+// 更新下载完成
+autoUpdater.on('update-downloaded', () => {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-downloaded');
+    }
+});
+
+// 更新出错
+autoUpdater.on('error', (err) => {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-error', {
+            message: err.message || '更新检查失败，请检查网络连接'
+        });
+        mainWindow.webContents.send('update-status', 'error');
+    }
+});
+
+// ============================================
+// 其他 IPC
+// ============================================
+
+ipcMain.on('close-window', () => {
+    if (mainWindow) mainWindow.close();
+});
+
+ipcMain.on('minimize-window', () => {
+    if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('maximize-window', () => {
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    }
 });

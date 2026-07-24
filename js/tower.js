@@ -397,37 +397,49 @@ function createTowerModal() {
 }
 
 // ============================================================
-// 打开挑战信息面板（修复版 + 详细日志）
+// 打开挑战信息面板（按钮固定在底部）
 // ============================================================
 function openTowerInfo() {
     console.log('🏛️ openTowerInfo 被调用');
     
-    // 步骤1：获取下一层
     var floor = getNextUnlockedFloor();
     console.log('🏛️ 下一层: ' + floor + ', 最大层: ' + TOWER_CONFIG.MAX_FLOOR);
     
+    // 数据异常修复
     if (floor > TOWER_CONFIG.MAX_FLOOR) {
-        showTowerToast('🎉 你已征服了所有92层！', false);
-        console.log('🏛️ 已通关所有层，退出');
-        return;
+        var has92 = false;
+        for (var i = 0; i < towerState.history.length; i++) {
+            if (towerState.history[i].floor === TOWER_CONFIG.MAX_FLOOR) {
+                has92 = true;
+                break;
+            }
+        }
+        if (has92) {
+            showTowerToast('🎉 你已征服了所有92层！', false);
+            console.log('🏛️ 已通关所有层，退出');
+            return;
+        } else {
+            console.warn('🏛️ 数据异常：highestFloor=' + towerState.highestFloor + ' 但没有第92层通关记录，重置最高层');
+            towerState.highestFloor = 0;
+            towerState.currentFloor = 1;
+            saveTowerData();
+            floor = 1;
+        }
     }
     
-    // 步骤2：获取楼层数据
+    if (floor > TOWER_CONFIG.MAX_FLOOR) {
+        floor = TOWER_CONFIG.MAX_FLOOR;
+    }
+    
     var floorData = getFloorData(floor);
-    console.log('🏛️ floorData:', floorData ? '存在' : 'null');
     if (!floorData) {
         showTowerToast('❌ 楼层数据加载失败', true);
-        console.log('🏛️ floorData 为 null，退出');
         return;
     }
     
-    // 步骤3：确保模态框存在
     var modal = document.getElementById('towerModal');
-    console.log('🏛️ 模态框是否存在:', modal ? '是' : '否');
     if (!modal) {
-        console.log('🏛️ 模态框不存在，开始创建');
         modal = createTowerModal();
-        console.log('🏛️ 创建后模态框是否存在:', modal ? '是' : '否');
     }
     if (!modal) {
         console.error('❌ 无法创建挑战塔模态框');
@@ -435,35 +447,34 @@ function openTowerInfo() {
         return;
     }
     
-    // 步骤4：获取内容容器
     var content = document.getElementById('towerModalContent');
-    console.log('🏛️ towerModalContent 是否存在:', content ? '是' : '否');
     if (!content) {
         console.error('❌ 缺少 towerModalContent');
         showTowerToast('❌ 内容容器缺失', true);
         return;
     }
     
-    // 步骤5：构建 HTML
     var isBoss = floorData.isBoss;
     var canTake = canChallenge(floor);
     var status = towerState.challengeStatus;
     var isInProgress = (status === 'in_progress' && towerState.challengeFloor === floor);
     var isReady = (status === 'completed_ready' && towerState.challengeFloor === floor);
     
-    console.log('🏛️ 状态: isBoss=' + isBoss + ', canTake=' + canTake + ', status=' + status);
-    console.log('🏛️ isInProgress=' + isInProgress + ', isReady=' + isReady);
-    
+    // ===== 使用 flex 布局：内容区 flex:1，按钮区 margin-top:auto =====
     var html = '';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-    html += '  <h3 style="margin:0;color:#4a2a1a;">🏛️ 挑战塔 · 第 ' + floor + ' 层' + (isBoss ? ' 👑 BOSS' : '') + '</h3>';
+    
+    // ---- 标题行（固定顶部） ----
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">';
+    html += '  <h3 style="margin:0;color:#4a2a1a;font-size:1.1rem;">🏛️ 挑战塔 · 第 ' + floor + ' 层' + (isBoss ? ' 👑 BOSS' : '') + '</h3>';
     html += '  <button id="towerModalCloseBtn" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">关闭</button>';
     html += '</div>';
     
-    html += '<div style="background:rgba(255,248,240,0.3);border-radius:16px;padding:16px;flex-shrink:0;">';
-    html += '  <div style="font-size:1rem;font-weight:bold;color:#4a2a1a;margin-bottom:4px;">🎯 ' + floorData.targetDesc + '</div>';
-    html += '  <div style="font-size:0.85rem;color:#5a3a2a;">⏱️ 限时 ' + floorData.timeLimit + ' 秒</div>';
-    html += '  <div style="font-size:0.85rem;color:#5a3a2a;">🏆 奖励：🫘' + floorData.rewards.beans + ' 豆，🪙' + floorData.rewards.gold + ' 金币';
+    // ---- 内容区域（可滚动，flex:1 撑满剩余空间） ----
+    html += '<div style="flex:1;overflow-y:auto;scrollbar-width:thin;min-height:0;">';
+    html += '  <div style="background:rgba(255,248,240,0.3);border-radius:16px;padding:16px;">';
+    html += '    <div style="font-size:1rem;font-weight:bold;color:#4a2a1a;margin-bottom:4px;">🎯 ' + floorData.targetDesc + '</div>';
+    html += '    <div style="font-size:0.85rem;color:#5a3a2a;">⏱️ 限时 ' + floorData.timeLimit + ' 秒</div>';
+    html += '    <div style="font-size:0.85rem;color:#5a3a2a;">🏆 奖励：🫘' + floorData.rewards.beans + ' 豆，🪙' + floorData.rewards.gold + ' 金币';
     if (floorData.rewards.items.length > 0) {
         var itemNames = floorData.rewards.items.map(function(item) {
             var name = item.id;
@@ -475,69 +486,50 @@ function openTowerInfo() {
         }).join('、');
         html += '，' + itemNames;
     }
-    html += '</div>';
+    html += '    </div>';
+    html += '  </div>';
     html += '</div>';
     
-    // 按钮区域
-    var btnHtml = '';
+    // ---- 按钮区域（固定在底部，使用 margin-top:auto） ----
+    html += '<div style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(200,160,120,0.15);display:flex;gap:10px;justify-content:center;flex-wrap:wrap;flex-shrink:0;">';
     if (isReady) {
-        btnHtml += '<button id="towerClaimBtn" style="background:#ffd700;border:none;border-radius:30px;padding:8px 24px;color:#1a1a2e;font-weight:bold;cursor:pointer;font-size:0.9rem;">🎁 领取奖励</button>';
+        html += '<button id="towerClaimBtn" style="background:#ffd700;border:none;border-radius:30px;padding:8px 28px;color:#1a1a2e;font-weight:bold;cursor:pointer;font-size:0.9rem;box-shadow:0 2px 8px rgba(255,215,0,0.2);">🎁 领取奖励</button>';
     } else if (isInProgress) {
-        btnHtml += '<div style="font-size:0.9rem;color:#e67e22;">⏳ 挑战进行中...</div>';
+        html += '<div style="font-size:0.9rem;color:#e67e22;padding:6px 0;">⏳ 挑战进行中...</div>';
     } else {
         if (canTake) {
-            btnHtml += '<button id="towerAcceptBtn" style="background:#6f9e3f;border:none;border-radius:30px;padding:8px 24px;color:white;font-weight:bold;cursor:pointer;font-size:0.9rem;">⚔️ 接取挑战</button>';
+            html += '<button id="towerAcceptBtn" style="background:#6f9e3f;border:none;border-radius:30px;padding:8px 28px;color:white;font-weight:bold;cursor:pointer;font-size:0.9rem;box-shadow:0 2px 8px rgba(111,158,63,0.2);">⚔️ 接取挑战</button>';
         } else {
-            btnHtml += '<button disabled style="background:#aaa;border:none;border-radius:30px;padding:8px 24px;color:white;font-weight:bold;font-size:0.9rem;cursor:not-allowed;">🔒 未解锁</button>';
+            html += '<button disabled style="background:#aaa;border:none;border-radius:30px;padding:8px 28px;color:white;font-weight:bold;font-size:0.9rem;cursor:not-allowed;">🔒 未解锁</button>';
         }
     }
     if (towerState.history.length > 0) {
-        btnHtml += '  <button id="towerHistoryBtn" style="background:#8e44ad;border:none;border-radius:30px;padding:8px 24px;color:white;font-weight:bold;cursor:pointer;font-size:0.9rem;">📜 已通关(' + towerState.history.length + ')</button>';
+        html += '  <button id="towerHistoryBtn" style="background:#8e44ad;border:none;border-radius:30px;padding:8px 28px;color:white;font-weight:bold;cursor:pointer;font-size:0.9rem;box-shadow:0 2px 8px rgba(142,68,173,0.2);">📜 已通关(' + towerState.history.length + ')</button>';
     }
+    html += '</div>';
     
-    content.innerHTML = html + '<div style="margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' + btnHtml + '</div>';
+    content.innerHTML = html;
     console.log('🏛️ HTML 已注入 content');
     
-    // 步骤6：显示模态框
+    // 显示模态框
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
-    console.log('🏛️ 模态框已显示，display=' + modal.style.display);
+    console.log('🏛️ 模态框已显示');
     
-    // 步骤7：绑定事件
-    var closeBtn = document.getElementById('towerModalCloseBtn');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', function() {
-            closeTowerModal();
-        });
-        console.log('🏛️ 关闭按钮已绑定');
-    } else {
-        console.warn('🏛️ 关闭按钮未找到');
-    }
-    
-    var acceptBtn = document.getElementById('towerAcceptBtn');
-    if (acceptBtn) {
-        acceptBtn.addEventListener('click', function() {
-            acceptChallenge(floor);
-        });
-        console.log('🏛️ 接取按钮已绑定');
-    }
-    
-    var claimBtn = document.getElementById('towerClaimBtn');
-    if (claimBtn) {
-        claimBtn.addEventListener('click', function() {
-            claimReward(floor);
-        });
-        console.log('🏛️ 领取按钮已绑定');
-    }
-    
-    var historyBtn = document.getElementById('towerHistoryBtn');
-    if (historyBtn) {
-        historyBtn.addEventListener('click', function() {
-            showHistoryList();
-        });
-        console.log('🏛️ 历史按钮已绑定');
-    }
+    // 绑定事件
+    document.getElementById('towerModalCloseBtn')?.addEventListener('click', function() {
+        closeTowerModal();
+    });
+    document.getElementById('towerAcceptBtn')?.addEventListener('click', function() {
+        acceptChallenge(floor);
+    });
+    document.getElementById('towerClaimBtn')?.addEventListener('click', function() {
+        claimReward(floor);
+    });
+    document.getElementById('towerHistoryBtn')?.addEventListener('click', function() {
+        showHistoryList();
+    });
     
     console.log('🏛️ openTowerInfo 执行完成');
 }
@@ -558,12 +550,14 @@ function showHistoryList() {
     var sorted = history.slice().sort(function(a, b) { return b.floor - a.floor; });
     
     var html = '';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-    html += '  <h3 style="margin:0;color:#4a2a1a;">📜 已通关关卡</h3>';
+    // ---- 标题 ----
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">';
+    html += '  <h3 style="margin:0;color:#4a2a1a;font-size:1.1rem;">📜 已通关关卡</h3>';
     html += '  <button id="towerHistoryBackBtn" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">← 返回</button>';
     html += '</div>';
-    html += '<div style="flex:1;overflow-y:auto;max-height:380px;scrollbar-width:thin;">';
     
+    // ---- 列表（可滚动） ----
+    html += '<div style="flex:1;overflow-y:auto;scrollbar-width:thin;min-height:0;max-height:300px;">';
     for (var i = 0; i < sorted.length; i++) {
         var rec = sorted[i];
         var starStr = '';
@@ -581,6 +575,10 @@ function showHistoryList() {
         html += '</div>';
     }
     html += '</div>';
+    
+    // ---- 底部空占位（保持布局） ----
+    html += '<div style="flex-shrink:0;height:4px;"></div>';
+    
     content.innerHTML = html;
     
     document.getElementById('towerHistoryBackBtn')?.addEventListener('click', function() {
@@ -602,25 +600,28 @@ function showHistoryDetail(floor) {
     for (var s = 0; s < rec.stars; s++) starStr += '⭐';
     
     var html = '';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-    html += '  <h3 style="margin:0;color:#4a2a1a;">📋 第 ' + rec.floor + ' 层 详情</h3>';
+    // ---- 标题 ----
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">';
+    html += '  <h3 style="margin:0;color:#4a2a1a;font-size:1.1rem;">📋 第 ' + rec.floor + ' 层 详情</h3>';
     html += '  <button id="towerHistoryBackBtn2" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">← 返回列表</button>';
     html += '</div>';
     
-    html += '<div style="background:rgba(255,248,240,0.3);border-radius:16px;padding:16px;">';
-    html += '  <div style="font-size:1rem;font-weight:bold;color:#4a2a1a;margin-bottom:6px;">🎯 ' + rec.targetDesc + '</div>';
-    html += '  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:0.85rem;color:#5a3a2a;">';
-    html += '    <div>⭐ 评价：' + starStr + '</div>';
-    html += '    <div>⏱️ 用时：' + rec.time + ' 秒</div>';
-    html += '    <div>📅 完成时间：' + rec.date + '</div>';
+    // ---- 详情内容（可滚动） ----
+    html += '<div style="flex:1;overflow-y:auto;scrollbar-width:thin;min-height:0;">';
+    html += '  <div style="background:rgba(255,248,240,0.3);border-radius:16px;padding:16px;margin-bottom:12px;">';
+    html += '    <div style="font-size:1rem;font-weight:bold;color:#4a2a1a;margin-bottom:6px;">🎯 ' + rec.targetDesc + '</div>';
+    html += '    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:0.85rem;color:#5a3a2a;">';
+    html += '      <div>⭐ 评价：' + starStr + '</div>';
+    html += '      <div>⏱️ 用时：' + rec.time + ' 秒</div>';
+    html += '      <div>📅 完成时间：' + rec.date + '</div>';
+    html += '    </div>';
     html += '  </div>';
-    html += '</div>';
     
     var floorData = getFloorData(rec.floor);
     if (floorData) {
-        html += '<div style="margin-top:12px;background:rgba(255,248,240,0.2);border-radius:12px;padding:12px;font-size:0.8rem;color:#5a3a2a;">';
-        html += '  <div style="font-weight:bold;color:#4a2a1a;">🏆 奖励</div>';
-        html += '  <div>🫘 ' + floorData.rewards.beans + ' 豆，🪙 ' + floorData.rewards.gold + ' 金币';
+        html += '  <div style="background:rgba(255,248,240,0.2);border-radius:12px;padding:12px;">';
+        html += '    <div style="font-weight:bold;color:#4a2a1a;">🏆 奖励</div>';
+        html += '    <div style="font-size:0.85rem;color:#5a3a2a;">🫘 ' + floorData.rewards.beans + ' 豆，🪙 ' + floorData.rewards.gold + ' 金币';
         if (floorData.rewards.items.length > 0) {
             var itemNames = floorData.rewards.items.map(function(item) {
                 var name = item.id;
@@ -632,9 +633,11 @@ function showHistoryDetail(floor) {
             }).join('、');
             html += '，' + itemNames;
         }
-        html += '</div>';
-        html += '</div>';
+        html += '    </div>';
+        html += '  </div>';
     }
+    html += '</div>';
+    
     content.innerHTML = html;
     
     document.getElementById('towerHistoryBackBtn2')?.addEventListener('click', function() {

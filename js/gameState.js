@@ -2,6 +2,7 @@
 let miaoBargainLevel = 0;
 let productionSpeedLevel = 0;
 let expBoostLevel = 0;  // 经验加成等级
+var workaholicLevel = 0;
 
 // 经验与等级
 let exp = 0;

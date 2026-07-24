@@ -1,5 +1,34 @@
 // js/utils.js
 
+// ============================================
+// 自动挂机相关
+// ============================================
+function getAutoBeanInterval() {
+    // ===== 添加防御性检查 =====
+    if (typeof workaholicLevel === 'undefined') {
+        console.warn('⚠️ workaholicLevel 未定义，使用默认值 0');
+        workaholicLevel = 0;
+    }
+    // ===== 防御性检查结束 =====
+    
+    var interval = WORKAHOLIC_CONFIG.baseInterval - workaholicLevel * WORKAHOLIC_CONFIG.intervalReductionPerLevel;
+    return Math.max(1, interval);
+}
+
+function getAutoBeanIntervalForLevel(level) {
+    // ===== 添加防御性检查 =====
+    if (typeof workaholicLevel === 'undefined') {
+        console.warn('⚠️ workaholicLevel 未定义，使用默认值 0');
+        workaholicLevel = 0;
+    }
+    // ===== 防御性检查结束 =====
+    
+    var interval = WORKAHOLIC_CONFIG.baseInterval - level * WORKAHOLIC_CONFIG.intervalReductionPerLevel;
+    return Math.max(1, interval);
+}
+
+
+
 let msgTimer = null;
 
 // ============================================

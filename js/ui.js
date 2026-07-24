@@ -2,6 +2,58 @@
 console.log('📦 ui.js 加载中...');
 
 // ============================================
+// 防御性检查：确保全局变量已定义（不用 var 重新声明）
+// ============================================
+if (typeof workaholicLevel === 'undefined') {
+    console.warn('⚠️ workaholicLevel 未定义，初始化为 0');
+    workaholicLevel = 0;
+}
+if (typeof expBoostLevel === 'undefined') {
+    console.warn('⚠️ expBoostLevel 未定义，初始化为 0');
+    expBoostLevel = 0;
+}
+if (typeof productionSpeedLevel === 'undefined') {
+    console.warn('⚠️ productionSpeedLevel 未定义，初始化为 0');
+    productionSpeedLevel = 0;
+}
+if (typeof miaoBargainLevel === 'undefined') {
+    console.warn('⚠️ miaoBargainLevel 未定义，初始化为 0');
+    miaoBargainLevel = 0;
+}
+if (typeof cocoaBeans === 'undefined') {
+    console.warn('⚠️ cocoaBeans 未定义，初始化为 0');
+    cocoaBeans = 0;
+}
+if (typeof gold === 'undefined') {
+    console.warn('⚠️ gold 未定义，初始化为 0');
+    gold = 0;
+}
+if (typeof level === 'undefined') {
+    console.warn('⚠️ level 未定义，初始化为 1');
+    level = 1;
+}
+if (typeof exp === 'undefined') {
+    console.warn('⚠️ exp 未定义，初始化为 0');
+    exp = 0;
+}
+if (typeof totalProduced === 'undefined') {
+    console.warn('⚠️ totalProduced 未定义，初始化为 0');
+    totalProduced = 0;
+}
+if (typeof totalSold === 'undefined') {
+    console.warn('⚠️ totalSold 未定义，初始化为 0');
+    totalSold = 0;
+}
+if (typeof totalEarned === 'undefined') {
+    console.warn('⚠️ totalEarned 未定义，初始化为 0');
+    totalEarned = 0;
+}
+if (typeof totalBeansHarvested === 'undefined') {
+    console.warn('⚠️ totalBeansHarvested 未定义，初始化为 0');
+    totalBeansHarvested = 0;
+}
+
+// ============================================
 // Toast 提示
 // ============================================
 function showLightToast(msg) {
@@ -27,10 +79,7 @@ function exchangeBeansToGold() {
             showMessage('✨ 成功兑换 1 金币！剩余豆子: ' + cocoaBeans, false);
             refreshUI();
             if (autoSaveEnabled) saveGame();
-            
-            // ===== 音效：金币 =====
             if (typeof soundCoin === 'function') soundCoin();
-            // ===== 音效结束 =====
         } else {
             showMessage('豆子不足！需要 50 颗巧克力豆，当前只有 ' + cocoaBeans + ' 颗', true);
         }
@@ -48,10 +97,7 @@ function exchangeBeansToGold() {
     showMessage('✨ 成功兑换 ' + quantity + ' 金币！消耗 ' + beansNeeded + ' 豆子，剩余豆子: ' + cocoaBeans, false);
     refreshUI();
     if (autoSaveEnabled) saveGame();
-    
-    // ===== 音效：金币 =====
     if (typeof soundCoin === 'function') soundCoin();
-    // ===== 音效结束 =====
 }
 window.exchangeBeansToGold = exchangeBeansToGold;
 
@@ -74,9 +120,24 @@ function decreaseExchangeQuantity() {
 window.decreaseExchangeQuantity = decreaseExchangeQuantity;
 
 // ============================================
-// 刷新UI（含经验卡片悬浮提示 · 精致版）
+// 刷新UI（含防御性检查 + 经验卡片悬浮提示）
 // ============================================
 function refreshUI() {
+    // ===== 防御性检查：确保所有全局变量已定义（不用 var） =====
+    if (typeof cocoaBeans === 'undefined') cocoaBeans = 0;
+    if (typeof gold === 'undefined') gold = 0;
+    if (typeof totalProduced === 'undefined') totalProduced = 0;
+    if (typeof totalSold === 'undefined') totalSold = 0;
+    if (typeof totalEarned === 'undefined') totalEarned = 0;
+    if (typeof totalBeansHarvested === 'undefined') totalBeansHarvested = 0;
+    if (typeof level === 'undefined') level = 1;
+    if (typeof exp === 'undefined') exp = 0;
+    if (typeof miaoBargainLevel === 'undefined') miaoBargainLevel = 0;
+    if (typeof productionSpeedLevel === 'undefined') productionSpeedLevel = 0;
+    if (typeof workaholicLevel === 'undefined') workaholicLevel = 0;
+    if (typeof expBoostLevel === 'undefined') expBoostLevel = 0;
+    // ===== 防御性检查结束 =====
+
     const beanSpan = document.getElementById('beanAmount');
     const goldSpan = document.getElementById('goldAmount');
     const totalProducedSpan = document.getElementById('totalProduced');
@@ -112,7 +173,7 @@ function refreshUI() {
     const expLevelSpan = document.getElementById('expLevel');
     if (expLevelSpan) expLevelSpan.innerText = 'Lv.' + level;
 
-    // ===== 经验卡片悬浮提示（JS 版 · 精致仿CSS风格） =====
+    // ===== 经验卡片悬浮提示 =====
     const expCard = document.getElementById('expCard');
     if (expCard) {
         const nextLevel = level + 1;
@@ -121,13 +182,11 @@ function refreshUI() {
         const rewardText = '下一级金币+' + nextGoldReward + ' 豆子+' + nextBeanReward;
         expCard.dataset.reward = rewardText;
 
-        // 移除旧的提示元素
         let oldTooltip = document.getElementById('expCardTooltip');
         let oldArrow = document.getElementById('expCardArrow');
         if (oldTooltip) oldTooltip.remove();
         if (oldArrow) oldArrow.remove();
 
-        // 创建提示框
         const tooltip = document.createElement('div');
         tooltip.id = 'expCardTooltip';
         tooltip.textContent = rewardText;
@@ -153,7 +212,6 @@ function refreshUI() {
         });
         document.body.appendChild(tooltip);
 
-        // 小三角
         const arrow = document.createElement('div');
         arrow.id = 'expCardArrow';
         Object.assign(arrow.style, {
@@ -172,28 +230,25 @@ function refreshUI() {
         });
         document.body.appendChild(arrow);
 
-        // 鼠标事件
         expCard.addEventListener('mouseenter', function(e) {
             const rect = this.getBoundingClientRect();
             const tooltipEl = document.getElementById('expCardTooltip');
             const arrowEl = document.getElementById('expCardArrow');
             if (!tooltipEl || !arrowEl) return;
 
-            // 计算提示框位置
             const tw = tooltipEl.offsetWidth || 200;
             let left = rect.left + rect.width / 2 - tw / 2;
             if (left < 10) left = 10;
             if (left + tw > window.innerWidth - 10) {
                 left = window.innerWidth - tw - 10;
             }
-            const top = rect.top - 10; // 向上偏移
+            const top = rect.top - 10;
 
             tooltipEl.style.left = left + 'px';
             tooltipEl.style.top = top + 'px';
             tooltipEl.style.opacity = '1';
             tooltipEl.style.visibility = 'visible';
 
-            // 小三角位置（在卡片上方中间）
             const arrowLeft = rect.left + rect.width / 2 - 5;
             const arrowTop = rect.top - 6;
             arrowEl.style.left = arrowLeft + 'px';
@@ -217,6 +272,7 @@ function refreshUI() {
     }
     // ===== 经验卡片悬浮提示结束 =====
 
+    // ---- 更新升级描述 ----
     if (miaoDesc) {
         if (miaoBargainLevel >= 10) {
             miaoDesc.innerText = 'Lv.10/10 已达顶级 (售价+20)';
@@ -275,6 +331,7 @@ function refreshUI() {
         upgradeExpBoostBtn.disabled = (expBoostLevel >= EXP_BOOST_CONFIG.maxLevel);
     }
 
+    // ---- 能量按钮状态 ----
     const energyBtn = document.getElementById('energyBtn');
     if (energyBtn) {
         if (level >= 5) {
@@ -286,14 +343,17 @@ function refreshUI() {
         }
     }
 
+    // ---- 渲染子模块 ----
     if (typeof renderSlots === 'function') renderSlots();
     if (typeof renderQuickSell === 'function') renderQuickSell();
     if (typeof renderWarehouseModal === 'function') renderWarehouseModal();
-    // 检查成就（放在最后）
+
+    // ---- 检查成就 ----
     if (typeof checkAchievements === 'function') {
         checkAchievements();
     }
 
+    // ---- 更新个人信息模态框（如果打开） ----
     const profileModal = document.getElementById('profileModal');
     if (profileModal && !profileModal.classList.contains('hidden')) {
         const levelSpan = document.getElementById('profileLevel');
@@ -384,10 +444,7 @@ function renderWarehouseModal() {
                                 useBagItem(itemId);
                                 renderWarehouseModal();
                                 if (typeof refreshUI === 'function') refreshUI();
-                                
-                                // ===== 音效：使用道具 =====
                                 if (typeof soundItemGet === 'function') soundItemGet();
-                                // ===== 音效结束 =====
                             }
                         };
                     })(id);
@@ -532,7 +589,6 @@ window.cancelEditNickname = cancelEditNickname;
 // ============================================
 // 升级动画
 // ============================================
-
 if (typeof window._ui_upgradeAnimInited === 'undefined') {
     window._ui_upgradeAnimInited = true;
 
@@ -572,9 +628,7 @@ if (typeof window._ui_upgradeAnimInited === 'undefined') {
         var existingMsg = document.getElementById('specialLevel5Msg');
         if (existingMsg) existingMsg.remove();
 
-        // ===== 升级音效 =====
         if (typeof soundLevelUp === 'function') soundLevelUp();
-        // ===== 音效结束 =====
 
         if (energyReward && energyReward.amount > 0 && energyItem) {
             var energyType = ENERGY_TYPES.find(function(e) { return e.name === energyReward.name; });
@@ -626,4 +680,4 @@ if (typeof window._ui_upgradeAnimInited === 'undefined') {
     window.showUpgradeAnimation = showUpgradeAnimation;
 }
 
-console.log('✅ ui.js 加载完成（含精致版经验卡片悬浮提示）');
+console.log('✅ ui.js 加载完成（含防御性检查和经验卡片悬浮提示）');
