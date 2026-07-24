@@ -1034,67 +1034,56 @@ document.getElementById('checkUpdateBtn')?.addEventListener('click', function() 
 
 if (window.electronAPI) {
 
-    // 1. 正在检查更新（状态更新）
+    // 1. 状态更新
     window.electronAPI.on('update-status', function(status) {
-        console.log('📦 更新状态:', status);
-        // 如果收到任何状态，清除前端超时定时器（说明已收到响应）
         if (window._updateCheckTimeout) {
             clearTimeout(window._updateCheckTimeout);
             window._updateCheckTimeout = null;
         }
+        console.log('📦 更新状态:', status);
     });
 
-    // 2. 发现新版本（需要更新）
+    // 2. 发现新版本（用户确认后自动下载）
     window.electronAPI.on('update-available', function(info) {
-        // 清除前端超时定时器
         if (window._updateCheckTimeout) {
             clearTimeout(window._updateCheckTimeout);
             window._updateCheckTimeout = null;
         }
-
         var version = info.version || '未知版本';
         var releaseNotes = info.releaseNotes || '';
         var message = '🎉 发现新版本 ' + version + '，是否立即下载？';
         if (releaseNotes) {
             message += '\n\n📝 更新内容：\n' + releaseNotes;
         }
-        console.log('🎉 收到更新可用事件:', version);
-
         if (confirm(message)) {
-            // 用户确认下载
-            window.electronAPI.send('check-for-updates');
+            // ✅ 正确：这里不再发送 check-for-updates，下载自动开始
             showLightToast('⬇️ 开始下载更新...');
         } else {
             showLightToast('⏸️ 已取消更新');
         }
     });
 
-    // 3. 没有新版本（已是最新）
+    // 3. 已是最新版本
     window.electronAPI.on('update-not-available', function() {
-        // 清除前端超时定时器
         if (window._updateCheckTimeout) {
             clearTimeout(window._updateCheckTimeout);
             window._updateCheckTimeout = null;
         }
-        console.log('✅ 收到最新版本事件');
         showLightToast('✅ 当前已是最新版本！');
     });
 
     // 4. 下载进度
     window.electronAPI.on('download-progress', function(progress) {
         var percent = Math.round(progress.percent || 0);
-        console.log('⬇️ 下载进度:', percent + '%');
         showLightToast('⬇️ 下载进度: ' + percent + '%');
     });
 
-    // 5. 更新下载完成
+    // 5. 下载完成
     window.electronAPI.on('update-downloaded', function() {
-        // 清除前端超时定时器
         if (window._updateCheckTimeout) {
             clearTimeout(window._updateCheckTimeout);
             window._updateCheckTimeout = null;
         }
-        console.log('✅ 收到更新下载完成事件');
         if (confirm('✅ 更新已下载，是否立即安装？（程序将重启）')) {
             window.electronAPI.send('install-update');
         }
@@ -1102,13 +1091,11 @@ if (window.electronAPI) {
 
     // 6. 更新错误
     window.electronAPI.on('update-error', function(err) {
-        // 清除前端超时定时器
         if (window._updateCheckTimeout) {
             clearTimeout(window._updateCheckTimeout);
             window._updateCheckTimeout = null;
         }
         var errorMsg = err.message || err || '更新检查失败，请检查网络连接';
-        console.error('❌ 收到更新错误事件:', errorMsg);
         showLightToast('❌ 更新失败: ' + errorMsg);
     });
 }
