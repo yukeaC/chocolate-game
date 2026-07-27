@@ -2321,28 +2321,42 @@ function updateInfoPanel() {
     // 王子区域特殊背景（已移除星空背景，仅保留背影）
     if (isPrinceRegion) {
         var oldScene = document.getElementById('princeSceneBg');
-        if (oldScene) oldScene.remove();
-        var sceneDiv = document.createElement('div');
-        sceneDiv.id = 'princeSceneBg';
-        sceneDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#0a0a2e 0%,#1a1a3e 20%,#2d1b0e 55%,#4a2c1a 80%,#5a3a2a 100%);z-index:0;border-radius:16px;overflow:hidden;pointer-events:none;';
-        var starHtml = '';
-        var starCount = 30 + Math.floor(Math.random() * 15);
-        for (var s = 0; s < starCount; s++) {
-            var topPercent = Math.random() * 75;
-            var leftPercent = Math.random() * 100;
-            var size = 1 + Math.floor(Math.random() * 2);
-            var delay = Math.random() * 2;
-            var opacity = 0.3 + Math.random() * 0.5;
-            starHtml += '<div class="pd-star" style="position:absolute;top:' + topPercent + '%;left:' + leftPercent + '%;width:' + size + 'px;height:' + size + 'px;background:white;border-radius:50%;opacity:' + opacity + ';animation:pdTwinkle 2s ease-in-out infinite alternate;animation-delay:' + delay + 's;z-index:2;pointer-events:none;"></div>';
-        }
-        sceneDiv.innerHTML = starHtml;
-        infoMode.prepend(sceneDiv);
+    if (oldScene) oldScene.remove();
+    var sceneDiv = document.createElement('div');
+    sceneDiv.id = 'princeSceneBg';
+    sceneDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#0a0a2e 0%,#1a1a3e 20%,#2d1b0e 55%,#4a2c1a 80%,#5a3a2a 100%);z-index:0;border-radius:16px;overflow:hidden;pointer-events:none;';
+    
+    var starHtml = '';
+    var starCount = 30 + Math.floor(Math.random() * 15);
+    for (var s = 0; s < starCount; s++) {
+        var topPercent = Math.random() * 75;
+        var leftPercent = Math.random() * 100;
+        var size = 1 + Math.floor(Math.random() * 2);
+        var delay = Math.random() * 2;
+        var opacity = 0.3 + Math.random() * 0.5;
+        starHtml += '<div class="pd-star" style="position:absolute;top:' + topPercent + '%;left:' + leftPercent + '%;width:' + size + 'px;height:' + size + 'px;background:white;border-radius:50%;opacity:' + opacity + ';animation:pdTwinkle 2s ease-in-out infinite alternate;animation-delay:' + delay + 's;z-index:2;pointer-events:none;"></div>';
+    }
+    sceneDiv.innerHTML = starHtml;
+    
+    // ===== 添加沙丘（三重叠沙丘） =====
+   // ===== 高沙丘（更壮观） =====
+var dunesHtml = '';
+dunesHtml += '<div class="pd-dunes" style="position:absolute;bottom:0;left:0;width:100%;height:150px;z-index:1;pointer-events:none;overflow:hidden;">';
+dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:0;left:-10%;width:120%;height:120px;border-radius:50%;background:rgba(180,140,100,0.08);"></div>';
+dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:15px;left:-10%;width:120%;height:85px;border-radius:50%;background:rgba(160,120,80,0.06);transform:rotate(-3deg);"></div>';
+dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:30px;left:-10%;width:120%;height:55px;border-radius:50%;background:rgba(140,100,60,0.04);transform:rotate(2deg);"></div>';
+dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:45px;left:-10%;width:120%;height:30px;border-radius:50%;background:rgba(120,80,50,0.03);transform:rotate(-1deg);"></div>';
+dunesHtml += '</div>';
+    sceneDiv.insertAdjacentHTML('beforeend', dunesHtml);
+    // ===== 沙丘添加结束 =====
+    
+    infoMode.prepend(sceneDiv);
 
-        var princeBackDiv = document.createElement('div');
-        princeBackDiv.id = 'princeBackDiv';
-        princeBackDiv.style.cssText = 'position:absolute;left:40%;bottom:50px;z-index:1;pointer-events:none;opacity:0.9;transform:translateX(-50%);';
-        princeBackDiv.innerHTML = '<img src="images/backofprince.png" alt="小王子背影" style="width:auto;height:360px;max-height:360px;filter:drop-shadow(0 2px 30px rgba(0,0,0,0.3));" onerror="this.style.display=\'none\';">';
-        infoMode.appendChild(princeBackDiv);
+    var princeBackDiv = document.createElement('div');
+    princeBackDiv.id = 'princeBackDiv';
+    princeBackDiv.style.cssText = 'position:absolute;left:40%;bottom:50px;z-index:1;pointer-events:none;opacity:0.9;transform:translateX(-50%);';
+    princeBackDiv.innerHTML = '<img src="images/backofprince.png" alt="小王子背影" style="width:auto;height:360px;max-height:360px;filter:drop-shadow(0 2px 30px rgba(0,0,0,0.3));" onerror="this.style.display=\'none\';">';
+    infoMode.appendChild(princeBackDiv);
 
         // ---- 花盆逻辑 ----
         var dialoguePlayed = localStorage.getItem('rose_seed_dialogue_played') === 'true';

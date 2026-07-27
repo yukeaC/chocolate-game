@@ -371,8 +371,10 @@ function generatePrinceStars() {
 
 // ============================================================
 // 渲染小王子对话（替换 infoMode 内容）
+// 修改：沙丘透明度提高，确保可见
 // ============================================================
 function renderPrinceDialogue() {
+    console.log('🐧 renderPrinceDialogue 被调用');
     var infoMode = document.getElementById('infoMode');
     if (!infoMode) {
         console.warn('infoMode 不存在');
@@ -396,15 +398,18 @@ function renderPrinceDialogue() {
     var html = '';
 
     // ===== 背景：沙漠星空 =====
-    html += '<div class="pd-scene" style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#0a0a2e 0%,#1a1a3e 20%,#2d1b0e 55%,#4a2c1a 80%,#5a3a2a 100%);border-radius:16px;z-index:0;overflow:hidden;">';
+    html += '<div class="pd-scene" style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#0a0a2e 0%,#1a1a3e 20%,#3d2b1a 55%,#6a4a2a 80%,#7a5a3a 100%);border-radius:16px;z-index:0;overflow:hidden;">';
     html += '<div class="pd-stars">' + generatePrinceStars() + '</div>';
-    html += '<div class="pd-moon">🌙</div>';
-    html += '<div class="pd-dunes">';
-    html += '<div class="pd-dune" style="height:50px;background:rgba(180,140,100,0.07);"></div>';
-    html += '<div class="pd-dune" style="height:35px;bottom:8px;background:rgba(160,120,80,0.05);transform:rotate(-2deg);"></div>';
-    html += '<div class="pd-dune" style="height:22px;bottom:16px;background:rgba(140,100,60,0.04);transform:rotate(1deg);"></div>';
+    html += '<div class="pd-moon" style="position:absolute;top:14px;right:22px;font-size:2.6rem;z-index:1;filter:drop-shadow(0 0 30px rgba(255,215,0,0.12));">🌙</div>';
+
+    // ===== 沙丘：高可见度，绝对定位 =====
+    html += '<div class="pd-dunes" style="position:absolute;bottom:0;left:0;width:100%;height:80px;z-index:1;pointer-events:none;overflow:hidden;">';
+    html += '<div class="pd-dune" style="position:absolute;bottom:0;left:-10%;width:120%;height:55px;border-radius:50%;background:rgba(200,170,130,0.5);"></div>';
+    html += '<div class="pd-dune" style="position:absolute;bottom:10px;left:-5%;width:110%;height:40px;border-radius:50%;background:rgba(180,150,110,0.4);transform:rotate(-1deg);"></div>';
+    html += '<div class="pd-dune" style="position:absolute;bottom:20px;left:-15%;width:130%;height:25px;border-radius:50%;background:rgba(160,130,90,0.3);transform:rotate(1deg);"></div>';
     html += '</div>';
-    html += '</div>';
+
+    html += '</div>'; // 关闭 pd-scene
 
     // ===== 主内容 =====
     html += '<div class="pd-content" style="position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;padding:12px 16px 14px;overflow:hidden;">';
@@ -494,9 +499,8 @@ function renderPrinceDialogue() {
         html += '</div>';
     }
 
-    html += '</div>'; // 主内容
+    html += '</div>'; // 关闭 pd-content
 
-    // 应用到 infoMode
     infoMode.innerHTML = html;
     infoMode.style.display = 'flex';
     infoMode.style.background = 'transparent';
@@ -506,7 +510,10 @@ function renderPrinceDialogue() {
     infoMode.style.padding = '0';
     infoMode.style.position = 'relative';
 
-    // 绑定事件
+    console.log('✅ 沙丘 HTML 已生成，长度:', html.length);
+    console.log('沙丘片段:', html.substring(html.indexOf('pd-dunes'), html.indexOf('pd-dunes') + 200));
+
+    // 绑定事件...
     var nextBtn = document.getElementById('pdNextBtn');
     if (nextBtn) {
         nextBtn.addEventListener('click', function(e) {
@@ -529,7 +536,6 @@ function renderPrinceDialogue() {
         });
     }
 
-    // 点击空白处推进对话
     infoMode.onclick = function(e) {
         if (e.target.closest('button')) return;
         if (e.target.closest('.pd-dots')) return;
@@ -543,7 +549,6 @@ function renderPrinceDialogue() {
         window.refreshPrinceActions();
     }
 }
-
 // ============================================================
 // 点击小王子或继续按钮
 // ============================================================
@@ -694,4 +699,4 @@ if (document.readyState === 'loading') {
     setTimeout(initPrinceDialogue, 100);
 }
 
-console.log('🐧 小王子对话模块加载完成（含头顶气泡和玫瑰支线剧情）');
+console.log('🐧 小王子对话模块加载完成（含头顶气泡和玫瑰支线剧情，沙丘已修复可见）');
