@@ -1,13 +1,14 @@
-// ============================================
-// 商城系统（主游戏商城，不含探险物品）
+// ============================================================
+// 商城系统（完整修复版）
+// 修复：每日库存凌晨4点自动重置
 // 路径: js/shop.js
-// ============================================
+// ============================================================
 
 console.log('🏪 商城系统加载中...');
 
-// ============================================
+// ============================================================
 // 配置
-// ============================================
+// ============================================================
 
 var SIGN_IN_REWARDS = [
     { day: 1, type: 'beans', amount: 10, label: '🫘10' },
@@ -82,9 +83,9 @@ var SHOP_ITEMS = {
     }
 };
 
-// ============================================
+// ============================================================
 // 状态
-// ============================================
+// ============================================================
 
 var shopState = {
     signIn: {
@@ -104,19 +105,47 @@ var playerBag = {
 };
 
 var shopModalLoaded = false;
+var _shopRefreshTimer = null;
+var _shopRefreshBadge = null;
 
-// ============================================
+// ============================================================
 // 初始化
-// ============================================
+// ============================================================
 
 function initShop() {
     console.log('🏪 初始化商城...');
     loadShopData();
     loadPlayerBag();
-    checkDailyReset();
+    
+    // ===== 应用启动时检查每日重置（loadShopData 中已触发） =====
+    var wasReset = checkDailyReset();
+    if (wasReset) {
+        console.log('🔄 商城库存已每日重置（凌晨4点刷新）');
+    }
+    
+    // ===== 每小时检查一次日期变化 =====
+    if (_shopRefreshTimer) {
+        clearInterval(_shopRefreshTimer);
+    }
+    _shopRefreshTimer = setInterval(function() {
+        var reset = checkDailyReset();
+        if (reset) {
+            console.log('🔄 商城库存已自动重置（定时检查，凌晨4点刷新）');
+            // 如果商城已打开，刷新UI
+            var modal = document.getElementById('shopModal');
+            if (modal && !modal.classList.contains('hidden')) {
+                renderShopUI();
+            }
+        }
+    }, 3600000); // 每小时检查一次
+    
     createShopModal();
     console.log('✅ 商城初始化完成');
 }
+
+// ============================================================
+// 数据持久化
+// ============================================================
 
 function loadShopData() {
     try {
@@ -138,12 +167,17 @@ function loadShopData() {
         shopState.resetDate = null;
     }
     
+    // 确保所有道具都有库存字段
     for (var id in SHOP_ITEMS) {
         if (shopState.inventory[id] === undefined) {
             shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
         }
     }
     
+    // ===== 关键修复：加载后立即检查每日重置 =====
+    checkDailyReset();
+    
+    // 如果没有保存过数据，立即保存
     var saved = localStorage.getItem('shop_data');
     if (!saved) {
         saveShopData();
@@ -163,9 +197,96 @@ function saveShopData() {
     }
 }
 
-// ============================================
+// ============================================================
+// 每日重置检查（凌晨4点刷新）
+// ============================================================
+
+function checkDailyReset() {
+    var now = new Date();
+    var today = getTodayDateStr();
+    var today4am = new Date();
+    today4am.setHours(4, 0, 0, 0);
+    
+    // ===== 情况1：首次使用（resetDate 为 null）直接重置 =====
+    if (shopState.resetDate === null) {
+        for (var id in SHOP_ITEMS) {
+            shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
+        }
+        shopState.resetDate = today;
+        saveShopData();
+        console.log('🔄 商城首次初始化，库存已设置');
+        showShopRefreshBadge();
+        return true;
+    }
+    
+    // ===== 情况2：如果当前时间还没到凌晨4点，不触发重置 =====
+    if (now < today4am) {
+        return false;
+    }
+    
+    // ===== 情况3：已过4点，检查日期是否变化 =====
+    if (shopState.resetDate !== today) {
+        for (var id in SHOP_ITEMS) {
+            shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
+        }
+        shopState.resetDate = today;
+        saveShopData();
+        console.log('🔄 商城每日库存已重置（凌晨4点）');
+        showShopRefreshBadge();
+        return true;
+    }
+    
+    return false;
+}
+
+// ============================================================
+// 商城红点提示
+// ============================================================
+
+function showShopRefreshBadge() {
+    var shopBtn = document.getElementById('shopBtn');
+    if (!shopBtn) return;
+    
+    // 移除旧红点
+    removeShopRefreshBadge();
+    
+    // 添加新红点
+    var badge = document.createElement('span');
+    badge.id = 'shopRefreshBadge';
+    badge.style.cssText = [
+        'position:absolute',
+        'top:-2px',
+        'right:-2px',
+        'width:12px',
+        'height:12px',
+        'background:#4CAF50',
+        'border-radius:50%',
+        'border:2px solid #f5ede4',
+        'animation:badgePulse 1.5s ease-in-out infinite',
+        'z-index:5',
+        'pointer-events:none'
+    ].join(';');
+    shopBtn.style.position = 'relative';
+    shopBtn.appendChild(badge);
+    _shopRefreshBadge = badge;
+}
+
+function removeShopRefreshBadge() {
+    if (_shopRefreshBadge && _shopRefreshBadge.parentNode) {
+        _shopRefreshBadge.parentNode.removeChild(_shopRefreshBadge);
+        _shopRefreshBadge = null;
+    }
+}
+
+function clearShopRefreshBadge() {
+    removeShopRefreshBadge();
+    // 记录已查看
+    localStorage.setItem('shop_refresh_seen', getTodayDateStr());
+}
+
+// ============================================================
 // 玩家背包
-// ============================================
+// ============================================================
 
 function loadPlayerBag() {
     try {
@@ -215,64 +336,18 @@ function updateBagCount() {
     }
 }
 
-// ============================================
-// 清除商城数据
-// ============================================
-
-function clearShopData() {
-    console.log('🗑️ 开始清除商城数据...');
-    
-    localStorage.removeItem('shop_data');
-    localStorage.removeItem('player_bag');
-    
-    shopState = {
-        signIn: {
-            lastDate: null,
-            consecutiveDays: 0,
-            signedToday: false
-        },
-        inventory: {},
-        resetDate: null
-    };
-    
-    for (var id in SHOP_ITEMS) {
-        shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
-    }
-    
-    for (var id in playerBag) {
-        playerBag[id] = 0;
-    }
-    
-    renderShopUI();
-    updateBagCount();
-    
-    console.log('🗑️ 商城数据已彻底清除，签到已重置为0天');
-}
-
-// ============================================
-// 每日重置检查
-// ============================================
-
-function checkDailyReset() {
-    var today = getTodayDateStr();
-    if (shopState.resetDate !== today) {
-        for (var id in SHOP_ITEMS) {
-            shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
-        }
-        shopState.resetDate = today;
-        saveShopData();
-        console.log('🔄 商城每日库存已重置');
-    }
-}
+// ============================================================
+// 日期工具
+// ============================================================
 
 function getTodayDateStr() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-// ============================================
+// ============================================================
 // 创建商城模态框
-// ============================================
+// ============================================================
 
 function createShopModal() {
     if (document.getElementById('shopModal')) {
@@ -290,9 +365,9 @@ function createShopModal() {
     }
 }
 
-// ============================================
+// ============================================================
 // 签到系统
-// ============================================
+// ============================================================
 
 function getSignInStatus() {
     var today = getTodayDateStr();
@@ -306,7 +381,7 @@ function getSignInStatus() {
         yesterday.setDate(yesterday.getDate() - 1);
         var yesterdayStr = yesterday.toISOString().slice(0, 10);
         if (lastDate !== today && lastDate !== yesterdayStr) {
-            // 断签
+            consecutive = 0;
         }
     }
 
@@ -402,9 +477,9 @@ function doSignIn() {
     return true;
 }
 
-// ============================================
+// ============================================================
 // 道具购买
-// ============================================
+// ============================================================
 
 function purchaseItem(itemId) {
     var item = SHOP_ITEMS[itemId];
@@ -415,7 +490,7 @@ function purchaseItem(itemId) {
 
     var stock = shopState.inventory[itemId] || 0;
     if (stock <= 0) {
-        if (typeof showMessage === 'function') showMessage('库存不足！', true);
+        if (typeof showMessage === 'function') showMessage('今日库存已售罄！明天4点后补货', true);
         return false;
     }
 
@@ -451,9 +526,9 @@ function purchaseItem(itemId) {
     return true;
 }
 
-// ============================================
+// ============================================================
 // 显示幸运盒子结果
-// ============================================
+// ============================================================
 
 function showLuckyBoxResult(goldGain) {
     if (!document.getElementById('luckyBoxStyle')) {
@@ -493,9 +568,9 @@ function showLuckyBoxResult(goldGain) {
     }, 3500);
 }
 
-// ============================================
+// ============================================================
 // 立即生效效果
-// ============================================
+// ============================================================
 
 function applyInstantEffect(itemId) {
     switch(itemId) {
@@ -556,9 +631,9 @@ function applyInstantEffect(itemId) {
     }
 }
 
-// ============================================
+// ============================================================
 // 使用背包道具
-// ============================================
+// ============================================================
 
 function useBagItem(itemId) {
     var item = SHOP_ITEMS[itemId];
@@ -680,9 +755,9 @@ function getBagItemCount(itemId) {
     return playerBag[itemId] || 0;
 }
 
-// ============================================
+// ============================================================
 // 绑定事件
-// ============================================
+// ============================================================
 function bindShopEvents() {
     var closeBtn = document.getElementById('closeShopModalBtn');
     if (closeBtn) {
@@ -704,11 +779,22 @@ function bindShopEvents() {
     });
 }
 
-// ============================================
-// 打开商城
-// ============================================
+// ============================================================
+// 打开商城（增强版）
+// ============================================================
 function openShop() {
-    checkDailyReset();
+    // ===== 检查每日重置 =====
+    var wasReset = checkDailyReset();
+    
+    // 如果刚重置，显示提示
+    if (wasReset) {
+        if (typeof showMessage === 'function') {
+            showMessage('🔄 商城库存已刷新！', false);
+        }
+        // 清除红点（用户已打开商城查看）
+        clearShopRefreshBadge();
+    }
+    
     if (!document.getElementById('shopModal')) {
         createShopModal();
     } else {
@@ -737,9 +823,9 @@ function closeShop() {
     }
 }
 
-// ============================================
+// ============================================================
 // 渲染UI
-// ============================================
+// ============================================================
 
 function renderShopUI() {
     var goldEl = document.getElementById('shopGoldAmount');
@@ -806,6 +892,7 @@ function renderShopUI() {
             var goldAmount = typeof gold !== 'undefined' ? gold : 0;
             btn.disabled = stock <= 0 || goldAmount < price;
             if (stock <= 0) {
+                btn.textTitle = '已售罄';
                 btn.textContent = '已售罄';
                 btn.style.background = '#ccc';
             } else if (goldAmount < price) {
@@ -819,9 +906,9 @@ function renderShopUI() {
     }
 }
 
-// ============================================
-// 商城HTML内容（不含玫瑰种子和挖矿工具）
-// ============================================
+// ============================================================
+// 商城HTML内容
+// ============================================================
 
 function getShopHTML() {
     return `
@@ -869,7 +956,7 @@ function getShopHTML() {
 
         <!-- 道具商店 -->
         <div style="font-weight:bold;font-size:1rem;color:#5a2e1c;margin-bottom:10px;">🛒 道具商店</div>
-        <div style="font-size:0.65rem;color:#a56b3a;margin-bottom:10px;">所有道具即买即用</div>
+        <div style="font-size:0.65rem;color:#a56b3a;margin-bottom:10px;">每天凌晨4点自动补货</div>
 
         <div style="display:flex;flex-direction:column;gap:8px;">
             <!-- 加速券 -->
@@ -881,7 +968,7 @@ function getShopHTML() {
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:0.7rem;color:#7b4a2a;font-weight:bold;">🪙200</div>
-                    <div style="font-size:0.55rem;color:#a56b3a;">库存: <span id="shopStock_speed_up">1</span></div>
+                    <div style="font-size:0.55rem;color:#a56b3a;">今日库存: <span id="shopStock_speed_up">1</span></div>
                 </div>
                 <button class="shop-buy-btn" data-item="speed_up" style="background:#6f9e3f;border:none;border-radius:30px;padding:4px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;flex-shrink:0;">购买</button>
             </div>
@@ -894,7 +981,7 @@ function getShopHTML() {
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:0.7rem;color:#7b4a2a;font-weight:bold;">🪙150</div>
-                    <div style="font-size:0.55rem;color:#a56b3a;">库存: <span id="shopStock_refresh">1</span></div>
+                    <div style="font-size:0.55rem;color:#a56b3a;">今日库存: <span id="shopStock_refresh">1</span></div>
                 </div>
                 <button class="shop-buy-btn" data-item="refresh" style="background:#6f9e3f;border:none;border-radius:30px;padding:4px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;flex-shrink:0;">购买</button>
             </div>
@@ -908,7 +995,7 @@ function getShopHTML() {
                 <div id="luckyBoxResultArea" style="flex-shrink:0;min-width:60px;text-align:center;font-weight:bold;font-size:0.85rem;color:#d4a017;transition:all 0.3s;"></div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:0.7rem;color:#7b4a2a;font-weight:bold;">🪙50</div>
-                    <div style="font-size:0.55rem;color:#a56b3a;">库存: <span id="shopStock_lucky_box">3</span></div>
+                    <div style="font-size:0.55rem;color:#a56b3a;">今日库存: <span id="shopStock_lucky_box">3</span></div>
                 </div>
                 <button class="shop-buy-btn" data-item="lucky_box" style="background:#6f9e3f;border:none;border-radius:30px;padding:4px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;flex-shrink:0;">购买</button>
             </div>
@@ -921,7 +1008,7 @@ function getShopHTML() {
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:0.7rem;color:#7b4a2a;font-weight:bold;">🪙60</div>
-                    <div style="font-size:0.55rem;color:#a56b3a;">库存: <span id="shopStock_exp_book">2</span></div>
+                    <div style="font-size:0.55rem;color:#a56b3a;">今日库存: <span id="shopStock_exp_book">2</span></div>
                 </div>
                 <button class="shop-buy-btn" data-item="exp_book" style="background:#6f9e3f;border:none;border-radius:30px;padding:4px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;flex-shrink:0;">购买</button>
             </div>
@@ -934,7 +1021,7 @@ function getShopHTML() {
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:0.7rem;color:#7b4a2a;font-weight:bold;">🪙10</div>
-                    <div style="font-size:0.55rem;color:#a56b3a;">库存: <span id="shopStock_beans_pack">5</span></div>
+                    <div style="font-size:0.55rem;color:#a56b3a;">今日库存: <span id="shopStock_beans_pack">5</span></div>
                 </div>
                 <button class="shop-buy-btn" data-item="beans_pack" style="background:#6f9e3f;border:none;border-radius:30px;padding:4px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;flex-shrink:0;">购买</button>
             </div>
@@ -947,22 +1034,56 @@ function getShopHTML() {
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:0.7rem;color:#7b4a2a;font-weight:bold;">🪙929</div>
-                    <div style="font-size:0.55rem;color:#a56b3a;">库存: <span id="shopStock_energy_box">1</span></div>
+                    <div style="font-size:0.55rem;color:#a56b3a;">今日库存: <span id="shopStock_energy_box">1</span></div>
                 </div>
                 <button class="shop-buy-btn" data-item="energy_box" style="background:#6f9e3f;border:none;border-radius:30px;padding:4px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;flex-shrink:0;">购买</button>
             </div>
         </div>
         <div style="margin-top:12px;font-size:0.55rem;color:#a56b3a;text-align:center;border-top:1px solid #f1dbb2;padding-top:8px;">
-            💡 所有道具即买即用
+            💡 每天凌晨4点自动补货 · 所有道具即买即用
         </div>
     </div>
 </div>
     `;
 }
 
-// ============================================
+// ============================================================
+// 清除商城数据
+// ============================================================
+
+function clearShopData() {
+    console.log('🗑️ 开始清除商城数据...');
+    
+    localStorage.removeItem('shop_data');
+    localStorage.removeItem('player_bag');
+    
+    shopState = {
+        signIn: {
+            lastDate: null,
+            consecutiveDays: 0,
+            signedToday: false
+        },
+        inventory: {},
+        resetDate: null
+    };
+    
+    for (var id in SHOP_ITEMS) {
+        shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
+    }
+    
+    for (var id in playerBag) {
+        playerBag[id] = 0;
+    }
+    
+    renderShopUI();
+    updateBagCount();
+    
+    console.log('🗑️ 商城数据已彻底清除，签到已重置为0天');
+}
+
+// ============================================================
 // 暴露全局接口
-// ============================================
+// ============================================================
 
 window.SHOP_ITEMS = SHOP_ITEMS;
 window.shopState = shopState;
@@ -977,12 +1098,14 @@ window.clearShopData = clearShopData;
 window.useBagItem = useBagItem;
 window.getBagItemCount = getBagItemCount;
 window.showLuckyBoxResult = showLuckyBoxResult;
+window.checkDailyReset = checkDailyReset;
+window.clearShopRefreshBadge = clearShopRefreshBadge;
 
-console.log('🏪 商城系统加载完成（不含探险物品）');
+console.log('🏪 商城系统加载完成（凌晨4点补货版）');
 
-// ============================================
+// ============================================================
 // 自动初始化
-// ============================================
+// ============================================================
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {

@@ -1,5 +1,5 @@
 // ============================================================
-// sudoku.js · 煎蛋海 · 9×9 数独游戏
+// sudoku.js · 煎蛋海 · 9×9 数独游戏（唯一解生成）
 // ============================================================
 
 console.log('🧩 数独游戏模块加载中...');
@@ -38,39 +38,27 @@ var sudokuState = {
 var sdDom = {};
 
 // ============================================================
-// 数据持久化（仅保存奖励统计，不保存已领状态）
+// 数据持久化
 // ============================================================
 function loadSudokuRewards() {
     try {
         var saved = localStorage.getItem('sudoku_rewards');
         if (saved) {
             var data = JSON.parse(saved);
-            // 只加载统计信息，不加载已领状态（已领状态每次新游戏重置）
-            if (data.totalEggs !== undefined) {
-                // 我们不在 sudokuState 中存储统计，而是直接读取背包
-            }
         }
     } catch(e) {}
 }
+function saveSudokuRewards() {}
 
-function saveSudokuRewards() {
-    // 不再持久化已领状态，只统计数据（由背包系统管理）
-}
-
-// ============================================================
-// 探险背包操作
-// ============================================================
 function getSudokuBackpack() {
     try {
         var saved = localStorage.getItem('explore_backpack');
         return saved ? JSON.parse(saved) : {};
     } catch(e) { return {}; }
 }
-
 function saveSudokuBackpack(backpack) {
     localStorage.setItem('explore_backpack', JSON.stringify(backpack));
 }
-
 function addEggToBackpack(type) {
     var backpack = getSudokuBackpack();
     var key = type === 'hard' ? 'golden_egg' : 'egg';
@@ -78,7 +66,6 @@ function addEggToBackpack(type) {
     saveSudokuBackpack(backpack);
     return backpack[key];
 }
-
 function getEggCount(type) {
     var backpack = getSudokuBackpack();
     var key = type === 'hard' ? 'golden_egg' : 'egg';
@@ -86,7 +73,7 @@ function getEggCount(type) {
 }
 
 // ============================================================
-// 数独生成器
+// 数独生成器（含唯一解验证）
 // ============================================================
 
 function isValidSudoku(board, row, col, num) {
@@ -103,6 +90,51 @@ function isValidSudoku(board, row, col, num) {
     }
     return true;
 }
+
+// ===== 数独求解器（返回解的个数或解列表） =====
+function solveSudoku(board, countOnly) {
+    var count = 0;
+    var solutions = [];
+
+    function solve(board) {
+        if (count >= 2) return true; // 提前终止，只需知道是否多解
+        var found = false;
+        for (var row = 0; row < 9; row++) {
+            for (var col = 0; col < 9; col++) {
+                if (board[row][col] === 0) {
+                    for (var num = 1; num <= 9; num++) {
+                        if (isValidSudoku(board, row, col, num)) {
+                            board[row][col] = num;
+                            if (solve(board)) {
+                                if (!countOnly) {
+                                    // 如果是获取所有解，这里不返回
+                                }
+                            }
+                            board[row][col] = 0;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+        // 找到一个解
+        count++;
+        if (!countOnly) {
+            var solution = board.map(function(row) { return row.slice(); });
+            solutions.push(solution);
+        }
+        return true;
+    }
+
+    var boardCopy = board.map(function(row) { return row.slice(); });
+    solve(boardCopy);
+    if (countOnly) {
+        return count;
+    } else {
+        return solutions;
+    }
+}
+// ==========================================================
 
 function generateSudokuSolution() {
     var board = [];
@@ -143,51 +175,79 @@ function generateSudokuSolution() {
 }
 
 function generateSudokuPuzzle(solution, emptyCount) {
-    var puzzle = solution.map(function(row) {
-        return row.slice();
-    });
-    
+    var puzzle = solution.map(function(row) { return row.slice(); });
     var positions = [];
     for (var r = 0; r < 9; r++) {
         for (var c = 0; c < 9; c++) {
             positions.push([r, c]);
         }
     }
+    // 随机打乱
     for (var i = positions.length - 1; i > 0; i--) {
         var j = Math.floor(Math.random() * (i + 1));
         var temp = positions[i];
         positions[i] = positions[j];
         positions[j] = temp;
     }
-    
+
     var removed = 0;
     for (var p = 0; p < positions.length && removed < emptyCount; p++) {
         var r = positions[p][0];
         var c = positions[p][1];
-        puzzle[r][c] = -1;
-        removed++;
+        var backup = puzzle[r][c];
+        puzzle[r][c] = -1; // 空格
+
+        // 检查当前谜题是否唯一解
+        var boardForCheck = puzzle.map(function(row) {
+            return row.map(function(val) { return val === -1 ? 0 : val; });
+        });
+        var solutionsCount = solveSudoku(boardForCheck, true);
+        if (solutionsCount === 1) {
+            removed++;
+        } else {
+            puzzle[r][c] = backup;
+        }
     }
-    
     return puzzle;
 }
 
 function generateSudokuGame(mode) {
     var config = SUDOKU_CONFIG[mode] || SUDOKU_CONFIG.medium;
-    var emptyCount = config.emptyMin + Math.floor(Math.random() * (config.emptyMax - config.emptyMin + 1));
+    var emptyCountTarget = config.emptyMin + Math.floor(Math.random() * (config.emptyMax - config.emptyMin + 1));
     
+    // 尝试生成唯一解谜题（最多尝试100次）
+    for (var attempt = 0; attempt < 100; attempt++) {
+        var solution = generateSudokuSolution();
+        var puzzle = generateSudokuPuzzle(solution, emptyCountTarget);
+        // 检查空格数是否满足要求（保证至少挖了指定数量，有可能因为唯一性限制少挖了几个）
+        var emptyCount = 0;
+        for (var r = 0; r < 9; r++) {
+            for (var c = 0; c < 9; c++) {
+                if (puzzle[r][c] === -1) emptyCount++;
+            }
+        }
+        // 如果空格数太少，重新生成
+        if (emptyCount < config.emptyMin) continue;
+        return {
+            board: puzzle.map(function(row) { return row.slice(); }),
+            solution: solution,
+            puzzle: puzzle
+        };
+    }
+    // 极少数情况，如果100次都失败，使用常规生成（可能会多解，但概率很低）
+    console.warn('⚠️ 唯一解生成失败，使用常规生成（可能多解）');
     var solution = generateSudokuSolution();
-    var puzzle = generateSudokuPuzzle(solution, emptyCount);
-    
-    var board = puzzle.map(function(row) {
-        return row.slice();
-    });
-    
+    var puzzle = generateSudokuPuzzle(solution, emptyCountTarget);
     return {
-        board: board,
+        board: puzzle.map(function(row) { return row.slice(); }),
         solution: solution,
         puzzle: puzzle
     };
 }
+
+// ============================================================
+// 原有交互函数（保持不变）
+// ============================================================
 
 function checkSudokuComplete(board, solution) {
     for (var r = 0; r < 9; r++) {
@@ -236,7 +296,7 @@ function getHintCell(board, solution) {
 }
 
 // ============================================================
-// 渲染数独游戏UI
+// 渲染游戏
 // ============================================================
 function renderSudokuGame() {
     var container = document.getElementById('sudokuContainer');
@@ -361,7 +421,7 @@ function updateSudokuStats() {
 }
 
 // ============================================================
-// 用户交互
+// 交互事件
 // ============================================================
 
 function onSudokuCellClick(row, col) {
@@ -390,9 +450,7 @@ function onSudokuNumberInput(num) {
     sudokuState.board[row][col] = num;
     sudokuState._submitted = false;
     sudokuState._errors = null;
-    // ===== 添加音效 =====
     if (typeof soundNumberInput === 'function') soundNumberInput();
-    // ===== 音效添加结束 =====
     renderSudokuGame();
 }
 
@@ -487,9 +545,7 @@ function onSudokuSubmit() {
     if (errors.length === 0) {
         sudokuState.isComplete = true;
         var reward = giveSudokuReward(sudokuState.mode);
-        // ===== 添加音效 =====
         if (typeof soundSuccess === 'function') soundSuccess();
-        // ===== 音效添加结束 =====
         if (reward) {
             var config = SUDOKU_CONFIG[sudokuState.mode];
             showSudokuMessage('🎉 完成！获得 ' + config.rewardName + '！已存入背包 🎒', 'success');
@@ -505,37 +561,27 @@ function onSudokuSubmit() {
         }
     } else {
         showSudokuMessage('❌ 有 ' + errors.length + ' 个数字不正确，请检查红色标记的位置', 'error');
-        // ===== 添加音效 =====
         if (typeof soundError === 'function') soundError();
-        // ===== 音效添加结束 =====
         renderSudokuGame();
     }
 }
 
 function giveSudokuReward(mode) {
     var config = SUDOKU_CONFIG[mode];
-    var itemKey = config.reward;
-    var itemName = config.rewardName;
-
     var count = addEggToBackpack(mode);
-
-    // ===== 添加声望 =====
     if (mode === 'medium' && typeof window.addReputation === 'function') {
         window.addReputation(5, '完成煎蛋数独（中等）');
     } else if (mode === 'hard' && typeof window.addReputation === 'function') {
         window.addReputation(8, '完成煎蛋数独（困难）');
     }
-    // ===== 声望添加结束 =====
-
     if (typeof showMessage === 'function') {
-        showMessage('🎉 恭喜你获得 ' + itemName + '！已存入探险背包 🎒', false);
+        showMessage('🎉 恭喜你获得 ' + config.rewardName + '！已存入探险背包 🎒', false);
     }
     return true;
 }
 
 function onSudokuReset() {
     if (!sudokuState.isGameActive) return;
-    // 重置奖励状态（新游戏可以重新获得奖励）
     sudokuState.rewardClaimed[sudokuState.mode] = false;
     var game = generateSudokuGame(sudokuState.mode);
     sudokuState.board = game.board;
@@ -571,15 +617,11 @@ function closeSudokuGame() {
     }
 }
 
-// ============================================================
-// 打开数独游戏（由 explore.js 调用）
-// ============================================================
 function openSudokuGame(mode) {
     if (!mode || (mode !== 'medium' && mode !== 'hard')) {
         mode = 'medium';
     }
     
-    // 重置奖励状态（每次新游戏都可以获得奖励）
     sudokuState.rewardClaimed = {
         medium: false,
         hard: false
@@ -644,7 +686,7 @@ function onSudokuKeydown(e) {
 // 初始化
 // ============================================================
 function initSudoku() {
-    console.log('🧩 数独游戏已加载');
+    console.log('🧩 数独游戏已加载（唯一解生成）');
 }
 
 // 暴露全局接口
@@ -671,4 +713,4 @@ if (document.readyState === 'loading') {
     setTimeout(initSudoku, 100);
 }
 
-console.log('🧩 数独游戏模块加载完成');
+console.log('🧩 数独游戏模块加载完成（唯一解生成）');

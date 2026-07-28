@@ -4,6 +4,9 @@ let currentSellProduct = null;
 let currentQuantity = 1;
 let isSelling = false;  // 出售锁，防止重复点击
 
+// ============================================
+// 渲染快速出售
+// ============================================
 function renderQuickSell() {
     const quickSellGrid = document.getElementById('quickSellGrid');
     if (!quickSellGrid) return;
@@ -51,6 +54,9 @@ function renderQuickSell() {
     }
 }
 
+// ============================================
+// 打开出售模态框
+// ============================================
 function openSellModal(productId, productName, price, maxStock, isHidden = false) {
     if (maxStock <= 0) {
         showMessage(`${productName} 库存不足，无法出售`, true);
@@ -63,6 +69,9 @@ function openSellModal(productId, productName, price, maxStock, isHidden = false
     if (sellModal) sellModal.classList.remove('hidden');
 }
 
+// ============================================
+// 更新出售模态框显示
+// ============================================
 function updateSellModalDisplay() {
     if (!currentSellProduct) return;
     const sellModalTitle = document.getElementById('sellModalTitle');
@@ -84,6 +93,9 @@ function updateSellModalDisplay() {
     if (incBtn) incBtn.disabled = (currentQuantity >= currentSellProduct.maxStock);
 }
 
+// ============================================
+// 修改数量
+// ============================================
 function changeQuantity(delta) {
     if (!currentSellProduct) return;
     let newQty = currentQuantity + delta;
@@ -95,6 +107,7 @@ function changeQuantity(delta) {
     }
 }
 
+// 绑定数量输入框事件
 const sellQuantityInput = document.getElementById('sellQuantityInput');
 if (sellQuantityInput) {
     sellQuantityInput.addEventListener('input', function(e) {
@@ -115,10 +128,9 @@ if (sellQuantityInput) {
 }
 
 // ============================================
-// 确认出售（添加防重复锁 + 经验加成）
+// 确认出售
 // ============================================
 async function confirmSell() {
-    // 防止重复点击
     if (isSelling) {
         showMessage('正在处理中，请稍候...', true);
         return;
@@ -143,7 +155,6 @@ async function confirmSell() {
             qty = hiddenInventory[productId] || 0;
         }
         
-        // 二次校验库存
         if (qty < amount) {
             showMessage(`${productName} 库存不足，当前库存: ${qty}`, true);
             const sellModal = document.getElementById('sellModal');
@@ -152,20 +163,17 @@ async function confirmSell() {
             return;
         }
         
-        // 计算收益
         const revenue = price * amount;
         gold += revenue;
         totalEarned += revenue;
         totalSold += amount;
         
-        // 扣减库存
         if (!currentSellProduct.isHidden) {
             inventory[productId] -= amount;
         } else {
             hiddenInventory[productId] -= amount;
         }
         
-        // 计算经验（应用经验加成）
         let expGain = getSellExp(revenue);
         const boost = getActualExpBoost();
         const finalExp = Math.floor(expGain * boost);
@@ -174,10 +182,9 @@ async function confirmSell() {
         addExp(finalExp);
         refreshUI();
 
-	if (typeof soundCoin === 'function') soundCoin();
-    if (typeof soundSuccess === 'function') soundSuccess();
+        if (typeof soundCoin === 'function') soundCoin();
+        if (typeof soundSuccess === 'function') soundSuccess();
         
-        // 关闭模态框
         const sellModal = document.getElementById('sellModal');
         if (sellModal) sellModal.classList.add('hidden');
         
@@ -191,43 +198,81 @@ async function confirmSell() {
     }
 }
 
+// ============================================
+// 取消出售
+// ============================================
 function cancelSell() {
     const sellModal = document.getElementById('sellModal');
     if (sellModal) sellModal.classList.add('hidden');
 }
 
 // ============================================
-// 全部卖出（添加防重复锁 + 经验加成）
+// 全部卖出（含自定义模态框 + 音效）
+// 无库存时弹出“仓库空空”提示，有库存时弹出确认框
 // ============================================
 async function sellAllProducts() {
+    // 1. 防重复点击
     if (isSelling) {
         showMessage('正在处理中，请稍候...', true);
+        if (typeof soundError === 'function') soundError();
         return;
     }
-    
-    isSelling = true;
-    
-    try {
-        let totalRevenue = 0, totalCount = 0;
-        
-        // 先检查是否有产品可卖
-        let hasStock = false;
-        for (const [id, prod] of Object.entries(PRODUCTS)) {
-            if ((inventory[id] || 0) > 0) { hasStock = true; break; }
+
+    // 2. 检查是否有库存
+    let hasStock = false;
+
+    // 检查普通产品
+    for (const [id, prod] of Object.entries(PRODUCTS)) {
+        if ((inventory[id] || 0) > 0) {
+            hasStock = true;
+            break;
         }
-        if (!hasStock) {
-            for (let recipe of HIDDEN_RECIPES) {
-                if ((hiddenInventory[recipe.id] || 0) > 0) { hasStock = true; break; }
+    }
+
+    // 检查隐藏产品
+    if (!hasStock) {
+        for (let recipe of HIDDEN_RECIPES) {
+            if ((hiddenInventory[recipe.id] || 0) > 0) {
+                hasStock = true;
+                break;
             }
         }
-        
-        if (!hasStock) {
-            showMessage("仓库空空，没有可卖的产品", true);
-            isSelling = false;
-            return;
-        }
-        
-        // 计算普通产品
+    }
+
+    // 3. 无库存 → 弹窗提示（不显示取消按钮）
+    if (!hasStock) {
+        await showConfirmModal({
+            icon: '📦',
+            title: '仓库空空',
+            message: '当前没有任何产品可以出售！\n先去工坊制作一些产品吧。',
+            okText: '知道了',
+            showCancel: false,
+            okColor: 'linear-gradient(135deg,#6f9e3f,#4c7a2a)'
+        });
+        if (typeof soundError === 'function') soundError();
+        return;
+    }
+
+    // 4. 有库存 → 弹出确认框（有确定和取消）
+    var confirmed = await showConfirmModal({
+        icon: '📦',
+        title: '全部卖出',
+        message: '确定要卖出所有产品吗？\n此操作不可撤销！',
+        okText: '全部卖出',
+        cancelText: '取消',
+        okColor: 'linear-gradient(135deg,#e7a05e,#c98f5e)'
+    });
+
+    if (!confirmed) {
+        if (typeof soundCancel === 'function') soundCancel();
+        return;
+    }
+
+    // 5. 执行卖出
+    try {
+        let totalRevenue = 0, totalCount = 0;
+
+        // 普通产品
         for (const [id, prod] of Object.entries(PRODUCTS)) {
             const qty = inventory[id] || 0;
             if (qty > 0) {
@@ -239,8 +284,8 @@ async function sellAllProducts() {
                 inventory[id] = 0;
             }
         }
-        
-        // 计算隐藏产品
+
+        // 隐藏产品
         for (let recipe of HIDDEN_RECIPES) {
             const qty = hiddenInventory[recipe.id] || 0;
             if (qty > 0) {
@@ -252,32 +297,33 @@ async function sellAllProducts() {
                 hiddenInventory[recipe.id] = 0;
             }
         }
-        
+
         gold += totalRevenue;
-        
+
         // 计算经验（应用经验加成）
         let expGain = getSellExp(totalRevenue);
         const boost = getActualExpBoost();
         const finalExp = Math.floor(expGain * boost);
-        
+
         showMessage(`🐧 嫑嫑全部卖出！共 ${totalCount} 件，获得 ${totalRevenue} 金币（经验 +${finalExp}）`, false);
         addExp(finalExp);
         refreshUI();
 
-	if (typeof soundCoin === 'function') soundCoin();
-    if (typeof soundSuccess === 'function') soundSuccess();
+        if (typeof soundCoin === 'function') soundCoin();
+        if (typeof soundSuccess === 'function') soundSuccess();
         if (autoSaveEnabled) saveGame();
-        
+
     } catch (err) {
         console.error('全部卖出失败:', err);
         showMessage('操作失败，请重试', true);
+        if (typeof soundError === 'function') soundError();
     } finally {
         isSelling = false;
     }
 }
 
 // ============================================
-// 导出全局函数
+// 导出全局接口
 // ============================================
 window.renderQuickSell = renderQuickSell;
 window.openSellModal = openSellModal;

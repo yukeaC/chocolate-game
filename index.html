@@ -665,6 +665,109 @@
     </div>
 </div>
 
+<!-- ===== 自定义确认模态框 ===== -->
+<div id="customConfirmModal" class="modal hidden" style="display:none;">
+    <div class="custom-confirm-content" style="
+        max-width:400px;
+        width:90%;
+        background:#faf0e0;
+        background-image:radial-gradient(ellipse at 30% 20%, #faf0e0 0%, #f5e6c8 60%, #e8d5b8 100%);
+        border-radius:48px;
+        padding:28px 32px 24px;
+        box-shadow:0 20px 60px rgba(60,40,20,0.3);
+        border:1px solid #dcc8b0;
+        text-align:center;
+        position:relative;
+        animation:confirmPopIn 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+    ">
+        <div style="font-size:3rem;margin-bottom:8px;" id="confirmIcon">⚠️</div>
+        <h3 style="margin:0 0 8px 0;color:#4a2a1a;font-family:'Georgia',serif;font-size:1.2rem;" id="confirmTitle">确认操作</h3>
+        <p style="margin:0 0 20px 0;color:#5a3a2a;font-size:0.95rem;line-height:1.5;" id="confirmMessage">确定要执行此操作吗？此操作不可撤销。</p>
+        <div style="display:flex;gap:12px;justify-content:center;">
+            <button id="confirmCancelBtn" style="
+                padding:8px 28px;
+                border:none;
+                border-radius:30px;
+                font-size:0.9rem;
+                font-weight:bold;
+                cursor:pointer;
+                transition:0.15s;
+                background:#d4c8b8;
+                color:#5a3a2a;
+            ">取消</button>
+            <button id="confirmOkBtn" style="
+                padding:8px 28px;
+                border:none;
+                border-radius:30px;
+                font-size:0.9rem;
+                font-weight:bold;
+                cursor:pointer;
+                transition:0.15s;
+                background:linear-gradient(135deg,#d9534f,#c0392b);
+                color:white;
+                box-shadow:0 2px 8px rgba(217,83,79,0.2);
+            ">确定</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes confirmPopIn {
+        0% { transform: scale(0.85); opacity: 0; }
+        80% { transform: scale(1.02); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    #customConfirmModal {
+        position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        background:rgba(0,0,0,0.5);
+        backdrop-filter:blur(4px);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        z-index:10000;
+    }
+    #customConfirmModal.hidden {
+        display:none !important;
+    }
+</style>
+
+<!-- ===== 自定义提示模态框（单按钮） ===== -->
+<div id="customAlertModal" class="modal hidden" style="display:none;">
+    <div class="custom-alert-content" style="
+        max-width:380px;
+        width:90%;
+        background:#faf0e0;
+        background-image:radial-gradient(ellipse at 30% 20%, #faf0e0 0%, #f5e6c8 60%, #e8d5b8 100%);
+        border-radius:48px;
+        padding:28px 32px 24px;
+        box-shadow:0 20px 60px rgba(60,40,20,0.3);
+        border:1px solid #dcc8b0;
+        text-align:center;
+        position:relative;
+        animation:confirmPopIn 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+    ">
+        <div style="font-size:3rem;margin-bottom:8px;" id="alertIcon">📦</div>
+        <h3 style="margin:0 0 8px 0;color:#4a2a1a;font-family:'Georgia',serif;font-size:1.2rem;" id="alertTitle">提示</h3>
+        <p style="margin:0 0 20px 0;color:#5a3a2a;font-size:0.95rem;line-height:1.5;" id="alertMessage">消息内容</p>
+        <button id="alertOkBtn" style="
+            padding:8px 40px;
+            border:none;
+            border-radius:30px;
+            font-size:0.9rem;
+            font-weight:bold;
+            cursor:pointer;
+            transition:0.15s;
+            background:linear-gradient(135deg,#c98f5e,#b07a4a);
+            color:white;
+            box-shadow:0 2px 8px rgba(201,143,94,0.2);
+        ">确定</button>
+    </div>
+</div>
+
 <canvas id="fireworksCanvas"></canvas>
 
 <!-- ===== 脚本文件（加载顺序很重要！） ===== -->

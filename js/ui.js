@@ -586,6 +586,153 @@ function cancelEditNickname() {
 }
 window.cancelEditNickname = cancelEditNickname;
 
+function showConfirmModal(options) {
+    return new Promise(function(resolve) {
+        var modal = document.getElementById('customConfirmModal');
+        var icon = document.getElementById('confirmIcon');
+        var title = document.getElementById('confirmTitle');
+        var message = document.getElementById('confirmMessage');
+        var okBtn = document.getElementById('confirmOkBtn');
+        var cancelBtn = document.getElementById('confirmCancelBtn');
+
+        if (!modal) {
+            console.warn('⚠️ 确认模态框不存在，使用原生 confirm');
+            resolve(confirm(options.message || '确定执行此操作吗？'));
+            return;
+        }
+
+        // 设置内容
+        icon.textContent = options.icon || '⚠️';
+        title.textContent = options.title || '确认操作';
+        message.textContent = options.message || '确定要执行此操作吗？此操作不可撤销。';
+        okBtn.textContent = options.okText || '确定';
+        okBtn.style.background = options.okColor || 'linear-gradient(135deg,#d9534f,#c0392b)';
+
+        // 控制取消按钮显示
+        var showCancel = options.showCancel !== undefined ? options.showCancel : true;
+        if (showCancel) {
+            cancelBtn.style.display = 'inline-block';
+            cancelBtn.textContent = options.cancelText || '取消';
+        } else {
+            cancelBtn.style.display = 'none';
+        }
+
+        // 移除旧监听
+        var newOkBtn = okBtn.cloneNode(true);
+        var newCancelBtn = cancelBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        function close(result) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            document.removeEventListener('keydown', keyHandler);
+            resolve(result);
+        }
+
+        newOkBtn.addEventListener('click', function() { close(true); });
+        newCancelBtn.addEventListener('click', function() { close(false); });
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) close(false);
+        });
+
+        function keyHandler(e) {
+            if (e.key === 'Enter') close(true);
+            else if (e.key === 'Escape') close(false);
+        }
+        document.addEventListener('keydown', keyHandler);
+    });
+}
+window.showConfirmModal = showConfirmModal;
+
+// ============================================
+// 自定义确认模态框（Promise 风格）
+// ============================================
+
+function showConfirmModal(options) {
+    return new Promise(function(resolve) {
+        var modal = document.getElementById('customConfirmModal');
+        var icon = document.getElementById('confirmIcon');
+        var title = document.getElementById('confirmTitle');
+        var message = document.getElementById('confirmMessage');
+        var okBtn = document.getElementById('confirmOkBtn');
+        var cancelBtn = document.getElementById('confirmCancelBtn');
+
+        if (!modal) {
+            console.warn('⚠️ 确认模态框不存在，使用原生 confirm');
+            resolve(confirm(options.message || '确定执行此操作吗？'));
+            return;
+        }
+
+        // 设置内容
+        icon.textContent = options.icon || '⚠️';
+        title.textContent = options.title || '确认操作';
+        message.textContent = options.message || '确定要执行此操作吗？此操作不可撤销。';
+        
+        // 设置按钮颜色
+        okBtn.style.background = options.okColor || 'linear-gradient(135deg,#d9534f,#c0392b)';
+        okBtn.textContent = options.okText || '确定';
+        cancelBtn.textContent = options.cancelText || '取消';
+
+        // 移除旧的事件监听（避免重复绑定）
+        var newOkBtn = okBtn.cloneNode(true);
+        var newCancelBtn = cancelBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        // 显示模态框
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        // 确定按钮
+        newOkBtn.addEventListener('click', function() {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            resolve(true);
+        });
+
+        // 取消按钮
+        newCancelBtn.addEventListener('click', function() {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            resolve(false);
+        });
+
+        // 点击背景关闭（只关闭不执行）
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                resolve(false);
+            }
+        });
+
+        // 键盘快捷键：Enter = 确定，Escape = 取消
+        function keyHandler(e) {
+            if (e.key === 'Enter') {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                document.removeEventListener('keydown', keyHandler);
+                resolve(true);
+            } else if (e.key === 'Escape') {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                document.removeEventListener('keydown', keyHandler);
+                resolve(false);
+            }
+        }
+        document.addEventListener('keydown', keyHandler);
+    });
+}
+
+window.showConfirmModal = showConfirmModal;
+
+
+
 // ============================================
 // 升级动画
 // ============================================

@@ -18,7 +18,7 @@ var ACHIEVEMENT_CATEGORIES = {
 };
 
 // ============================================
-// 成就定义
+// 成就定义（所有小游戏成就使用 window.minigameStats）
 // ============================================
 
 var ACHIEVEMENT_DEFS = {
@@ -219,35 +219,47 @@ var ACHIEVEMENT_DEFS = {
         reward: { gold: 200, beans: 100, exp: 80, energy_box: 1 }
     },
 
-    // ---------- 小游戏类 ----------
+    // ============================================================
+    // 🎮 小游戏类成就
+    // ============================================================
     minigame_memory: {
         id: 'minigame_memory', category: 'minigame', name: '记忆大师', icon: '🧠',
         description: '30秒内完成翻牌配对',
-        check: function() { return (typeof minigameBestTime !== 'undefined' && minigameBestTime <= 30 && minigameBestTime > 0); },
+        check: function() {
+            return window.minigameStats && window.minigameStats.bestTime > 0 && window.minigameStats.bestTime <= 30;
+        },
         reward: { gold: 40, beans: 20, exp: 20 }
     },
     minigame_10: {
         id: 'minigame_10', category: 'minigame', name: '翻牌高手', icon: '🃏',
         description: '完成 10 次翻牌配对',
-        check: function() { return (typeof minigameTotalPlays !== 'undefined' && minigameTotalPlays >= 10); },
+        check: function() {
+            return window.minigameStats && window.minigameStats.totalPlays >= 10;
+        },
         reward: { gold: 80, beans: 50, exp: 40, lucky_box: 1 }
     },
     minigame_50: {
         id: 'minigame_50', category: 'minigame', name: '翻牌王者', icon: '👑',
         description: '完成 50 次翻牌配对',
-        check: function() { return (typeof minigameTotalPlays !== 'undefined' && minigameTotalPlays >= 50); },
+        check: function() {
+            return window.minigameStats && window.minigameStats.totalPlays >= 50;
+        },
         reward: { gold: 150, beans: 80, exp: 60, energy_box: 1 }
     },
     minigame_100: {
         id: 'minigame_100', category: 'minigame', name: '翻牌之神', icon: '🌟',
         description: '完成 100 次翻牌配对',
-        check: function() { return (typeof minigameTotalPlays !== 'undefined' && minigameTotalPlays >= 100); },
+        check: function() {
+            return window.minigameStats && window.minigameStats.totalPlays >= 100;
+        },
         reward: { gold: 300, beans: 150, exp: 100, energy_box: 2, lucky_box: 2 }
     },
     minigame_lightning: {
         id: 'minigame_lightning', category: 'minigame', name: '闪电手', icon: '⚡',
         description: '20秒内完成翻牌配对',
-        check: function() { return (typeof minigameBestTime !== 'undefined' && minigameBestTime <= 20 && minigameBestTime > 0); },
+        check: function() {
+            return window.minigameStats && window.minigameStats.bestTime > 0 && window.minigameStats.bestTime <= 20;
+        },
         reward: { gold: 60, beans: 30, exp: 25, speed_up: 1 }
     },
 
@@ -263,7 +275,9 @@ var ACHIEVEMENT_DEFS = {
         id: 'hidden_speed_demon', category: 'minigame', name: '速度与激情', icon: '🏎️',
         description: '10秒内完成翻牌配对',
         isHidden: true,
-        check: function() { return (typeof minigameBestTime !== 'undefined' && minigameBestTime <= 10 && minigameBestTime > 0); },
+        check: function() {
+            return window.minigameStats && window.minigameStats.bestTime > 0 && window.minigameStats.bestTime <= 10;
+        },
         reward: { gold: 80, exp: 50, speed_up: 3 }
     },
     hidden_bean_king: {
@@ -782,7 +796,14 @@ var achievementState = {
     hiddenUnlocked: []
 };
 
-var minigameStats = { totalPlays: 0, bestTime: 0, totalReward: 0 };
+// ===== 统一使用 window.minigameStats 作为唯一数据源 =====
+if (typeof window.minigameStats === 'undefined') {
+    window.minigameStats = { totalPlays: 0, bestTime: 0, totalReward: 0 };
+}
+// 局部引用（保持兼容）
+var minigameStats = window.minigameStats;
+// ======================================================
+
 var luckyBoxStats = { maxGold: 0 };
 var exchangeStats = { totalExchanges: 0 };
 var gameTimeStats = { totalSeconds: 0 };
@@ -791,38 +812,73 @@ var currentCategory = 'production';
 var notificationTimer = null;
 
 // ============================================
-// 数据持久化
+// 数据持久化（双向同步）
 // ============================================
 
 function loadAchievementData() {
     try {
+        // 1. 从 achievement_data 读取主数据
         var saved = localStorage.getItem('achievement_data');
         if (saved) {
             var data = JSON.parse(saved);
             achievementState.unlocked = data.unlocked || [];
             achievementState.claimed = data.claimed || [];
             achievementState.hiddenUnlocked = data.hiddenUnlocked || [];
-            minigameStats = data.minigameStats || { totalPlays: 0, bestTime: 0, totalReward: 0 };
+            if (data.minigameStats) {
+                window.minigameStats.totalPlays = data.minigameStats.totalPlays || 0;
+                window.minigameStats.bestTime = data.minigameStats.bestTime || 0;
+                window.minigameStats.totalReward = data.minigameStats.totalReward || 0;
+            }
             luckyBoxStats = data.luckyBoxStats || { maxGold: 0 };
             exchangeStats = data.exchangeStats || { totalExchanges: 0 };
             gameTimeStats = data.gameTimeStats || { totalSeconds: 0 };
         }
-    } catch(e) { console.warn('加载成就数据失败:', e); }
+
+        // 2. 从 minigame_stats 读取（覆盖更新，因为 cardmatch.html 保存到这里）
+        var miniSaved = localStorage.getItem('minigame_stats');
+        if (miniSaved) {
+            var miniData = JSON.parse(miniSaved);
+            if (miniData) {
+                window.minigameStats.totalPlays = miniData.totalPlays || 0;
+                window.minigameStats.bestTime = miniData.bestTime || 0;
+                window.minigameStats.totalReward = miniData.totalReward || 0;
+                console.log('📊 从 minigame_stats 加载数据:', window.minigameStats);
+            }
+        }
+    } catch(e) {
+        console.warn('加载成就数据失败:', e);
+    }
 }
 
 function saveAchievementData() {
     try {
+        // 1. 保存到 achievement_data（主数据）
         var data = {
             unlocked: achievementState.unlocked,
             claimed: achievementState.claimed,
             hiddenUnlocked: achievementState.hiddenUnlocked,
-            minigameStats: minigameStats,
+            minigameStats: {
+                totalPlays: window.minigameStats.totalPlays || 0,
+                bestTime: window.minigameStats.bestTime || 0,
+                totalReward: window.minigameStats.totalReward || 0
+            },
             luckyBoxStats: luckyBoxStats,
             exchangeStats: exchangeStats,
             gameTimeStats: gameTimeStats
         };
         localStorage.setItem('achievement_data', JSON.stringify(data));
-    } catch(e) { console.warn('保存成就数据失败:', e); }
+
+        // 2. 同步保存到 minigame_stats（供 cardmatch.html 读取）
+        var miniData = {
+            totalPlays: window.minigameStats.totalPlays || 0,
+            bestTime: window.minigameStats.bestTime || 0,
+            totalReward: window.minigameStats.totalReward || 0
+        };
+        localStorage.setItem('minigame_stats', JSON.stringify(miniData));
+        console.log('💾 数据已保存，minigameStats:', window.minigameStats);
+    } catch(e) {
+        console.warn('保存成就数据失败:', e);
+    }
 }
 
 // ============================================
@@ -917,9 +973,7 @@ function claimAchievementReward(achievementId) {
         if (reward.exp) rewardText += '⭐+' + reward.exp + ' ';
         showMessage('🎁 领取成就奖励: ' + def.name + ' ' + rewardText, false);
     }
-    // ===== 添加音效 =====
     if (typeof soundItemGet === 'function') soundItemGet();
-    // ===== 音效添加结束 =====
     return true;
 }
 
@@ -1013,13 +1067,9 @@ function renderCategoryTabs() {
 
 function showAchievementNotification(achievementIds) {
     if (!achievementIds || achievementIds.length === 0) return;
-
-        // ===== 添加音效 =====
     if (typeof soundAchievement === 'function') {
         setTimeout(function() { soundAchievement(); }, 200);
     }
-    // ===== 音效添加结束 =====
-
     if (notificationTimer) {
         clearTimeout(notificationTimer);
         notificationTimer = null;
@@ -1090,12 +1140,31 @@ function showAchievementNotification(achievementIds) {
 // ============================================
 
 function openAchievementModal() {
+    // ===== 强制从 minigame_stats 加载最新数据 =====
+    try {
+        var miniSaved = localStorage.getItem('minigame_stats');
+        if (miniSaved) {
+            var miniData = JSON.parse(miniSaved);
+            if (miniData) {
+                window.minigameStats.totalPlays = miniData.totalPlays || 0;
+                window.minigameStats.bestTime = miniData.bestTime || 0;
+                window.minigameStats.totalReward = miniData.totalReward || 0;
+                console.log('📊 成就面板加载最新数据:', window.minigameStats);
+            }
+        }
+    } catch(e) {
+        console.warn('加载 minigame_stats 失败:', e);
+    }
+
+    // 然后再执行原有的加载逻辑（会同步到 achievement_data）
+    loadAchievementData();
+
     var modal = document.getElementById('achievementModal');
     if (modal) {
-        if (typeof loadAchievementData === 'function') loadAchievementData();
-        if (typeof renderCategoryTabs === 'function') renderCategoryTabs();
-        if (typeof renderAchievementList === 'function') renderAchievementList(currentCategory);
-        if (typeof updateAchievementStats === 'function') updateAchievementStats();
+        // 重新渲染成就列表（会触发 checkAchievements）
+        renderCategoryTabs();
+        renderAchievementList(currentCategory);
+        updateAchievementStats();
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
         document.body.classList.add('modal-open');
@@ -1181,7 +1250,7 @@ function switchAchievementCategory(category) {
 }
 
 // ============================================
-// 渲染成就列表（卡片网格版）
+// 渲染成就列表（含进度条修复）
 // ============================================
 
 function renderAchievementList(category) {
@@ -1235,7 +1304,9 @@ function renderAchievementList(category) {
         var def = item.def;
         var isUnlocked = item.isUnlocked;
         var isClaimed = item.isClaimed;
-        var progress = item.progress || 0;
+        var progress = item.progress;
+        // 如果进度为 null，设为 0
+        if (progress === null || progress === undefined) progress = 0;
 
         var card = document.createElement('div');
         card.className = 'achievement-card';
@@ -1265,16 +1336,20 @@ function renderAchievementList(category) {
 
         var hiddenBadge = def.isHidden ? '<span class="hidden-badge">🌟</span>' : '';
 
+        // 修复：只有未解锁（未完成）时才显示进度条，且进度值有效
+        var showProgress = !isClaimed && !isUnlocked;
+        var progressPercent = showProgress ? Math.min(100, Math.round(progress)) : 0;
+
         card.innerHTML = `
             <div class="card-icon">${def.icon}</div>
             <div class="card-name">${def.name} ${hiddenBadge}</div>
             <div class="card-desc">${def.description}</div>
             ${rewardText ? `<div class="card-reward">🎁 ${rewardText}</div>` : ''}
-            ${!isClaimed && !isUnlocked ? `
+            ${showProgress ? `
                 <div class="card-progress-track">
-                    <div class="card-progress-fill" style="width:${Math.min(100, progress)}%;"></div>
+                    <div class="card-progress-fill" style="width:${progressPercent}%;"></div>
                 </div>
-                <div class="card-progress-text">${Math.min(100, progress)}%</div>
+                <div class="card-progress-text">${progressPercent}%</div>
             ` : ''}
             <div class="card-status ${statusClass}">${statusText}</div>
             ${isUnlocked && !isClaimed ? `
@@ -1297,33 +1372,369 @@ function renderAchievementList(category) {
 }
 
 // ============================================
-// 进度计算
+// 进度计算（完整版 - 覆盖所有成就）
 // ============================================
 
 function getAchievementProgress(achievementId) {
     var def = ACHIEVEMENT_DEFS[achievementId];
     if (!def) return null;
-    if (achievementState.unlocked.indexOf(achievementId) !== -1 ||
-        achievementState.claimed.indexOf(achievementId) !== -1) return 100;
 
-    switch(achievementId) {
-        case 'produce_10': return Math.min(100, Math.round((totalProduced / 10) * 100));
-        case 'produce_50': return Math.min(100, Math.round((totalProduced / 50) * 100));
-        case 'produce_100': return Math.min(100, Math.round((totalProduced / 100) * 100));
-        case 'produce_500': return Math.min(100, Math.round((totalProduced / 500) * 100));
-        case 'sell_10': return Math.min(100, Math.round((totalSold / 10) * 100));
-        case 'sell_50': return Math.min(100, Math.round((totalSold / 50) * 100));
-        case 'sell_100': return Math.min(100, Math.round((totalSold / 100) * 100));
-        case 'sell_500': return Math.min(100, Math.round((totalSold / 500) * 100));
-        case 'sell_1000': return Math.min(100, Math.round((totalSold / 1000) * 100));
-        case 'sell_5000': return Math.min(100, Math.round((totalSold / 5000) * 100));
-        case 'gold_100': return Math.min(100, Math.round((gold / 100) * 100));
-        case 'gold_1000': return Math.min(100, Math.round((gold / 1000) * 100));
-        case 'gold_10000': return Math.min(100, Math.round((gold / 10000) * 100));
-        case 'gold_50000': return Math.min(100, Math.round((gold / 50000) * 100));
-        case 'gold_100000': return Math.min(100, Math.round((gold / 100000) * 100));
-        default: return null;
+    // 如果已经解锁或已领取，返回 100%
+    if (achievementState.unlocked.indexOf(achievementId) !== -1 ||
+        achievementState.claimed.indexOf(achievementId) !== -1) {
+        return 100;
     }
+
+    // ---- 生产类 ----
+    if (achievementId === 'produce_10') {
+        return Math.min(100, Math.round((totalProduced / 10) * 100));
+    }
+    if (achievementId === 'produce_50') {
+        return Math.min(100, Math.round((totalProduced / 50) * 100));
+    }
+    if (achievementId === 'produce_100') {
+        return Math.min(100, Math.round((totalProduced / 100) * 100));
+    }
+    if (achievementId === 'produce_500') {
+        return Math.min(100, Math.round((totalProduced / 500) * 100));
+    }
+
+    // ---- 销售类 ----
+    if (achievementId === 'sell_10') {
+        return Math.min(100, Math.round((totalSold / 10) * 100));
+    }
+    if (achievementId === 'sell_50') {
+        return Math.min(100, Math.round((totalSold / 50) * 100));
+    }
+    if (achievementId === 'sell_100') {
+        return Math.min(100, Math.round((totalSold / 100) * 100));
+    }
+    if (achievementId === 'sell_500') {
+        return Math.min(100, Math.round((totalSold / 500) * 100));
+    }
+    if (achievementId === 'sell_1000') {
+        return Math.min(100, Math.round((totalSold / 1000) * 100));
+    }
+    if (achievementId === 'sell_5000') {
+        return Math.min(100, Math.round((totalSold / 5000) * 100));
+    }
+
+    // ---- 财富类 ----
+    if (achievementId === 'gold_100') {
+        return Math.min(100, Math.round((gold / 100) * 100));
+    }
+    if (achievementId === 'gold_1000') {
+        return Math.min(100, Math.round((gold / 1000) * 100));
+    }
+    if (achievementId === 'gold_10000') {
+        return Math.min(100, Math.round((gold / 10000) * 100));
+    }
+    if (achievementId === 'gold_50000') {
+        return Math.min(100, Math.round((gold / 50000) * 100));
+    }
+    if (achievementId === 'gold_100000') {
+        return Math.min(100, Math.round((gold / 100000) * 100));
+    }
+
+    // ---- 等级类 ----
+    if (achievementId === 'level_5') {
+        return Math.min(100, Math.round((level / 5) * 100));
+    }
+    if (achievementId === 'level_10') {
+        return Math.min(100, Math.round((level / 10) * 100));
+    }
+    if (achievementId === 'level_20') {
+        return Math.min(100, Math.round((level / 20) * 100));
+    }
+
+    // ---- 升级类 ----
+    if (achievementId === 'upgrade_miao_5') {
+        return Math.min(100, Math.round((miaoBargainLevel / 5) * 100));
+    }
+    if (achievementId === 'upgrade_miao_10') {
+        return Math.min(100, Math.round((miaoBargainLevel / 10) * 100));
+    }
+    if (achievementId === 'upgrade_speed_5') {
+        return Math.min(100, Math.round((productionSpeedLevel / 5) * 100));
+    }
+    if (achievementId === 'upgrade_speed_10') {
+        return Math.min(100, Math.round((productionSpeedLevel / 10) * 100));
+    }
+    if (achievementId === 'upgrade_workaholic_5') {
+        return Math.min(100, Math.round((workaholicLevel / 5) * 100));
+    }
+    if (achievementId === 'upgrade_workaholic_10') {
+        return Math.min(100, Math.round((workaholicLevel / 10) * 100));
+    }
+
+    // ---- 特殊类 ----
+    if (achievementId === 'hidden_1') {
+        var count1 = 0;
+        for (var id in hiddenInventory) count1 += hiddenInventory[id] || 0;
+        return Math.min(100, Math.round((count1 / 1) * 100));
+    }
+    if (achievementId === 'hidden_10') {
+        var count10 = 0;
+        for (var id in hiddenInventory) count10 += hiddenInventory[id] || 0;
+        return Math.min(100, Math.round((count10 / 10) * 100));
+    }
+    if (achievementId === 'order_5') {
+        var ordersCompleted = (typeof totalOrdersCompleted !== 'undefined') ? totalOrdersCompleted : 0;
+        return Math.min(100, Math.round((ordersCompleted / 5) * 100));
+    }
+    if (achievementId === 'order_20') {
+        var ordersCompleted20 = (typeof totalOrdersCompleted !== 'undefined') ? totalOrdersCompleted : 0;
+        return Math.min(100, Math.round((ordersCompleted20 / 20) * 100));
+    }
+    if (achievementId === 'farm_all') {
+        var unlockedCount = 0;
+        if (typeof farmLands !== 'undefined' && farmLands) {
+            for (var i = 0; i < farmLands.length; i++) {
+                if (farmLands[i].unlocked) unlockedCount++;
+            }
+        }
+        return Math.min(100, Math.round((unlockedCount / 24) * 100));
+    }
+
+    // ---- 小游戏类 ----
+    if (achievementId === 'minigame_memory') {
+        // 记忆大师：30秒内完成 -> 用 bestTime 反向计算进度
+        var best = (window.minigameStats && window.minigameStats.bestTime) || 0;
+        if (best <= 0) return 0;
+        if (best <= 30) return 100;
+        // 30秒以上，按比例计算，60秒为0%
+        return Math.min(100, Math.max(0, Math.round(((60 - best) / 30) * 100)));
+    }
+    if (achievementId === 'minigame_10') {
+        var plays10 = (window.minigameStats && window.minigameStats.totalPlays) || 0;
+        return Math.min(100, Math.round((plays10 / 10) * 100));
+    }
+    if (achievementId === 'minigame_50') {
+        var plays50 = (window.minigameStats && window.minigameStats.totalPlays) || 0;
+        return Math.min(100, Math.round((plays50 / 50) * 100));
+    }
+    if (achievementId === 'minigame_100') {
+        var plays100 = (window.minigameStats && window.minigameStats.totalPlays) || 0;
+        return Math.min(100, Math.round((plays100 / 100) * 100));
+    }
+    if (achievementId === 'minigame_lightning') {
+        // 闪电手：20秒内完成
+        var bestL = (window.minigameStats && window.minigameStats.bestTime) || 0;
+        if (bestL <= 0) return 0;
+        if (bestL <= 20) return 100;
+        return Math.min(100, Math.max(0, Math.round(((40 - bestL) / 20) * 100)));
+    }
+
+    // ---- 隐藏成就（无进度概念，未完成则0%） ----
+    if (achievementId === 'hidden_one_night_rich' ||
+        achievementId === 'hidden_speed_demon' ||
+        achievementId === 'hidden_bean_king' ||
+        achievementId === 'hidden_signin_king' ||
+        achievementId === 'hidden_all_recipes' ||
+        achievementId === 'hidden_all_slots' ||
+        achievementId === 'hidden_exchange_master' ||
+        achievementId === 'hidden_grinder' ||
+        achievementId === 'treasure_collector_all') {
+        return 0;
+    }
+
+    // ---- 探险类 ----
+    if (achievementId === 'explore_3') {
+        var un3 = 0;
+        if (typeof window.getUnlockedCount === 'function') {
+            un3 = window.getUnlockedCount();
+        }
+        return Math.min(100, Math.round((un3 / 3) * 100));
+    }
+    if (achievementId === 'explore_5') {
+        var un5 = 0;
+        if (typeof window.getUnlockedCount === 'function') {
+            un5 = window.getUnlockedCount();
+        }
+        return Math.min(100, Math.round((un5 / 5) * 100));
+    }
+    if (achievementId === 'explore_8') {
+        var un8 = 0;
+        if (typeof window.getUnlockedCount === 'function') {
+            un8 = window.getUnlockedCount();
+        }
+        return Math.min(100, Math.round((un8 / 8) * 100));
+    }
+    if (achievementId === 'explore_10') {
+        var un10 = 0;
+        if (typeof window.getUnlockedCount === 'function') {
+            un10 = window.getUnlockedCount();
+        }
+        return Math.min(100, Math.round((un10 / 10) * 100));
+    }
+    if (achievementId === 'explore_story_all') {
+        var totalStories = 0, completedStories = 0;
+        if (typeof window.STORY_DATA !== 'undefined') {
+            for (var key in window.STORY_DATA) {
+                totalStories++;
+                if (window.STORY_DATA[key].completed) completedStories++;
+            }
+        }
+        if (totalStories === 0) return 0;
+        return Math.min(100, Math.round((completedStories / totalStories) * 100));
+    }
+
+    // ---- 钓鱼 ----
+    if (achievementId === 'fish_100') {
+        var f100 = (typeof window.totalFishCaught !== 'undefined') ? window.totalFishCaught : 0;
+        return Math.min(100, Math.round((f100 / 100) * 100));
+    }
+    if (achievementId === 'fish_500') {
+        var f500 = (typeof window.totalFishCaught !== 'undefined') ? window.totalFishCaught : 0;
+        return Math.min(100, Math.round((f500 / 500) * 100));
+    }
+    if (achievementId === 'fish_1000') {
+        var f1000 = (typeof window.totalFishCaught !== 'undefined') ? window.totalFishCaught : 0;
+        return Math.min(100, Math.round((f1000 / 1000) * 100));
+    }
+    if (achievementId === 'fish_legend_10') {
+        var l10 = (typeof window.totalLegendaryFish !== 'undefined') ? window.totalLegendaryFish : 0;
+        return Math.min(100, Math.round((l10 / 10) * 100));
+    }
+    if (achievementId === 'fish_legend_100') {
+        var l100 = (typeof window.totalLegendaryFish !== 'undefined') ? window.totalLegendaryFish : 0;
+        return Math.min(100, Math.round((l100 / 100) * 100));
+    }
+
+    // ---- 挖矿 ----
+    if (achievementId === 'mine_iron_100') {
+        var i100 = (typeof window.totalIronOre !== 'undefined') ? window.totalIronOre : 0;
+        return Math.min(100, Math.round((i100 / 100) * 100));
+    }
+    if (achievementId === 'mine_iron_1000') {
+        var i1000 = (typeof window.totalIronOre !== 'undefined') ? window.totalIronOre : 0;
+        return Math.min(100, Math.round((i1000 / 1000) * 100));
+    }
+    if (achievementId === 'mine_diamond_10') {
+        var d10 = (typeof window.totalDiamond !== 'undefined') ? window.totalDiamond : 0;
+        return Math.min(100, Math.round((d10 / 10) * 100));
+    }
+    if (achievementId === 'mine_diamond_100') {
+        var d100 = (typeof window.totalDiamond !== 'undefined') ? window.totalDiamond : 0;
+        return Math.min(100, Math.round((d100 / 100) * 100));
+    }
+    if (achievementId === 'mine_depth_100') {
+        var depth = 0;
+        if (typeof window.miningState !== 'undefined' && window.miningState.depth !== undefined) {
+            depth = window.miningState.depth;
+        }
+        return Math.min(100, Math.round((depth / 100) * 100));
+    }
+
+    // ---- 烹饪 ----
+    if (achievementId === 'cook_100') {
+        var c100 = (typeof window.paniniState !== 'undefined' && paniniState.totalCooked !== undefined) ? paniniState.totalCooked : 0;
+        return Math.min(100, Math.round((c100 / 100) * 100));
+    }
+    if (achievementId === 'cook_200') {
+        var c200 = (typeof window.paniniState !== 'undefined' && paniniState.totalCooked !== undefined) ? paniniState.totalCooked : 0;
+        return Math.min(100, Math.round((c200 / 200) * 100));
+    }
+    if (achievementId === 'cook_500') {
+        var c500 = (typeof window.paniniState !== 'undefined' && paniniState.totalCooked !== undefined) ? paniniState.totalCooked : 0;
+        return Math.min(100, Math.round((c500 / 500) * 100));
+    }
+    if (achievementId === 'cook_recipes_15') {
+        var r15 = 0;
+        if (typeof window.paniniState !== 'undefined' && paniniState.unlockedRecipes) {
+            r15 = paniniState.unlockedRecipes.length;
+        }
+        return Math.min(100, Math.round((r15 / 15) * 100));
+    }
+    if (achievementId === 'cook_recipes_all') {
+        var rall = 0;
+        if (typeof window.paniniState !== 'undefined' && paniniState.unlockedRecipes) {
+            rall = paniniState.unlockedRecipes.length;
+        }
+        return Math.min(100, Math.round((rall / 29) * 100));
+    }
+    if (achievementId === 'cook_dark') {
+        var dark = (typeof window.paniniState !== 'undefined' && paniniState.darkCooked !== undefined) ? paniniState.darkCooked : 0;
+        return Math.min(100, Math.round((dark / 1) * 100));
+    }
+
+    // ---- 冒险者 ----
+    if (achievementId === 'adventurer_2') {
+        var rank2 = 0;
+        if (typeof window.adventurerState !== 'undefined') {
+            rank2 = window.adventurerState.rank;
+        }
+        return Math.min(100, Math.round((rank2 / 2) * 100));
+    }
+    if (achievementId === 'adventurer_4') {
+        var rank4 = 0;
+        if (typeof window.adventurerState !== 'undefined') {
+            rank4 = window.adventurerState.rank;
+        }
+        return Math.min(100, Math.round((rank4 / 4) * 100));
+    }
+    if (achievementId === 'adventurer_7') {
+        var rank7 = 0;
+        if (typeof window.adventurerState !== 'undefined') {
+            rank7 = window.adventurerState.rank;
+        }
+        return Math.min(100, Math.round((rank7 / 7) * 100));
+    }
+    if (achievementId === 'adventurer_9') {
+        var rank9 = 0;
+        if (typeof window.adventurerState !== 'undefined') {
+            rank9 = window.adventurerState.rank;
+        }
+        return Math.min(100, Math.round((rank9 / 9) * 100));
+    }
+
+    // ---- 章鱼投喂 ----
+    if (achievementId === 'nomo_feed_100') {
+        var n100 = 0;
+        if (typeof window.getTotalFedCount === 'function') {
+            n100 = window.getTotalFedCount();
+        }
+        return Math.min(100, Math.round((n100 / 100) * 100));
+    }
+    if (achievementId === 'nomo_feed_500') {
+        var n500 = 0;
+        if (typeof window.getTotalFedCount === 'function') {
+            n500 = window.getTotalFedCount();
+        }
+        return Math.min(100, Math.round((n500 / 500) * 100));
+    }
+    if (achievementId === 'nomo_complete') {
+        return 0;
+    }
+
+    // ---- 能量 ----
+    if (achievementId === 'energy_100') {
+        var e100 = 0;
+        if (typeof window.riceState !== 'undefined' && riceState.totalEnergyProduced !== undefined) {
+            e100 = riceState.totalEnergyProduced;
+        }
+        return Math.min(100, Math.round((e100 / 100) * 100));
+    }
+    if (achievementId === 'energy_500') {
+        var e500 = 0;
+        if (typeof window.riceState !== 'undefined' && riceState.totalEnergyProduced !== undefined) {
+            e500 = riceState.totalEnergyProduced;
+        }
+        return Math.min(100, Math.round((e500 / 500) * 100));
+    }
+
+    // ---- 交易 ----
+    if (achievementId === 'trade_total_100') {
+        var t100 = (typeof window.tradeTotalCount !== 'undefined') ? window.tradeTotalCount : 0;
+        return Math.min(100, Math.round((t100 / 100) * 100));
+    }
+    if (achievementId === 'trade_total_500') {
+        var t500 = (typeof window.tradeTotalCount !== 'undefined') ? window.tradeTotalCount : 0;
+        return Math.min(100, Math.round((t500 / 500) * 100));
+    }
+
+    // 默认：未匹配的成就返回 0（不显示进度条）
+    return 0;
 }
 
 // ============================================
@@ -1343,11 +1754,12 @@ function clearAchievementData() {
     achievementState.unlocked = [];
     achievementState.claimed = [];
     achievementState.hiddenUnlocked = [];
-    minigameStats = { totalPlays: 0, bestTime: 0, totalReward: 0 };
+    window.minigameStats = { totalPlays: 0, bestTime: 0, totalReward: 0 };
     luckyBoxStats = { maxGold: 0 };
     exchangeStats = { totalExchanges: 0 };
     gameTimeStats = { totalSeconds: 0 };
     localStorage.removeItem('achievement_data');
+    localStorage.removeItem('minigame_stats');
     updateAchievementRedDot();
     renderAchievementList(currentCategory);
     updateAchievementStats();
@@ -1370,7 +1782,7 @@ if (!window._gameTimeInterval) {
 window.ACHIEVEMENT_DEFS = ACHIEVEMENT_DEFS;
 window.ACHIEVEMENT_CATEGORIES = ACHIEVEMENT_CATEGORIES;
 window.achievementState = achievementState;
-window.minigameStats = minigameStats;
+window.minigameStats = window.minigameStats;
 window.luckyBoxStats = luckyBoxStats;
 window.exchangeStats = exchangeStats;
 window.gameTimeStats = gameTimeStats;
