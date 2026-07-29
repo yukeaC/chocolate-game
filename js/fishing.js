@@ -1,5 +1,6 @@
+// js/fishing.js
 // ============================================================
-// fishing.js · 钓鱼模块（最终修复版 + 成就统计）
+// fishing.js · 钓鱼模块（最终修复版 + 成就统计 + 挑战塔稀有鱼统计）
 // ============================================================
 console.log('🎣 钓鱼模块加载中...');
 
@@ -25,7 +26,6 @@ var fishingState = {
     startTime: 0,
     todayCount: 0,
     todayCatch: 0,
-    // ===== 新增：累计统计（成就用） =====
     totalCaught: 0,
     totalLegendary: 0
 };
@@ -72,8 +72,6 @@ function _saveDaily() {
         localStorage.setItem('fishing_daily', JSON.stringify(data));
     } catch(e) {}
 }
-
-// ===== 新增：加载/保存累计统计 =====
 function _loadFishingStats() {
     try {
         var stats = JSON.parse(localStorage.getItem('fishing_stats'));
@@ -211,9 +209,7 @@ function _castLine() {
         console.log('⚠️ 正在钓鱼中，忽略点击');
         return;
     }
-    // ===== 添加音效 =====
     if (typeof soundFishCast === 'function') soundFishCast();
-    // ===== 音效添加结束 =====
     if (!_canCast()) return;
     if (!_consumeCast()) return;
     _updateStatsUI();
@@ -326,7 +322,7 @@ function _reelLine() {
         _saveDaily();
         _updateStatsUI();
 
-        // ===== 新增：累计统计 =====
+        // 累计统计
         fishingState.totalCaught++;
         if (fish.id === 'legendfish') {
             fishingState.totalLegendary++;
@@ -334,7 +330,6 @@ function _reelLine() {
         window.totalFishCaught = fishingState.totalCaught;
         window.totalLegendaryFish = fishingState.totalLegendary;
         _saveFishingStats();
-        // ===== 新增结束 =====
 
         var repAmount = 0;
         if (fish.rarity === '普通') repAmount = 1;
@@ -350,15 +345,16 @@ function _reelLine() {
                 }
             });
         }
-        // ===== 挑战塔：钓鱼成功 =====
-        if (typeof onTowerFishCaught === 'function') onTowerFishCaught();
-        // ===== 挑战塔结束 =====
+        
+        // ===== 挑战塔：钓鱼成功（传入鱼种ID） =====
+        if (typeof onTowerFishCaught === 'function') {
+            onTowerFishCaught(fish.id);
+        }
+        
         var total = fishingState.basket.length;
         _setStatus('🎉 钓到了 ' + fish.icon + ' ' + fish.name + ' ！鱼篓共 ' + total + ' 条', 'success');
         _showPopup(fish);
-        // ===== 添加音效 =====
         if (typeof soundFishCatch === 'function') soundFishCatch();
-        // ===== 音效添加结束 =====
         if (floatEl) {
             floatEl.style.transform = 'translate(-50%,-50%) scale(1.4) rotate(20deg)';
             floatEl.style.transition = '0.2s';
@@ -373,9 +369,7 @@ function _reelLine() {
         setTimeout(function() { _resetUI(); }, 1600);
     } else {
         _setStatus('😅 没中... 再试试', 'fail');
-        // ===== 添加音效 =====
         if (typeof soundError === 'function') soundError();
-        // ===== 音效添加结束 =====
         if (floatEl) {
             floatEl.style.transform = 'translate(-50%,-50%) scale(0.8)';
             floatEl.style.transition = '0.15s';
@@ -483,7 +477,6 @@ function _initFishing() {
     fishingState.isReeling = false;
     fishingState.animId = null;
     _loadDaily();
-    // ===== 新增：加载累计统计 =====
     _loadFishingStats();
 
     var fishingMode = document.getElementById('fishingMode');
@@ -561,8 +554,7 @@ window.fishing = {
     getBasket: function() { return fishingState.basket.slice(); }
 };
 
-// ===== 新增：暴露统计变量供成就系统 =====
 window.totalFishCaught = fishingState.totalCaught;
 window.totalLegendaryFish = fishingState.totalLegendary;
 
-console.log('🎣 钓鱼模块加载完成（最终修复版 + 成就统计）');
+console.log('🎣 钓鱼模块加载完成（最终修复版 + 成就统计 + 挑战塔稀有鱼统计）');

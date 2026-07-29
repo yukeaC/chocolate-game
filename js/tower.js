@@ -1,6 +1,6 @@
+// js/tower.js
 // ============================================================
-// tower.js · 挑战塔系统（92层 · 调试版）
-// 增加详细日志，定位点击无反应问题
+// tower.js · 挑战塔系统（92层 · 修复所有任务类型）
 // ============================================================
 
 console.log('🏛️ 挑战塔系统加载中...');
@@ -27,6 +27,9 @@ var PRODUCT_TIMES = {
 };
 var HIDDEN_TIME = 929;
 
+// 稀有鱼类型（用于挑战塔统计）
+var RARE_FISH_TYPES = ['pearlfish', 'bluewhale', 'legendfish'];
+
 // ============================================================
 // 状态
 // ============================================================
@@ -47,7 +50,9 @@ var towerState = {
     _ordersCompletedSinceStart: 0,
     _farmHarvestsSinceStart: 0,
     _fishCaughtSinceStart: 0,
-    _mineCountSinceStart: 0,
+    _rareFishCaughtSinceStart: 0,
+    _ironMinedSinceStart: 0,      // 新增：铁矿计数
+    _diamondMinedSinceStart: 0,   // 新增：钻石计数
     _cookCountSinceStart: 0,
     _tradeCountSinceStart: 0,
     _perfectCountSinceStart: 0,
@@ -83,7 +88,9 @@ function loadTowerData() {
             towerState._ordersCompletedSinceStart = data._ordersCompletedSinceStart || 0;
             towerState._farmHarvestsSinceStart = data._farmHarvestsSinceStart || 0;
             towerState._fishCaughtSinceStart = data._fishCaughtSinceStart || 0;
-            towerState._mineCountSinceStart = data._mineCountSinceStart || 0;
+            towerState._rareFishCaughtSinceStart = data._rareFishCaughtSinceStart || 0;
+            towerState._ironMinedSinceStart = data._ironMinedSinceStart || 0;
+            towerState._diamondMinedSinceStart = data._diamondMinedSinceStart || 0;
             towerState._cookCountSinceStart = data._cookCountSinceStart || 0;
             towerState._tradeCountSinceStart = data._tradeCountSinceStart || 0;
             towerState._perfectCountSinceStart = data._perfectCountSinceStart || 0;
@@ -111,7 +118,9 @@ function saveTowerData() {
             _ordersCompletedSinceStart: towerState._ordersCompletedSinceStart || 0,
             _farmHarvestsSinceStart: towerState._farmHarvestsSinceStart || 0,
             _fishCaughtSinceStart: towerState._fishCaughtSinceStart || 0,
-            _mineCountSinceStart: towerState._mineCountSinceStart || 0,
+            _rareFishCaughtSinceStart: towerState._rareFishCaughtSinceStart || 0,
+            _ironMinedSinceStart: towerState._ironMinedSinceStart || 0,
+            _diamondMinedSinceStart: towerState._diamondMinedSinceStart || 0,
             _cookCountSinceStart: towerState._cookCountSinceStart || 0,
             _tradeCountSinceStart: towerState._tradeCountSinceStart || 0,
             _perfectCountSinceStart: towerState._perfectCountSinceStart || 0
@@ -128,7 +137,7 @@ function checkDailyReset() {
     }
 }
 
-// 使用 utils.js 中的 getTodayDateStr，如果不存则自己定义
+// 使用 utils.js 中的 getTodayDateStr，如果不存在则自己定义
 if (typeof getTodayDateStr !== 'function') {
     function getTodayDateStr() {
         var d = new Date();
@@ -137,7 +146,7 @@ if (typeof getTodayDateStr !== 'function') {
 }
 
 // ============================================================
-// 塔数据生成
+// 塔数据生成（修复所有任务描述）
 // ============================================================
 function generateTowerData() {
     var floors = [];
@@ -242,18 +251,20 @@ function generateTowerData() {
                 break;
                 
             case 'fish':
-                var count = 1 + Math.floor(level / 20);
-                if (count > 6) count = 6;
-                var rare = (level > 40) ? 1 : 0;
-                if (level > 60) rare = 1 + Math.floor((level - 60) / 20);
-                if (rare > 2) rare = 2;
-                var fishTypes = ['小丑鱼', '金枪鱼', '珍珠鱼', '蓝鲸鱼', '传说鱼'];
-                var fishIdx = level % fishTypes.length;
-                var fishName = fishTypes[fishIdx];
-                targetDesc = '钓到 ' + count + ' 条' + fishName + (rare ? '（含' + rare + '条稀有/传说）' : '');
+                var totalNeeded = 1 + Math.floor(level / 20);
+                if (totalNeeded > 6) totalNeeded = 6;
+                var rareNeeded = 0;
+                if (level > 40) rareNeeded = 1;
+                if (level > 60) rareNeeded = 1 + Math.floor((level - 60) / 20);
+                if (rareNeeded > 2) rareNeeded = 2;
+                if (rareNeeded > totalNeeded) rareNeeded = totalNeeded;
+                targetDesc = '钓到 ' + totalNeeded + ' 条鱼';
+                if (rareNeeded > 0) {
+                    targetDesc += '（其中至少 ' + rareNeeded + ' 条为稀有/传说鱼）';
+                }
                 targetType = 'fish';
-                targetParams = { count: count, rare: rare, fishName: fishName };
-                timeLimit = 60 + count * 30 + rare * 30;
+                targetParams = { count: totalNeeded, rare: rareNeeded };
+                timeLimit = 60 + totalNeeded * 30 + rareNeeded * 30;
                 break;
                 
             case 'mine':
@@ -370,12 +381,10 @@ function canChallenge(floor) {
 }
 
 // ============================================================
-// 创建模态框（独立函数，增加日志）
+// 创建模态框
 // ============================================================
 function createTowerModal() {
     console.log('🏛️ createTowerModal 被调用');
-    
-    // 如果已存在，先移除旧的
     var oldModal = document.getElementById('towerModal');
     if (oldModal) {
         console.log('🏛️ 发现已存在的模态框，先移除');
@@ -397,7 +406,7 @@ function createTowerModal() {
 }
 
 // ============================================================
-// 打开挑战信息面板（按钮固定在底部）
+// 打开挑战信息面板
 // ============================================================
 function openTowerInfo() {
     console.log('🏛️ openTowerInfo 被调用');
@@ -405,7 +414,6 @@ function openTowerInfo() {
     var floor = getNextUnlockedFloor();
     console.log('🏛️ 下一层: ' + floor + ', 最大层: ' + TOWER_CONFIG.MAX_FLOOR);
     
-    // 数据异常修复
     if (floor > TOWER_CONFIG.MAX_FLOOR) {
         var has92 = false;
         for (var i = 0; i < towerState.history.length; i++) {
@@ -460,16 +468,12 @@ function openTowerInfo() {
     var isInProgress = (status === 'in_progress' && towerState.challengeFloor === floor);
     var isReady = (status === 'completed_ready' && towerState.challengeFloor === floor);
     
-    // ===== 使用 flex 布局：内容区 flex:1，按钮区 margin-top:auto =====
     var html = '';
-    
-    // ---- 标题行（固定顶部） ----
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">';
     html += '  <h3 style="margin:0;color:#4a2a1a;font-size:1.1rem;">🏛️ 挑战塔 · 第 ' + floor + ' 层' + (isBoss ? ' 👑 BOSS' : '') + '</h3>';
     html += '  <button id="towerModalCloseBtn" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">关闭</button>';
     html += '</div>';
     
-    // ---- 内容区域（可滚动，flex:1 撑满剩余空间） ----
     html += '<div style="flex:1;overflow-y:auto;scrollbar-width:thin;min-height:0;">';
     html += '  <div style="background:rgba(255,248,240,0.3);border-radius:16px;padding:16px;">';
     html += '    <div style="font-size:1rem;font-weight:bold;color:#4a2a1a;margin-bottom:4px;">🎯 ' + floorData.targetDesc + '</div>';
@@ -490,7 +494,6 @@ function openTowerInfo() {
     html += '  </div>';
     html += '</div>';
     
-    // ---- 按钮区域（固定在底部，使用 margin-top:auto） ----
     html += '<div style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(200,160,120,0.15);display:flex;gap:10px;justify-content:center;flex-wrap:wrap;flex-shrink:0;">';
     if (isReady) {
         html += '<button id="towerClaimBtn" style="background:#ffd700;border:none;border-radius:30px;padding:8px 28px;color:#1a1a2e;font-weight:bold;cursor:pointer;font-size:0.9rem;box-shadow:0 2px 8px rgba(255,215,0,0.2);">🎁 领取奖励</button>';
@@ -511,13 +514,11 @@ function openTowerInfo() {
     content.innerHTML = html;
     console.log('🏛️ HTML 已注入 content');
     
-    // 显示模态框
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
     console.log('🏛️ 模态框已显示');
     
-    // 绑定事件
     document.getElementById('towerModalCloseBtn')?.addEventListener('click', function() {
         closeTowerModal();
     });
@@ -535,7 +536,7 @@ function openTowerInfo() {
 }
 
 // ============================================================
-// 历史记录（简化版，保持原有逻辑）
+// 历史记录
 // ============================================================
 function showHistoryList() {
     var history = towerState.history;
@@ -550,13 +551,11 @@ function showHistoryList() {
     var sorted = history.slice().sort(function(a, b) { return b.floor - a.floor; });
     
     var html = '';
-    // ---- 标题 ----
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">';
     html += '  <h3 style="margin:0;color:#4a2a1a;font-size:1.1rem;">📜 已通关关卡</h3>';
     html += '  <button id="towerHistoryBackBtn" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">← 返回</button>';
     html += '</div>';
     
-    // ---- 列表（可滚动） ----
     html += '<div style="flex:1;overflow-y:auto;scrollbar-width:thin;min-height:0;max-height:300px;">';
     for (var i = 0; i < sorted.length; i++) {
         var rec = sorted[i];
@@ -575,8 +574,6 @@ function showHistoryList() {
         html += '</div>';
     }
     html += '</div>';
-    
-    // ---- 底部空占位（保持布局） ----
     html += '<div style="flex-shrink:0;height:4px;"></div>';
     
     content.innerHTML = html;
@@ -600,13 +597,11 @@ function showHistoryDetail(floor) {
     for (var s = 0; s < rec.stars; s++) starStr += '⭐';
     
     var html = '';
-    // ---- 标题 ----
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">';
     html += '  <h3 style="margin:0;color:#4a2a1a;font-size:1.1rem;">📋 第 ' + rec.floor + ' 层 详情</h3>';
     html += '  <button id="towerHistoryBackBtn2" style="background:#c98f5e;border:none;border-radius:30px;padding:4px 14px;cursor:pointer;font-size:0.8rem;color:white;font-weight:bold;">← 返回列表</button>';
     html += '</div>';
     
-    // ---- 详情内容（可滚动） ----
     html += '<div style="flex:1;overflow-y:auto;scrollbar-width:thin;min-height:0;">';
     html += '  <div style="background:rgba(255,248,240,0.3);border-radius:16px;padding:16px;margin-bottom:12px;">';
     html += '    <div style="font-size:1rem;font-weight:bold;color:#4a2a1a;margin-bottom:6px;">🎯 ' + rec.targetDesc + '</div>';
@@ -655,7 +650,7 @@ function getHistoryRecord(floor) {
 }
 
 // ============================================================
-// 挑战核心（保持原有逻辑）
+// 挑战核心
 // ============================================================
 function acceptChallenge(floor) {
     console.log('🏛️ acceptChallenge 被调用, floor=' + floor);
@@ -673,7 +668,9 @@ function acceptChallenge(floor) {
     towerState._ordersCompletedSinceStart = 0;
     towerState._farmHarvestsSinceStart = 0;
     towerState._fishCaughtSinceStart = 0;
-    towerState._mineCountSinceStart = 0;
+    towerState._rareFishCaughtSinceStart = 0;
+    towerState._ironMinedSinceStart = 0;
+    towerState._diamondMinedSinceStart = 0;
     towerState._cookCountSinceStart = 0;
     towerState._tradeCountSinceStart = 0;
     towerState._perfectCountSinceStart = 0;
@@ -724,11 +721,14 @@ function claimReward(floor) {
     if (typeof gold !== 'undefined') gold += goldGain;
     
     rewards.items.forEach(function(item) {
-        if (typeof playerBag !== 'undefined') {
-            playerBag[item.id] = (playerBag[item.id] || 0) + (item.amount * multiplier);
-            if (typeof savePlayerBag === 'function') savePlayerBag();
-        }
-    });
+    if (typeof playerBag !== 'undefined') {
+        var addAmount = Math.floor(item.amount * multiplier);
+        // 如果原奖励不为0，但取整后为0，至少给1个（保留体验）
+        if (addAmount === 0 && item.amount > 0) addAmount = 1;
+        playerBag[item.id] = (playerBag[item.id] || 0) + addAmount;
+        if (typeof savePlayerBag === 'function') savePlayerBag();
+    }
+});
     
     var usedTime = (Date.now() - towerState.challengeStartTime) / 1000;
     var timeLimit = floorData.timeLimit;
@@ -797,7 +797,7 @@ function abandonChallenge() {
 }
 
 // ============================================================
-// 计时器（保持原有逻辑）
+// 计时器
 // ============================================================
 function startSmoothTowerTimer(limit, floor) {
     var remaining = limit;
@@ -867,6 +867,9 @@ function resumeChallengeTimer() {
     startSmoothTowerTimer(remaining, towerState.challengeFloor);
 }
 
+// ============================================================
+// 进度计算（修复所有任务类型）
+// ============================================================
 function getProgressText(floorData) {
     var targetType = floorData.targetType;
     var params = floorData.targetParams;
@@ -874,16 +877,15 @@ function getProgressText(floorData) {
     var target = 0;
     
     switch (targetType) {
-        case 'produce':
+        case 'produce': {
+            var pid = params.productId;
             target = params.count;
-            var made = 0;
-            for (var id in towerState._snapshot.inventory) {
-                var currentInv = inventory[id] || 0;
-                var initial = towerState._snapshot.inventory[id] || 0;
-                made += Math.max(0, currentInv - initial);
-            }
+            var initial = towerState._snapshot.inventory[pid] || 0;
+            var currentInv = inventory[pid] || 0;
+            var made = Math.max(0, currentInv - initial);
             current = Math.min(made, target);
-            return current + '/' + target + ' 产品';
+            return current + '/' + target + ' ' + (PRODUCTS[pid] ? PRODUCTS[pid].name : pid);
+        }
         case 'sell':
             target = params.gold;
             var currentGold = typeof gold !== 'undefined' ? gold : 0;
@@ -899,14 +901,26 @@ function getProgressText(floorData) {
             target = params.count;
             current = Math.min(towerState._farmHarvestsSinceStart || 0, target);
             return current + '/' + target + ' 收获';
-        case 'fish':
+        case 'fish': {
+            var totalNeeded = params.count || 0;
+            var rareNeeded = params.rare || 0;
+            var totalCaught = towerState._fishCaughtSinceStart || 0;
+            var rareCaught = towerState._rareFishCaughtSinceStart || 0;
+            var totalCurrent = Math.min(totalCaught, totalNeeded);
+            if (rareNeeded > 0) {
+                var rareCurrent = Math.min(rareCaught, rareNeeded);
+                return '🐟 ' + totalCurrent + '/' + totalNeeded + ' 条' + ' | ⭐ ' + rareCurrent + '/' + rareNeeded + ' 稀有';
+            }
+            return totalCurrent + '/' + totalNeeded + ' 条鱼';
+        }
+        case 'mine': {
             target = params.count;
-            current = Math.min(towerState._fishCaughtSinceStart || 0, target);
-            return current + '/' + target + ' 条鱼';
-        case 'mine':
-            target = params.count;
-            current = Math.min(towerState._mineCountSinceStart || 0, target);
-            return current + '/' + target + ' 矿石';
+            var isDiamond = params.diamond || false;
+            var mined = isDiamond ? (towerState._diamondMinedSinceStart || 0) : (towerState._ironMinedSinceStart || 0);
+            current = Math.min(mined, target);
+            var name = isDiamond ? '钻石' : '铁矿';
+            return current + '/' + target + ' ' + name;
+        }
         case 'cook':
             target = params.count;
             current = Math.min(towerState._cookCountSinceStart || 0, target);
@@ -915,7 +929,7 @@ function getProgressText(floorData) {
             target = params.count;
             current = Math.min(towerState._tradeCountSinceStart || 0, target);
             return current + '/' + target + ' 次交易';
-        case 'hidden':
+        case 'hidden': {
             target = params.count;
             var hiddenMade = 0;
             for (var hid in towerState._snapshot.hiddenInventory) {
@@ -925,6 +939,7 @@ function getProgressText(floorData) {
             }
             current = Math.min(hiddenMade, target);
             return current + '/' + target + ' 隐藏产品';
+        }
         default:
             return '进行中...';
     }
@@ -936,16 +951,15 @@ function calculateProgress(floorData) {
     var progress = 0;
     
     switch (targetType) {
-        case 'produce':
+        case 'produce': {
+            var pid = params.productId;
             var count = params.count;
-            var made = 0;
-            for (var id in towerState._snapshot.inventory) {
-                var current = inventory[id] || 0;
-                var initial = towerState._snapshot.inventory[id] || 0;
-                made += Math.max(0, current - initial);
-            }
+            var initial = towerState._snapshot.inventory[pid] || 0;
+            var currentInv = inventory[pid] || 0;
+            var made = Math.max(0, currentInv - initial);
             progress = Math.min(1, made / count);
             break;
+        }
         case 'sell':
             var goldTarget = params.gold;
             var currentGold = typeof gold !== 'undefined' ? gold : 0;
@@ -963,16 +977,23 @@ function calculateProgress(floorData) {
             var harvested = towerState._farmHarvestsSinceStart || 0;
             progress = Math.min(1, harvested / count);
             break;
-        case 'fish':
-            var count = params.count;
-            var caught = towerState._fishCaughtSinceStart || 0;
-            progress = Math.min(1, caught / count);
+        case 'fish': {
+            var totalNeeded = params.count || 0;
+            var rareNeeded = params.rare || 0;
+            var totalCaught = towerState._fishCaughtSinceStart || 0;
+            var rareCaught = towerState._rareFishCaughtSinceStart || 0;
+            var totalProgress = Math.min(1, totalCaught / totalNeeded);
+            var rareProgress = rareNeeded > 0 ? Math.min(1, rareCaught / rareNeeded) : 1;
+            progress = Math.min(totalProgress, rareProgress);
             break;
-        case 'mine':
+        }
+        case 'mine': {
             var count = params.count;
-            var mined = towerState._mineCountSinceStart || 0;
+            var isDiamond = params.diamond || false;
+            var mined = isDiamond ? (towerState._diamondMinedSinceStart || 0) : (towerState._ironMinedSinceStart || 0);
             progress = Math.min(1, mined / count);
             break;
+        }
         case 'cook':
             var count = params.count;
             var cooked = towerState._cookCountSinceStart || 0;
@@ -983,7 +1004,7 @@ function calculateProgress(floorData) {
             var traded = towerState._tradeCountSinceStart || 0;
             progress = Math.min(1, traded / count);
             break;
-        case 'hidden':
+        case 'hidden': {
             var count = params.count;
             var hiddenMade = 0;
             for (var hid in towerState._snapshot.hiddenInventory) {
@@ -993,6 +1014,7 @@ function calculateProgress(floorData) {
             }
             progress = Math.min(1, hiddenMade / count);
             break;
+        }
         default:
             progress = 0;
     }
@@ -1193,7 +1215,7 @@ function updateTowerEntry() {
 }
 
 // ============================================================
-// 事件触发
+// 事件触发（修复所有任务）
 // ============================================================
 function onTowerOrderCompleted() {
     if (towerState.challengeStatus !== 'in_progress') return;
@@ -1205,14 +1227,21 @@ function onTowerFarmHarvested() {
     towerState._farmHarvestsSinceStart = (towerState._farmHarvestsSinceStart || 0) + 1;
 }
 
-function onTowerFishCaught() {
+function onTowerFishCaught(fishType) {
     if (towerState.challengeStatus !== 'in_progress') return;
     towerState._fishCaughtSinceStart = (towerState._fishCaughtSinceStart || 0) + 1;
+    if (fishType && RARE_FISH_TYPES.indexOf(fishType) !== -1) {
+        towerState._rareFishCaughtSinceStart = (towerState._rareFishCaughtSinceStart || 0) + 1;
+    }
 }
 
-function onTowerMined() {
+function onTowerMined(oreType) {
     if (towerState.challengeStatus !== 'in_progress') return;
-    towerState._mineCountSinceStart = (towerState._mineCountSinceStart || 0) + 1;
+    if (oreType === 'iron') {
+        towerState._ironMinedSinceStart = (towerState._ironMinedSinceStart || 0) + 1;
+    } else if (oreType === 'diamond') {
+        towerState._diamondMinedSinceStart = (towerState._diamondMinedSinceStart || 0) + 1;
+    }
 }
 
 function onTowerCooked() {
@@ -1253,5 +1282,6 @@ window.getNextUnlockedFloor = getNextUnlockedFloor;
 window.showHistoryList = showHistoryList;
 window.showHistoryDetail = showHistoryDetail;
 window.closeTowerModal = closeTowerModal;
+window.RARE_FISH_TYPES = RARE_FISH_TYPES;
 
-console.log('🏛️ 挑战塔系统加载完成（调试版）');
+console.log('🏛️ 挑战塔系统加载完成（修复所有任务类型）');

@@ -1,5 +1,5 @@
 // ============================================================
-// mining.js · 沙锅洲 · 挖矿小游戏（含成就统计 + 揭示预显示）
+// mining.js · 沙锅洲 · 挖矿小游戏（含成就统计 + 挑战塔钩子）
 // ============================================================
 console.log('⛏️ 挖矿系统加载中...');
 
@@ -58,7 +58,7 @@ function loadMiningData() {
             window.totalIronOre = miningState.totalIron;
             window.totalDiamond = miningState.totalDiamond;
 
-            // ===== 补全旧存档中缺少 content 的格子 =====
+            // 补全旧存档中缺少 content 的格子
             for (var r = 0; r < miningState.rows.length; r++) {
                 var row = miningState.rows[r];
                 if (row && row.cells) {
@@ -70,8 +70,6 @@ function loadMiningData() {
                     }
                 }
             }
-            // ===== 补全结束 =====
-
             return true;
         }
     } catch(e) { console.warn('加载矿洞数据失败:', e); }
@@ -283,6 +281,9 @@ function isToolValidForCell(rowIndex, colIndex) {
     return true;
 }
 
+// ============================================================
+// mineSingleCell · 挖矿核心逻辑（含挑战塔钩子）
+// ============================================================
 function mineSingleCell(rowIndex, colIndex) {
     var row = miningState.rows[rowIndex];
     if (!row) return;
@@ -304,7 +305,6 @@ function mineSingleCell(rowIndex, colIndex) {
         saveMiningData();
     }
 
-    // ===== 直接使用预生成的内容（如果 content 为 undefined，兜底生成） =====
     var result = cell.content;
     if (!result) {
         result = getRandomResult();
@@ -323,17 +323,23 @@ function mineSingleCell(rowIndex, colIndex) {
             if (typeof window.addReputation === 'function') {
                 window.addReputation(2, '挖矿获得铁矿');
             }
+            // ===== 挑战塔：挖到铁矿 =====
+            if (typeof onTowerMined === 'function') {
+                onTowerMined('iron');
+            }
         } else if (result.type === 'diamond') {
             miningState.totalDiamond++;
             if (typeof window.addReputation === 'function') {
                 window.addReputation(5, '挖矿获得钻石');
             }
+            // ===== 挑战塔：挖到钻石 =====
+            if (typeof onTowerMined === 'function') {
+                onTowerMined('diamond');
+            }
         }
         window.totalIronOre = miningState.totalIron;
         window.totalDiamond = miningState.totalDiamond;
-        if (typeof onTowerMined === 'function') onTowerMined();
     }
-    // ===== 修改结束 =====
 
     revealNeighbors(rowIndex, colIndex);
     saveMiningData();
@@ -730,4 +736,4 @@ window.resetMiningData = resetMiningData;
 window.totalIronOre = miningState.totalIron;
 window.totalDiamond = miningState.totalDiamond;
 
-console.log('⛏️ 挖矿系统加载完成（揭示预显示 + 旧存档兼容 + 成就统计）');
+console.log('⛏️ 挖矿系统加载完成（含挑战塔钩子）');

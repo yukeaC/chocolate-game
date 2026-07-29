@@ -26,7 +26,7 @@ function useRefreshTicket() {
         renderOrders();
         updateRefreshButton();
         showMessage('🔄 订单已刷新！', false);
-	if (typeof soundSwitch === 'function') soundSwitch();
+        if (typeof soundSwitch === 'function') soundSwitch();
         if (autoSaveEnabled && typeof saveGame === 'function') saveGame();
     } else {
         showMessage('刷新功能暂不可用', true);
@@ -107,7 +107,7 @@ function completeOrderByProduct(productId, requiredQty, rewardGold, rewardExp, p
         if (typeof addExp === 'function') addExp(rewardExp);
         
         showMessage('✅ 完成订单：' + productName + ' x' + requiredQty + '，获得 ' + rewardGold + ' 金币 + ' + rewardExp + ' 经验！', false);
-	if (typeof soundOrderComplete === 'function') soundOrderComplete();
+        if (typeof soundOrderComplete === 'function') soundOrderComplete();
         
         var order = currentOrders.find(function(o) { return o.id === productId && o.quantity === requiredQty && !o.completed; });
         if (order) order.completed = true;
@@ -153,36 +153,58 @@ function getNextRefreshTime() {
     return next;
 }
 
-function getLastRefreshDate() {
-    var last = localStorage.getItem('last_refresh_date');
-    if (!last) {
-        var yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        return yesterday.toISOString().slice(0, 10);
+// ============================================================
+// ★★★ 修复：改用时间戳存储上次刷新时间 ★★★
+// ============================================================
+
+function getLastRefreshTimestamp() {
+    var raw = localStorage.getItem('last_refresh_date');
+    if (!raw) {
+        // 首次使用：返回 0，强制触发首次刷新
+        return 0;
     }
-    return last;
+    
+    var timestamp = parseInt(raw);
+    
+    // ★★★ 兼容旧存档：如果是日期字符串（如 "2026-07-30"），转换为时间戳 ★★★
+    if (isNaN(timestamp) || raw.indexOf('-') !== -1) {
+        var parts = raw.split('-');
+        if (parts.length === 3) {
+            var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            d.setHours(4, 0, 0, 0);
+            var newTimestamp = d.getTime();
+            localStorage.setItem('last_refresh_date', String(newTimestamp));
+            console.log('🔄 已将旧日期格式转换为时间戳:', newTimestamp);
+            return newTimestamp;
+        }
+        return 0;
+    }
+    
+    return timestamp;
 }
 
-function setLastRefreshDate(dateStr) {
-    localStorage.setItem('last_refresh_date', dateStr);
+function setLastRefreshTimestamp(timestamp) {
+    localStorage.setItem('last_refresh_date', String(timestamp));
 }
 
-// ============================================
-// 订单刷新
-// ============================================
+// ============================================================
+// ★★★ 修复：订单刷新（使用时间戳比较）★★★
+// ============================================================
 
 function refreshOrdersIfNeeded() {
-    var todayStr = getTodayDateStr();
-    var lastRefresh = getLastRefreshDate();
     var now = new Date();
     var today4am = new Date();
     today4am.setHours(4, 0, 0, 0);
+    var today4amTimestamp = today4am.getTime();
     
-    if (lastRefresh !== todayStr && now >= today4am) {
+    var lastRefresh = getLastRefreshTimestamp();
+    
+    // ===== 如果当前时间 >= 今天凌晨4点 且 上次刷新时间 < 今天凌晨4点 → 触发刷新 =====
+    if (now.getTime() >= today4amTimestamp && lastRefresh < today4amTimestamp) {
         currentOrders = generateFreshOrders();
-        localStorage.setItem('order_date', todayStr);
+        localStorage.setItem('order_date', getTodayDateStr());
         localStorage.setItem('savedOrders', JSON.stringify(currentOrders));
-        setLastRefreshDate(todayStr);
+        setLastRefreshTimestamp(now.getTime());
         updateOrderStatusDisplay();
         
         var orderModal = document.getElementById('orderModal');
@@ -200,7 +222,7 @@ function forceRefreshOrders() {
     currentOrders = generateFreshOrders();
     localStorage.setItem('order_date', todayStr);
     localStorage.setItem('savedOrders', JSON.stringify(currentOrders));
-    setLastRefreshDate(todayStr);
+    setLastRefreshTimestamp(Date.now());
     updateOrderStatusDisplay();
     var orderModal = document.getElementById('orderModal');
     if (orderModal && !orderModal.classList.contains('hidden') && typeof renderOrders === 'function') {
@@ -265,14 +287,14 @@ function loadOrInitOrders() {
     }
     updateOrderStatusDisplay();
     
+    // ★★★ 兼容旧存档：如果 last_refresh_date 是日期字符串，自动转换 ★★★
+    getLastRefreshTimestamp();
+    
+    // ===== 定时器：每小时检查一次是否应刷新 =====
     if (window.orderDateTimer) clearInterval(window.orderDateTimer);
     window.orderDateTimer = setInterval(function() {
-        var saved = localStorage.getItem('order_date');
-        var nowDate = getTodayDateStr();
-        if (saved !== nowDate) {
-            refreshOrdersIfNeeded();
-        }
-    }, 60000);
+        refreshOrdersIfNeeded();
+    }, 3600000);  // 改为每小时检查一次（更精确）
 }
 
 function persistOrders() {
@@ -345,21 +367,17 @@ function openOrderModal() {
     
     var orderNote = document.querySelector('.order-note');
     if (orderNote) {
-        // 清空内容
         orderNote.innerHTML = '';
         
-        // 创建容器：居中显示倒计时，刷新券在右边
         var container = document.createElement('div');
         container.style.cssText = 'display:flex;justify-content:center;align-items:center;position:relative;width:100%;';
         
-        // 倒计时（居中）
         var timerSpan = document.createElement('span');
         timerSpan.id = 'orderTimerDisplay';
         timerSpan.style.cssText = 'font-size:0.65rem;color:#a56b3a;text-align:center;';
         timerSpan.textContent = '🕒 00:00:00 后订单刷新';
         container.appendChild(timerSpan);
         
-        // 刷新券按钮（右侧绝对定位）
         var hasRefresh = (typeof playerBag !== 'undefined' && playerBag.refresh > 0);
         var refreshBtn = document.createElement('button');
         refreshBtn.id = 'refreshOrderBtn';
@@ -377,11 +395,9 @@ function openOrderModal() {
         
         orderNote.appendChild(container);
         
-        // 立即更新倒计时显示，避免 00:00:00 闪烁
         updateOrderTimerDisplay();
     }
     
-    // 定时器：每秒更新倒计时和刷新按钮
     if (orderModalTimer) clearInterval(orderModalTimer);
     orderModalTimer = setInterval(function() {
         var modal = document.getElementById('orderModal');

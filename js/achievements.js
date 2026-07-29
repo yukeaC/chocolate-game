@@ -1,10 +1,34 @@
 // js/achievements.js
+// ============================================================
+// 成就系统 · 终极修复版
+// 修复：探险类卡片布局统一 + 进度条强制显示
+// ============================================================
 
 console.log('🏆 成就系统加载中...');
 
-// ============================================
+// ============================================================
+// 辅助函数：从 localStorage 安全读取数据
+// ============================================================
+
+function _getLocalJSON(key, defaultVal) {
+    try {
+        var raw = localStorage.getItem(key);
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return defaultVal;
+}
+
+function _getLocalNumber(key, defaultVal) {
+    try {
+        var raw = localStorage.getItem(key);
+        if (raw !== null) return parseInt(raw) || 0;
+    } catch(e) {}
+    return defaultVal;
+}
+
+// ============================================================
 // 成就分类
-// ============================================
+// ============================================================
 
 var ACHIEVEMENT_CATEGORIES = {
     production: { name: '生产类', icon: '🏭' },
@@ -17,9 +41,9 @@ var ACHIEVEMENT_CATEGORIES = {
     explore: { name: '探险类', icon: '🗺️' }
 };
 
-// ============================================
-// 成就定义（所有小游戏成就使用 window.minigameStats）
-// ============================================
+// ============================================================
+// 成就定义（所有 check 函数直接从 localStorage 读取）
+// ============================================================
 
 var ACHIEVEMENT_DEFS = {
     // ---------- 生产类 ----------
@@ -213,15 +237,19 @@ var ACHIEVEMENT_DEFS = {
         id: 'farm_all', category: 'special', name: '农场主', icon: '🌾',
         description: '解锁全部 24 块土地',
         check: function() {
-            if (typeof getUnlockedCount === 'function') return getUnlockedCount() >= 24;
-            return false;
+            var farmData = _getLocalJSON('farm_data', { lands: [] });
+            var count = 0;
+            if (farmData.lands) {
+                for (var i = 0; i < farmData.lands.length; i++) {
+                    if (farmData.lands[i].unlocked) count++;
+                }
+            }
+            return count >= 24;
         },
         reward: { gold: 200, beans: 100, exp: 80, energy_box: 1 }
     },
 
-    // ============================================================
-    // 🎮 小游戏类成就
-    // ============================================================
+    // ---------- 小游戏类 ----------
     minigame_memory: {
         id: 'minigame_memory', category: 'minigame', name: '记忆大师', icon: '🧠',
         description: '30秒内完成翻牌配对',
@@ -261,6 +289,440 @@ var ACHIEVEMENT_DEFS = {
             return window.minigameStats && window.minigameStats.bestTime > 0 && window.minigameStats.bestTime <= 20;
         },
         reward: { gold: 60, beans: 30, exp: 25, speed_up: 1 }
+    },
+
+    // ============================================================
+    // 探险类成就（全部直接从 localStorage 读取）
+    // ============================================================
+
+    // ---- 岛屿解锁 ----
+    explore_3: {
+        id: 'explore_3',
+        category: 'explore',
+        name: '初航者',
+        icon: '⛵',
+        description: '解锁 3 个岛屿',
+        check: function() {
+            var statusMap = _getLocalJSON('explore_region_status', {});
+            var count = 0;
+            for (var key in statusMap) {
+                if (statusMap[key] && statusMap[key] !== 'locked') count++;
+            }
+            return count >= 3;
+        },
+        reward: { gold: 30, beans: 10, exp: 15 }
+    },
+    explore_5: {
+        id: 'explore_5',
+        category: 'explore',
+        name: '航海家',
+        icon: '🧭',
+        description: '解锁 5 个岛屿',
+        check: function() {
+            var statusMap = _getLocalJSON('explore_region_status', {});
+            var count = 0;
+            for (var key in statusMap) {
+                if (statusMap[key] && statusMap[key] !== 'locked') count++;
+            }
+            return count >= 5;
+        },
+        reward: { gold: 60, beans: 30, exp: 30, lucky_box: 1 }
+    },
+    explore_8: {
+        id: 'explore_8',
+        category: 'explore',
+        name: '深海探险者',
+        icon: '🌊',
+        description: '解锁 8 个岛屿',
+        check: function() {
+            var statusMap = _getLocalJSON('explore_region_status', {});
+            var count = 0;
+            for (var key in statusMap) {
+                if (statusMap[key] && statusMap[key] !== 'locked') count++;
+            }
+            return count >= 8;
+        },
+        reward: { gold: 100, beans: 50, exp: 50, energy_box: 1 }
+    },
+    explore_10: {
+        id: 'explore_10',
+        category: 'explore',
+        name: '可可世界征服者',
+        icon: '🏴‍☠️',
+        description: '解锁全部 10 个岛屿',
+        check: function() {
+            var statusMap = _getLocalJSON('explore_region_status', {});
+            var count = 0;
+            for (var key in statusMap) {
+                if (statusMap[key] && statusMap[key] !== 'locked') count++;
+            }
+            return count >= 10;
+        },
+        reward: { gold: 200, beans: 100, exp: 100, energy_box: 2, lucky_box: 2 }
+    },
+
+    // ---- 剧情 ----
+    explore_story_all: {
+        id: 'explore_story_all',
+        category: 'explore',
+        name: '故事收藏家',
+        icon: '📖',
+        description: '完成全部岛屿剧情',
+        check: function() {
+            var progress = _getLocalJSON('story_progress', {});
+            var total = 0, completed = 0;
+            for (var key in progress) {
+                total++;
+                if (progress[key]) completed++;
+            }
+            if (total === 0 && typeof STORY_DATA !== 'undefined') {
+                for (var key in STORY_DATA) {
+                    total++;
+                    if (STORY_DATA[key].completed) completed++;
+                }
+            }
+            return total > 0 && completed >= total;
+        },
+        reward: { gold: 150, beans: 80, exp: 80, lucky_box: 2 }
+    },
+
+    // ---- 钓鱼 ----
+    fish_100: {
+        id: 'fish_100',
+        category: 'explore',
+        name: '钓鱼新手',
+        icon: '🎣',
+        description: '累计钓到 100 条鱼',
+        check: function() {
+            var stats = _getLocalJSON('fishing_stats', {});
+            return (stats.totalCaught || 0) >= 100;
+        },
+        reward: { gold: 30, beans: 15, exp: 15 }
+    },
+    fish_500: {
+        id: 'fish_500',
+        category: 'explore',
+        name: '钓鱼达人',
+        icon: '🐟',
+        description: '累计钓到 500 条鱼',
+        check: function() {
+            var stats = _getLocalJSON('fishing_stats', {});
+            return (stats.totalCaught || 0) >= 500;
+        },
+        reward: { gold: 80, beans: 40, exp: 40, speed_up: 1 }
+    },
+    fish_1000: {
+        id: 'fish_1000',
+        category: 'explore',
+        name: '钓鱼大师',
+        icon: '🏅',
+        description: '累计钓到 1000 条鱼',
+        check: function() {
+            var stats = _getLocalJSON('fishing_stats', {});
+            return (stats.totalCaught || 0) >= 1000;
+        },
+        reward: { gold: 150, beans: 80, exp: 80, energy_box: 1, lucky_box: 1 }
+    },
+    fish_legend_10: {
+        id: 'fish_legend_10',
+        category: 'explore',
+        name: '传说捕手',
+        icon: '🐉',
+        description: '钓到 10 条传说鱼',
+        check: function() {
+            var stats = _getLocalJSON('fishing_stats', {});
+            return (stats.totalLegendary || 0) >= 10;
+        },
+        reward: { gold: 100, beans: 50, exp: 50, speed_up: 2 }
+    },
+    fish_legend_100: {
+        id: 'fish_legend_100',
+        category: 'explore',
+        name: '传说猎手',
+        icon: '👑',
+        description: '钓到 100 条传说鱼',
+        check: function() {
+            var stats = _getLocalJSON('fishing_stats', {});
+            return (stats.totalLegendary || 0) >= 100;
+        },
+        reward: { gold: 300, beans: 150, exp: 150, energy_box: 2, lucky_box: 3, speed_up: 3 }
+    },
+
+    // ---- 挖矿 ----
+    mine_iron_100: {
+        id: 'mine_iron_100',
+        category: 'explore',
+        name: '矿工学徒',
+        icon: '⛏️',
+        description: '累计挖到 100 块铁矿',
+        check: function() {
+            var data = _getLocalJSON('mining_data', {});
+            return (data.totalIron || 0) >= 100;
+        },
+        reward: { gold: 30, beans: 15, exp: 15 }
+    },
+    mine_iron_1000: {
+        id: 'mine_iron_1000',
+        category: 'explore',
+        name: '铁矿大亨',
+        icon: '🪨',
+        description: '累计挖到 1000 块铁矿',
+        check: function() {
+            var data = _getLocalJSON('mining_data', {});
+            return (data.totalIron || 0) >= 1000;
+        },
+        reward: { gold: 120, beans: 60, exp: 60, speed_up: 2 }
+    },
+    mine_diamond_10: {
+        id: 'mine_diamond_10',
+        category: 'explore',
+        name: '钻石猎人',
+        icon: '💎',
+        description: '挖到 10 颗钻石',
+        check: function() {
+            var data = _getLocalJSON('mining_data', {});
+            return (data.totalDiamond || 0) >= 10;
+        },
+        reward: { gold: 80, beans: 40, exp: 40, lucky_box: 1 }
+    },
+    mine_diamond_100: {
+        id: 'mine_diamond_100',
+        category: 'explore',
+        name: '钻石大亨',
+        icon: '💠',
+        description: '挖到 100 颗钻石',
+        check: function() {
+            var data = _getLocalJSON('mining_data', {});
+            return (data.totalDiamond || 0) >= 100;
+        },
+        reward: { gold: 200, beans: 100, exp: 100, energy_box: 2, lucky_box: 2 }
+    },
+    mine_depth_100: {
+        id: 'mine_depth_100',
+        category: 'explore',
+        name: '深渊矿工',
+        icon: '🕳️',
+        description: '挖矿深度达到 100',
+        check: function() {
+            var data = _getLocalJSON('mining_data', {});
+            return (data.depth || 0) >= 100;
+        },
+        reward: { gold: 100, beans: 50, exp: 50, speed_up: 2 }
+    },
+
+    // ---- 烹饪 ----
+    cook_100: {
+        id: 'cook_100',
+        category: 'explore',
+        name: '家庭厨师',
+        icon: '🍳',
+        description: '烹饪出 100 份食物',
+        check: function() {
+            var data = _getLocalJSON('panini_data', {});
+            return (data.totalCooked || 0) >= 100;
+        },
+        reward: { gold: 30, beans: 15, exp: 15 }
+    },
+    cook_200: {
+        id: 'cook_200',
+        category: 'explore',
+        name: '餐厅主厨',
+        icon: '👨‍🍳',
+        description: '烹饪出 200 份食物',
+        check: function() {
+            var data = _getLocalJSON('panini_data', {});
+            return (data.totalCooked || 0) >= 200;
+        },
+        reward: { gold: 80, beans: 40, exp: 40, speed_up: 1 }
+    },
+    cook_500: {
+        id: 'cook_500',
+        category: 'explore',
+        name: '传奇大厨',
+        icon: '🏆',
+        description: '烹饪出 500 份食物',
+        check: function() {
+            var data = _getLocalJSON('panini_data', {});
+            return (data.totalCooked || 0) >= 500;
+        },
+        reward: { gold: 150, beans: 80, exp: 80, energy_box: 1, lucky_box: 1 }
+    },
+    cook_recipes_15: {
+        id: 'cook_recipes_15',
+        category: 'explore',
+        name: '食谱收集者',
+        icon: '📚',
+        description: '解锁 15 个食谱',
+        check: function() {
+            var data = _getLocalJSON('panini_data', {});
+            var recipes = data.unlockedRecipes || [];
+            return recipes.length >= 15;
+        },
+        reward: { gold: 80, beans: 40, exp: 40, lucky_box: 1 }
+    },
+    cook_recipes_all: {
+        id: 'cook_recipes_all',
+        category: 'explore',
+        name: '美食家',
+        icon: '🌟',
+        description: '解锁全部 29 个食谱',
+        check: function() {
+            var data = _getLocalJSON('panini_data', {});
+            var recipes = data.unlockedRecipes || [];
+            return recipes.length >= 29;
+        },
+        reward: { gold: 200, beans: 100, exp: 100, energy_box: 2, lucky_box: 2 }
+    },
+    cook_dark: {
+        id: 'cook_dark',
+        category: 'explore',
+        name: '黑暗料理师',
+        icon: '💀',
+        description: '烹饪出 1 次黑暗料理',
+        check: function() {
+            var data = _getLocalJSON('panini_data', {});
+            return (data.darkCooked || 0) >= 1;
+        },
+        reward: { gold: 20, beans: 10, exp: 10 }
+    },
+
+    // ---- 冒险者等级 ----
+    adventurer_2: {
+        id: 'adventurer_2',
+        category: 'explore',
+        name: '布浪人',
+        icon: '⭐',
+        description: '冒险者等级达到 2 级',
+        check: function() {
+            var data = _getLocalJSON('adventurer_data', {});
+            return (data.rank || 1) >= 2;
+        },
+        reward: { gold: 30, beans: 15, exp: 15 }
+    },
+    adventurer_4: {
+        id: 'adventurer_4',
+        category: 'explore',
+        name: '深航者',
+        icon: '🌟🌟',
+        description: '冒险者等级达到 4 级',
+        check: function() {
+            var data = _getLocalJSON('adventurer_data', {});
+            return (data.rank || 1) >= 4;
+        },
+        reward: { gold: 70, beans: 35, exp: 35, lucky_box: 1 }
+    },
+    adventurer_7: {
+        id: 'adventurer_7',
+        category: 'explore',
+        name: '蛾影者',
+        icon: '🌟🌟🌟',
+        description: '冒险者等级达到 7 级',
+        check: function() {
+            var data = _getLocalJSON('adventurer_data', {});
+            return (data.rank || 1) >= 7;
+        },
+        reward: { gold: 130, beans: 65, exp: 65, energy_box: 1 }
+    },
+    adventurer_9: {
+        id: 'adventurer_9',
+        category: 'explore',
+        name: '可渡师',
+        icon: '👑',
+        description: '冒险者等级达到 9 级（满级）',
+        check: function() {
+            var data = _getLocalJSON('adventurer_data', {});
+            return (data.rank || 1) >= 9;
+        },
+        reward: { gold: 250, beans: 120, exp: 120, energy_box: 2, lucky_box: 2, speed_up: 3 }
+    },
+
+    // ---- 章鱼投喂 ----
+    nomo_feed_100: {
+        id: 'nomo_feed_100',
+        category: 'explore',
+        name: '投喂者',
+        icon: '🐙',
+        description: '累计投喂章鱼 100 次',
+        check: function() {
+            var data = _getLocalJSON('nomo_feed_data', {});
+            return (data.totalCount || 0) >= 100;
+        },
+        reward: { gold: 60, beans: 30, exp: 30 }
+    },
+    nomo_feed_500: {
+        id: 'nomo_feed_500',
+        category: 'explore',
+        name: '深海投喂师',
+        icon: '🐙✨',
+        description: '累计投喂章鱼 500 次',
+        check: function() {
+            var data = _getLocalJSON('nomo_feed_data', {});
+            return (data.totalCount || 0) >= 500;
+        },
+        reward: { gold: 150, beans: 75, exp: 75, energy_box: 1, lucky_box: 1 }
+    },
+    nomo_complete: {
+        id: 'nomo_complete',
+        category: 'explore',
+        name: '星际信使',
+        icon: '🌠',
+        description: '唤醒赛博巨兽（92次+29种）',
+        check: function() {
+            try {
+                return localStorage.getItem('nomo_completed') === 'true';
+            } catch(e) { return false; }
+        },
+        reward: { gold: 300, beans: 150, exp: 150, energy_box: 2, lucky_box: 2, speed_up: 3 }
+    },
+
+    // ---- 能量 ----
+    energy_100: {
+        id: 'energy_100',
+        category: 'explore',
+        name: '能量工程师',
+        icon: '⚡',
+        description: '生产 100 个能量',
+        check: function() {
+            var data = _getLocalJSON('rice_data', {});
+            return (data.totalEnergyProduced || 0) >= 100;
+        },
+        reward: { gold: 80, beans: 40, exp: 40, energy_box: 1 }
+    },
+    energy_500: {
+        id: 'energy_500',
+        category: 'explore',
+        name: '能量大师',
+        icon: '⚡✨',
+        description: '生产 500 个能量',
+        check: function() {
+            var data = _getLocalJSON('rice_data', {});
+            return (data.totalEnergyProduced || 0) >= 500;
+        },
+        reward: { gold: 180, beans: 90, exp: 90, energy_box: 2, lucky_box: 2 }
+    },
+
+    // ---- 交易 ----
+    trade_total_100: {
+        id: 'trade_total_100',
+        category: 'explore',
+        name: '可颂常客',
+        icon: '🏪',
+        description: '交易次数（卖+买）累计 100 次',
+        check: function() {
+            return _getLocalNumber('trade_total_count', 0) >= 100;
+        },
+        reward: { gold: 60, beans: 30, exp: 30, lucky_box: 1 }
+    },
+    trade_total_500: {
+        id: 'trade_total_500',
+        category: 'explore',
+        name: '可颂大亨',
+        icon: '💰',
+        description: '交易次数（卖+买）累计 500 次',
+        check: function() {
+            return _getLocalNumber('trade_total_count', 0) >= 500;
+        },
+        reward: { gold: 150, beans: 75, exp: 75, energy_box: 1, lucky_box: 1 }
     },
 
     // ---------- 隐藏成就 ----------
@@ -352,443 +814,12 @@ var ACHIEVEMENT_DEFS = {
             return false;
         },
         reward: { gold: 200, beans: 100, exp: 80, energy_box: 1 }
-    },
-
-    // ============================================================
-    // 🗺️ 探险类成就（29 个）
-    // ============================================================
-
-    // ---- 岛屿探索 ----
-    explore_3: {
-        id: 'explore_3',
-        category: 'explore',
-        name: '初航者',
-        icon: '⛵',
-        description: '解锁 3 个岛屿',
-        check: function() {
-            if (typeof window.getUnlockedCount === 'function') {
-                return window.getUnlockedCount() >= 3;
-            }
-            return false;
-        },
-        reward: { gold: 30, beans: 10, exp: 15 }
-    },
-    explore_5: {
-        id: 'explore_5',
-        category: 'explore',
-        name: '航海家',
-        icon: '🧭',
-        description: '解锁 5 个岛屿',
-        check: function() {
-            if (typeof window.getUnlockedCount === 'function') {
-                return window.getUnlockedCount() >= 5;
-            }
-            return false;
-        },
-        reward: { gold: 60, beans: 30, exp: 30, lucky_box: 1 }
-    },
-    explore_8: {
-        id: 'explore_8',
-        category: 'explore',
-        name: '深海探险者',
-        icon: '🌊',
-        description: '解锁 8 个岛屿',
-        check: function() {
-            if (typeof window.getUnlockedCount === 'function') {
-                return window.getUnlockedCount() >= 8;
-            }
-            return false;
-        },
-        reward: { gold: 100, beans: 50, exp: 50, energy_box: 1 }
-    },
-    explore_10: {
-        id: 'explore_10',
-        category: 'explore',
-        name: '可可世界征服者',
-        icon: '🏴‍☠️',
-        description: '解锁全部 10 个岛屿',
-        check: function() {
-            if (typeof window.getUnlockedCount === 'function') {
-                return window.getUnlockedCount() >= 10;
-            }
-            return false;
-        },
-        reward: { gold: 200, beans: 100, exp: 100, energy_box: 2, lucky_box: 2 }
-    },
-    explore_story_all: {
-        id: 'explore_story_all',
-        category: 'explore',
-        name: '故事收藏家',
-        icon: '📖',
-        description: '完成全部岛屿剧情',
-        check: function() {
-            if (typeof window.STORY_DATA === 'undefined') return false;
-            var allCompleted = true;
-            for (var key in window.STORY_DATA) {
-                if (!window.STORY_DATA[key].completed) {
-                    allCompleted = false;
-                    break;
-                }
-            }
-            return allCompleted;
-        },
-        reward: { gold: 150, beans: 80, exp: 80, lucky_box: 2 }
-    },
-
-    // ---- 钓鱼 ----
-    fish_100: {
-        id: 'fish_100',
-        category: 'explore',
-        name: '钓鱼新手',
-        icon: '🎣',
-        description: '累计钓到 100 条鱼',
-        check: function() {
-            return (typeof window.totalFishCaught !== 'undefined' && window.totalFishCaught >= 100);
-        },
-        reward: { gold: 30, beans: 15, exp: 15 }
-    },
-    fish_500: {
-        id: 'fish_500',
-        category: 'explore',
-        name: '钓鱼达人',
-        icon: '🐟',
-        description: '累计钓到 500 条鱼',
-        check: function() {
-            return (typeof window.totalFishCaught !== 'undefined' && window.totalFishCaught >= 500);
-        },
-        reward: { gold: 80, beans: 40, exp: 40, speed_up: 1 }
-    },
-    fish_1000: {
-        id: 'fish_1000',
-        category: 'explore',
-        name: '钓鱼大师',
-        icon: '🏅',
-        description: '累计钓到 1000 条鱼',
-        check: function() {
-            return (typeof window.totalFishCaught !== 'undefined' && window.totalFishCaught >= 1000);
-        },
-        reward: { gold: 150, beans: 80, exp: 80, energy_box: 1, lucky_box: 1 }
-    },
-    fish_legend_10: {
-        id: 'fish_legend_10',
-        category: 'explore',
-        name: '传说捕手',
-        icon: '🐉',
-        description: '钓到 10 条传说鱼',
-        check: function() {
-            return (typeof window.totalLegendaryFish !== 'undefined' && window.totalLegendaryFish >= 10);
-        },
-        reward: { gold: 100, beans: 50, exp: 50, speed_up: 2 }
-    },
-    fish_legend_100: {
-        id: 'fish_legend_100',
-        category: 'explore',
-        name: '传说猎手',
-        icon: '👑',
-        description: '钓到 100 条传说鱼',
-        check: function() {
-            return (typeof window.totalLegendaryFish !== 'undefined' && window.totalLegendaryFish >= 100);
-        },
-        reward: { gold: 300, beans: 150, exp: 150, energy_box: 2, lucky_box: 3, speed_up: 3 }
-    },
-
-    // ---- 挖矿 ----
-    mine_iron_100: {
-        id: 'mine_iron_100',
-        category: 'explore',
-        name: '矿工学徒',
-        icon: '⛏️',
-        description: '累计挖到 100 块铁矿',
-        check: function() {
-            return (typeof window.totalIronOre !== 'undefined' && window.totalIronOre >= 100);
-        },
-        reward: { gold: 30, beans: 15, exp: 15 }
-    },
-    mine_iron_1000: {
-        id: 'mine_iron_1000',
-        category: 'explore',
-        name: '铁矿大亨',
-        icon: '🪨',
-        description: '累计挖到 1000 块铁矿',
-        check: function() {
-            return (typeof window.totalIronOre !== 'undefined' && window.totalIronOre >= 1000);
-        },
-        reward: { gold: 120, beans: 60, exp: 60, speed_up: 2 }
-    },
-    mine_diamond_10: {
-        id: 'mine_diamond_10',
-        category: 'explore',
-        name: '钻石猎人',
-        icon: '💎',
-        description: '挖到 10 颗钻石',
-        check: function() {
-            return (typeof window.totalDiamond !== 'undefined' && window.totalDiamond >= 10);
-        },
-        reward: { gold: 80, beans: 40, exp: 40, lucky_box: 1 }
-    },
-    mine_diamond_100: {
-        id: 'mine_diamond_100',
-        category: 'explore',
-        name: '钻石大亨',
-        icon: '💠',
-        description: '挖到 100 颗钻石',
-        check: function() {
-            return (typeof window.totalDiamond !== 'undefined' && window.totalDiamond >= 100);
-        },
-        reward: { gold: 200, beans: 100, exp: 100, energy_box: 2, lucky_box: 2 }
-    },
-    mine_depth_100: {
-        id: 'mine_depth_100',
-        category: 'explore',
-        name: '深渊矿工',
-        icon: '🕳️',
-        description: '挖矿深度达到 100',
-        check: function() {
-            if (typeof window.miningState !== 'undefined' && window.miningState.depth !== undefined) {
-                return window.miningState.depth >= 100;
-            }
-            return false;
-        },
-        reward: { gold: 100, beans: 50, exp: 50, speed_up: 2 }
-    },
-
-    // ---- 帕尼尼烹饪 ----
-    cook_100: {
-        id: 'cook_100',
-        category: 'explore',
-        name: '家庭厨师',
-        icon: '🍳',
-        description: '烹饪出 100 份食物',
-        check: function() {
-            return (typeof window.paniniState !== 'undefined' && paniniState.totalCooked >= 100);
-        },
-        reward: { gold: 30, beans: 15, exp: 15 }
-    },
-    cook_200: {
-        id: 'cook_200',
-        category: 'explore',
-        name: '餐厅主厨',
-        icon: '👨‍🍳',
-        description: '烹饪出 200 份食物',
-        check: function() {
-            return (typeof window.paniniState !== 'undefined' && paniniState.totalCooked >= 200);
-        },
-        reward: { gold: 80, beans: 40, exp: 40, speed_up: 1 }
-    },
-    cook_500: {
-        id: 'cook_500',
-        category: 'explore',
-        name: '传奇大厨',
-        icon: '🏆',
-        description: '烹饪出 500 份食物',
-        check: function() {
-            return (typeof window.paniniState !== 'undefined' && paniniState.totalCooked >= 500);
-        },
-        reward: { gold: 150, beans: 80, exp: 80, energy_box: 1, lucky_box: 1 }
-    },
-    cook_recipes_15: {
-        id: 'cook_recipes_15',
-        category: 'explore',
-        name: '食谱收集者',
-        icon: '📚',
-        description: '解锁 15 个食谱',
-        check: function() {
-            if (typeof window.paniniState !== 'undefined' && paniniState.unlockedRecipes) {
-                return paniniState.unlockedRecipes.length >= 15;
-            }
-            return false;
-        },
-        reward: { gold: 80, beans: 40, exp: 40, lucky_box: 1 }
-    },
-    cook_recipes_all: {
-        id: 'cook_recipes_all',
-        category: 'explore',
-        name: '美食家',
-        icon: '🌟',
-        description: '解锁全部 29 个食谱',
-        check: function() {
-            if (typeof window.paniniState !== 'undefined' && paniniState.unlockedRecipes) {
-                return paniniState.unlockedRecipes.length >= 29;
-            }
-            return false;
-        },
-        reward: { gold: 200, beans: 100, exp: 100, energy_box: 2, lucky_box: 2 }
-    },
-    cook_dark: {
-        id: 'cook_dark',
-        category: 'explore',
-        name: '黑暗料理师',
-        icon: '💀',
-        description: '烹饪出 1 次黑暗料理',
-        check: function() {
-            if (typeof window.paniniState !== 'undefined' && paniniState.darkCooked !== undefined) {
-                return paniniState.darkCooked >= 1;
-            }
-            return false;
-        },
-        reward: { gold: 20, beans: 10, exp: 10 }
-    },
-
-    // ---- 冒险者等级 ----
-    adventurer_2: {
-        id: 'adventurer_2',
-        category: 'explore',
-        name: '布浪人',
-        icon: '⭐',
-        description: '冒险者等级达到 2 级',
-        check: function() {
-            if (typeof window.adventurerState !== 'undefined') {
-                return window.adventurerState.rank >= 2;
-            }
-            return false;
-        },
-        reward: { gold: 30, beans: 15, exp: 15 }
-    },
-    adventurer_4: {
-        id: 'adventurer_4',
-        category: 'explore',
-        name: '深航者',
-        icon: '🌟🌟',
-        description: '冒险者等级达到 4 级',
-        check: function() {
-            if (typeof window.adventurerState !== 'undefined') {
-                return window.adventurerState.rank >= 4;
-            }
-            return false;
-        },
-        reward: { gold: 70, beans: 35, exp: 35, lucky_box: 1 }
-    },
-    adventurer_7: {
-        id: 'adventurer_7',
-        category: 'explore',
-        name: '蛾影者',
-        icon: '🌟🌟🌟',
-        description: '冒险者等级达到 7 级',
-        check: function() {
-            if (typeof window.adventurerState !== 'undefined') {
-                return window.adventurerState.rank >= 7;
-            }
-            return false;
-        },
-        reward: { gold: 130, beans: 65, exp: 65, energy_box: 1 }
-    },
-    adventurer_9: {
-        id: 'adventurer_9',
-        category: 'explore',
-        name: '可渡师',
-        icon: '👑',
-        description: '冒险者等级达到 9 级（满级）',
-        check: function() {
-            if (typeof window.adventurerState !== 'undefined') {
-                return window.adventurerState.rank >= 9;
-            }
-            return false;
-        },
-        reward: { gold: 250, beans: 120, exp: 120, energy_box: 2, lucky_box: 2, speed_up: 3 }
-    },
-
-    // ---- 嫑界洋 · 赛博巨兽 ----
-    nomo_feed_100: {
-        id: 'nomo_feed_100',
-        category: 'explore',
-        name: '投喂者',
-        icon: '🐙',
-        description: '累计投喂章鱼 100 次',
-        check: function() {
-            if (typeof window.getTotalFedCount === 'function') {
-                return window.getTotalFedCount() >= 100;
-            }
-            return false;
-        },
-        reward: { gold: 60, beans: 30, exp: 30 }
-    },
-    nomo_feed_500: {
-        id: 'nomo_feed_500',
-        category: 'explore',
-        name: '深海投喂师',
-        icon: '🐙✨',
-        description: '累计投喂章鱼 500 次',
-        check: function() {
-            if (typeof window.getTotalFedCount === 'function') {
-                return window.getTotalFedCount() >= 500;
-            }
-            return false;
-        },
-        reward: { gold: 150, beans: 75, exp: 75, energy_box: 1, lucky_box: 1 }
-    },
-    nomo_complete: {
-        id: 'nomo_complete',
-        category: 'explore',
-        name: '星际信使',
-        icon: '🌠',
-        description: '唤醒赛博巨兽（92次+29种）',
-        check: function() {
-            if (typeof window.getNomoCompleted === 'function') {
-                return window.getNomoCompleted();
-            }
-            return false;
-        },
-        reward: { gold: 300, beans: 150, exp: 150, energy_box: 2, lucky_box: 2, speed_up: 3 }
-    },
-
-    // ---- 大米洲 · 能量 ----
-    energy_100: {
-        id: 'energy_100',
-        category: 'explore',
-        name: '能量工程师',
-        icon: '⚡',
-        description: '生产 100 个能量',
-        check: function() {
-            if (typeof window.riceState !== 'undefined' && riceState.totalEnergyProduced !== undefined) {
-                return riceState.totalEnergyProduced >= 100;
-            }
-            return false;
-        },
-        reward: { gold: 80, beans: 40, exp: 40, energy_box: 1 }
-    },
-    energy_500: {
-        id: 'energy_500',
-        category: 'explore',
-        name: '能量大师',
-        icon: '⚡✨',
-        description: '生产 500 个能量',
-        check: function() {
-            if (typeof window.riceState !== 'undefined' && riceState.totalEnergyProduced !== undefined) {
-                return riceState.totalEnergyProduced >= 500;
-            }
-            return false;
-        },
-        reward: { gold: 180, beans: 90, exp: 90, energy_box: 2, lucky_box: 2 }
-    },
-
-    // ---- 交易 ----
-    trade_total_100: {
-        id: 'trade_total_100',
-        category: 'explore',
-        name: '可颂常客',
-        icon: '🏪',
-        description: '交易次数（卖+买）累计 100 次',
-        check: function() {
-            return (typeof window.tradeTotalCount !== 'undefined' && window.tradeTotalCount >= 100);
-        },
-        reward: { gold: 60, beans: 30, exp: 30, lucky_box: 1 }
-    },
-    trade_total_500: {
-        id: 'trade_total_500',
-        category: 'explore',
-        name: '可颂大亨',
-        icon: '💰',
-        description: '交易次数（卖+买）累计 500 次',
-        check: function() {
-            return (typeof window.tradeTotalCount !== 'undefined' && window.tradeTotalCount >= 500);
-        },
-        reward: { gold: 150, beans: 75, exp: 75, energy_box: 1, lucky_box: 1 }
     }
 };
 
-// ============================================
+// ============================================================
 // 状态管理
-// ============================================
+// ============================================================
 
 var achievementState = {
     unlocked: [],
@@ -796,13 +827,34 @@ var achievementState = {
     hiddenUnlocked: []
 };
 
-// ===== 统一使用 window.minigameStats 作为唯一数据源 =====
+// ===== 统一使用 window 全局变量 =====
 if (typeof window.minigameStats === 'undefined') {
     window.minigameStats = { totalPlays: 0, bestTime: 0, totalReward: 0 };
 }
-// 局部引用（保持兼容）
-var minigameStats = window.minigameStats;
-// ======================================================
+if (typeof window.totalFishCaught === 'undefined') {
+    window.totalFishCaught = 0;
+}
+if (typeof window.totalLegendaryFish === 'undefined') {
+    window.totalLegendaryFish = 0;
+}
+if (typeof window.totalIronOre === 'undefined') {
+    window.totalIronOre = 0;
+}
+if (typeof window.totalDiamond === 'undefined') {
+    window.totalDiamond = 0;
+}
+if (typeof window.paniniState === 'undefined') {
+    window.paniniState = { totalCooked: 0, unlockedRecipes: [], darkCooked: 0 };
+}
+if (typeof window.riceState === 'undefined') {
+    window.riceState = { totalEnergyProduced: 0 };
+}
+if (typeof window.tradeTotalCount === 'undefined') {
+    window.tradeTotalCount = 0;
+}
+if (typeof window.adventurerState === 'undefined') {
+    window.adventurerState = { rank: 1 };
+}
 
 var luckyBoxStats = { maxGold: 0 };
 var exchangeStats = { totalExchanges: 0 };
@@ -811,13 +863,12 @@ var gameTimeStats = { totalSeconds: 0 };
 var currentCategory = 'production';
 var notificationTimer = null;
 
-// ============================================
-// 数据持久化（双向同步）
-// ============================================
+// ============================================================
+// 数据持久化
+// ============================================================
 
 function loadAchievementData() {
     try {
-        // 1. 从 achievement_data 读取主数据
         var saved = localStorage.getItem('achievement_data');
         if (saved) {
             var data = JSON.parse(saved);
@@ -829,12 +880,15 @@ function loadAchievementData() {
                 window.minigameStats.bestTime = data.minigameStats.bestTime || 0;
                 window.minigameStats.totalReward = data.minigameStats.totalReward || 0;
             }
+            if (data.fishingStats) {
+                window.totalFishCaught = data.fishingStats.totalCaught || 0;
+                window.totalLegendaryFish = data.fishingStats.totalLegendary || 0;
+            }
             luckyBoxStats = data.luckyBoxStats || { maxGold: 0 };
             exchangeStats = data.exchangeStats || { totalExchanges: 0 };
             gameTimeStats = data.gameTimeStats || { totalSeconds: 0 };
         }
-
-        // 2. 从 minigame_stats 读取（覆盖更新，因为 cardmatch.html 保存到这里）
+        
         var miniSaved = localStorage.getItem('minigame_stats');
         if (miniSaved) {
             var miniData = JSON.parse(miniSaved);
@@ -842,9 +896,70 @@ function loadAchievementData() {
                 window.minigameStats.totalPlays = miniData.totalPlays || 0;
                 window.minigameStats.bestTime = miniData.bestTime || 0;
                 window.minigameStats.totalReward = miniData.totalReward || 0;
-                console.log('📊 从 minigame_stats 加载数据:', window.minigameStats);
             }
         }
+        
+        var fishingSaved = localStorage.getItem('fishing_stats');
+        if (fishingSaved) {
+            var fishingData = JSON.parse(fishingSaved);
+            if (fishingData) {
+                window.totalFishCaught = fishingData.totalCaught || 0;
+                window.totalLegendaryFish = fishingData.totalLegendary || 0;
+            }
+        }
+        
+        var miningSaved = localStorage.getItem('mining_data');
+        if (miningSaved) {
+            var miningData = JSON.parse(miningSaved);
+            if (miningData) {
+                window.totalIronOre = miningData.totalIron || 0;
+                window.totalDiamond = miningData.totalDiamond || 0;
+                window.miningState = window.miningState || {};
+                window.miningState.depth = miningData.depth || 0;
+            }
+        }
+        
+        var paniniSaved = localStorage.getItem('panini_data');
+        if (paniniSaved) {
+            var paniniData = JSON.parse(paniniSaved);
+            if (paniniData) {
+                window.paniniState.totalCooked = paniniData.totalCooked || 0;
+                window.paniniState.unlockedRecipes = paniniData.unlockedRecipes || [];
+                window.paniniState.darkCooked = paniniData.darkCooked || 0;
+            }
+        }
+        
+        var riceSaved = localStorage.getItem('rice_data');
+        if (riceSaved) {
+            var riceData = JSON.parse(riceSaved);
+            if (riceData) {
+                window.riceState.totalEnergyProduced = riceData.totalEnergyProduced || 0;
+            }
+        }
+        
+        var tradeSaved = localStorage.getItem('trade_total_count');
+        if (tradeSaved) {
+            window.tradeTotalCount = parseInt(tradeSaved) || 0;
+        }
+        
+        var adventurerSaved = localStorage.getItem('adventurer_data');
+        if (adventurerSaved) {
+            var adventurerData = JSON.parse(adventurerSaved);
+            if (adventurerData) {
+                window.adventurerState.rank = adventurerData.rank || 1;
+            }
+        }
+        
+        var regionSaved = localStorage.getItem('explore_region_status');
+        if (regionSaved) {
+            var regionData = JSON.parse(regionSaved);
+            if (regionData) {
+                window._cachedRegionData = regionData;
+            }
+        }
+        
+        console.log('📊 成就数据加载完成');
+        
     } catch(e) {
         console.warn('加载成就数据失败:', e);
     }
@@ -852,7 +967,6 @@ function loadAchievementData() {
 
 function saveAchievementData() {
     try {
-        // 1. 保存到 achievement_data（主数据）
         var data = {
             unlocked: achievementState.unlocked,
             claimed: achievementState.claimed,
@@ -862,30 +976,47 @@ function saveAchievementData() {
                 bestTime: window.minigameStats.bestTime || 0,
                 totalReward: window.minigameStats.totalReward || 0
             },
+            fishingStats: {
+                totalCaught: window.totalFishCaught || 0,
+                totalLegendary: window.totalLegendaryFish || 0
+            },
             luckyBoxStats: luckyBoxStats,
             exchangeStats: exchangeStats,
             gameTimeStats: gameTimeStats
         };
         localStorage.setItem('achievement_data', JSON.stringify(data));
-
-        // 2. 同步保存到 minigame_stats（供 cardmatch.html 读取）
+        
         var miniData = {
             totalPlays: window.minigameStats.totalPlays || 0,
             bestTime: window.minigameStats.bestTime || 0,
             totalReward: window.minigameStats.totalReward || 0
         };
         localStorage.setItem('minigame_stats', JSON.stringify(miniData));
-        console.log('💾 数据已保存，minigameStats:', window.minigameStats);
+        
+        console.log('💾 成就数据已保存');
     } catch(e) {
         console.warn('保存成就数据失败:', e);
     }
 }
 
-// ============================================
+// ============================================================
 // 成就检查与解锁
-// ============================================
+// ============================================================
 
 function checkAchievements() {
+    // 先刷新小游戏数据
+    try {
+        var miniSaved = localStorage.getItem('minigame_stats');
+        if (miniSaved) {
+            var miniData = JSON.parse(miniSaved);
+            if (miniData) {
+                window.minigameStats.totalPlays = miniData.totalPlays || 0;
+                window.minigameStats.bestTime = miniData.bestTime || 0;
+                window.minigameStats.totalReward = miniData.totalReward || 0;
+            }
+        }
+    } catch(e) {}
+    
     var newUnlocked = [];
     for (var id in ACHIEVEMENT_DEFS) {
         var def = ACHIEVEMENT_DEFS[id];
@@ -916,9 +1047,9 @@ function checkAchievements() {
     return newUnlocked;
 }
 
-// ============================================
+// ============================================================
 // 领取奖励
-// ============================================
+// ============================================================
 
 function claimAchievementReward(achievementId) {
     var def = ACHIEVEMENT_DEFS[achievementId];
@@ -961,6 +1092,7 @@ function claimAchievementReward(achievementId) {
 
     saveAchievementData();
     updateAchievementRedDot();
+    renderCategoryTabs();
     if (typeof renderAchievementList === 'function') renderAchievementList(currentCategory);
     if (typeof updateAchievementStats === 'function') updateAchievementStats();
     if (typeof refreshUI === 'function') refreshUI();
@@ -977,9 +1109,9 @@ function claimAchievementReward(achievementId) {
     return true;
 }
 
-// ============================================
+// ============================================================
 // 分类标签渲染
-// ============================================
+// ============================================================
 
 function renderCategoryTabs() {
     var container = document.getElementById('categoryTabs');
@@ -1025,15 +1157,32 @@ function renderCategoryTabs() {
         explore: '🗺️ 探险类'
     };
 
+    var unclaimedCounts = {};
+    for (var cat in ACHIEVEMENT_CATEGORIES) {
+        unclaimedCounts[cat] = 0;
+    }
+    for (var idx in achievementState.unlocked) {
+        var achId = achievementState.unlocked[idx];
+        var def = ACHIEVEMENT_DEFS[achId];
+        if (def && def.category) {
+            unclaimedCounts[def.category] = (unclaimedCounts[def.category] || 0) + 1;
+        }
+    }
+
     for (var i = 0; i < categories.length; i++) {
         var cat = categories[i];
+        var count = unclaimedCounts[cat] || 0;
         var tab = document.createElement('span');
         tab.className = 'category-tab';
-        tab.dataset.category = cat;
-        tab.textContent = categoryNames[cat] || cat;
         if (cat === currentCategory) {
             tab.classList.add('active');
         }
+        tab.dataset.category = cat;
+        var label = categoryNames[cat] || cat;
+        if (count > 0) {
+            label += ' <span class="badge" style="display:inline-block;background:#d9534f;color:white;font-size:0.55rem;font-weight:bold;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;margin-left:4px;vertical-align:middle;">' + count + '</span>';
+        }
+        tab.innerHTML = label;
         tab.onclick = function() {
             switchAchievementCategory(this.dataset.category);
         };
@@ -1061,9 +1210,9 @@ function renderCategoryTabs() {
     window.addEventListener('resize', updateButtons);
 }
 
-// ============================================
-// 合并成就通知
-// ============================================
+// ============================================================
+// 成就通知
+// ============================================================
 
 function showAchievementNotification(achievementIds) {
     if (!achievementIds || achievementIds.length === 0) return;
@@ -1135,33 +1284,15 @@ function showAchievementNotification(achievementIds) {
     }, 4000);
 }
 
-// ============================================
+// ============================================================
 // 打开成就面板
-// ============================================
+// ============================================================
 
 function openAchievementModal() {
-    // ===== 强制从 minigame_stats 加载最新数据 =====
-    try {
-        var miniSaved = localStorage.getItem('minigame_stats');
-        if (miniSaved) {
-            var miniData = JSON.parse(miniSaved);
-            if (miniData) {
-                window.minigameStats.totalPlays = miniData.totalPlays || 0;
-                window.minigameStats.bestTime = miniData.bestTime || 0;
-                window.minigameStats.totalReward = miniData.totalReward || 0;
-                console.log('📊 成就面板加载最新数据:', window.minigameStats);
-            }
-        }
-    } catch(e) {
-        console.warn('加载 minigame_stats 失败:', e);
-    }
-
-    // 然后再执行原有的加载逻辑（会同步到 achievement_data）
     loadAchievementData();
 
     var modal = document.getElementById('achievementModal');
     if (modal) {
-        // 重新渲染成就列表（会触发 checkAchievements）
         renderCategoryTabs();
         renderAchievementList(currentCategory);
         updateAchievementStats();
@@ -1173,9 +1304,9 @@ function openAchievementModal() {
     }
 }
 
-// ============================================
+// ============================================================
 // 红点控制
-// ============================================
+// ============================================================
 
 function updateAchievementRedDot() {
     var hasUnclaimed = achievementState.unlocked.length > 0;
@@ -1190,9 +1321,9 @@ function updateAchievementRedDot() {
     }
 }
 
-// ============================================
+// ============================================================
 // 统计信息
-// ============================================
+// ============================================================
 
 function getAchievementStats() {
     var total = 0, unlocked = 0, claimed = 0;
@@ -1233,9 +1364,9 @@ function updateAchievementStats() {
     }
 }
 
-// ============================================
+// ============================================================
 // 切换分类
-// ============================================
+// ============================================================
 
 function switchAchievementCategory(category) {
     currentCategory = category;
@@ -1249,9 +1380,9 @@ function switchAchievementCategory(category) {
     });
 }
 
-// ============================================
-// 渲染成就列表（含进度条修复）
-// ============================================
+// ============================================================
+// ★★★ 终极修复：渲染成就列表（所有卡片结构完全统一）★★★
+// ============================================================
 
 function renderAchievementList(category) {
     var container = document.getElementById('achievementList');
@@ -1304,13 +1435,28 @@ function renderAchievementList(category) {
         var def = item.def;
         var isUnlocked = item.isUnlocked;
         var isClaimed = item.isClaimed;
-        var progress = item.progress;
-        // 如果进度为 null，设为 0
-        if (progress === null || progress === undefined) progress = 0;
+        var progress = item.progress || 0;
 
         var card = document.createElement('div');
         card.className = 'achievement-card';
+        // ★★★ 强制固定高度（使用 min-height 并配合 flex 布局） ★★★
+        card.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            min-height: 180px;
+            height: 100%;
+            background: #f5ede4;
+            background-image: radial-gradient(ellipse at 30% 20%, #faf0e0 0%, #f5ede4 80%, #e8d5b8 100%);
+            border-radius: 16px;
+            padding: 14px 12px 12px;
+            border: 1px solid #dcc8b0;
+            box-shadow: 0 2px 8px rgba(140, 100, 70, 0.06);
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
+            text-align: center;
+        `;
 
+        // ---- 状态标签 ----
         var statusText = '';
         var statusClass = '';
         if (isClaimed) {
@@ -1324,6 +1470,7 @@ function renderAchievementList(category) {
             statusClass = 'status-locked';
         }
 
+        // ---- 奖励文本（始终生成占位） ----
         var rewardText = '';
         var r = def.reward;
         if (r.gold) rewardText += '🪙' + r.gold + ' ';
@@ -1334,29 +1481,44 @@ function renderAchievementList(category) {
         if (r.lucky_box) rewardText += '🎰×' + r.lucky_box + ' ';
         if (r.energy_box) rewardText += '🎁×' + r.energy_box + ' ';
 
-        var hiddenBadge = def.isHidden ? '<span class="hidden-badge">🌟</span>' : '';
+        var rewardDisplayHtml = rewardText
+            ? '<div class="card-reward" style="font-size:0.55rem;color:#6f9e3f;margin-bottom:4px;min-height:1.2em;">🎁 ' + rewardText + '</div>'
+            : '<div class="card-reward" style="font-size:0.55rem;color:#6f9e3f;margin-bottom:4px;min-height:1.2em;opacity:0;pointer-events:none;">&nbsp;</div>';
 
-        // 修复：只有未解锁（未完成）时才显示进度条，且进度值有效
-        var showProgress = !isClaimed && !isUnlocked;
-        var progressPercent = showProgress ? Math.min(100, Math.round(progress)) : 0;
+        var hiddenBadge = def.isHidden ? '<span class="hidden-badge" style="font-size:0.55rem;color:#f39c12;">🌟</span>' : '';
 
+        // ---- 进度条 ----
+        var progressPercent = 0;
+        if (!isClaimed) {
+            if (isUnlocked) {
+                progressPercent = 100;
+            } else {
+                var p = typeof progress === 'number' ? progress : 0;
+                progressPercent = Math.min(100, Math.max(0, Math.round(p)));
+            }
+        }
+
+        var progressHtml = `
+            <div class="card-progress-track" style="width:100%;max-width:140px;height:4px;background:rgba(180,150,120,0.2);border-radius:4px;overflow:hidden;margin:4px auto 3px;">
+                <div class="card-progress-fill" style="width:${isClaimed ? 100 : progressPercent}%;height:100%;background:${isClaimed ? '#b8b8b8' : 'linear-gradient(90deg, #d4a050, #c98f5e)'};border-radius:4px;transition:width 0.6s ease;"></div>
+            </div>
+            <div class="card-progress-text" style="font-size:0.5rem;color:${isClaimed ? '#999' : '#8b7a6a'};">${isClaimed ? '✅ 已领取' : progressPercent + '%'}</div>
+        `;
+
+        // ---- 构建卡片 ----
         card.innerHTML = `
-            <div class="card-icon">${def.icon}</div>
-            <div class="card-name">${def.name} ${hiddenBadge}</div>
-            <div class="card-desc">${def.description}</div>
-            ${rewardText ? `<div class="card-reward">🎁 ${rewardText}</div>` : ''}
-            ${showProgress ? `
-                <div class="card-progress-track">
-                    <div class="card-progress-fill" style="width:${progressPercent}%;"></div>
-                </div>
-                <div class="card-progress-text">${progressPercent}%</div>
-            ` : ''}
-            <div class="card-status ${statusClass}">${statusText}</div>
+            <div class="card-icon" style="font-size:2.2rem;line-height:1.2;margin-bottom:2px;">${def.icon}</div>
+            <div class="card-name" style="font-weight:700;font-size:0.82rem;color:#4a2a1a;margin-bottom:2px;">${def.name} ${hiddenBadge}</div>
+            <div class="card-desc" style="font-size:0.62rem;color:#7a5a3a;margin-bottom:6px;line-height:1.3;flex:1;">${def.description}</div>
+            ${rewardDisplayHtml}
+            ${progressHtml}
+            <div class="card-status ${statusClass}" style="font-size:0.55rem;font-weight:600;padding:2px 12px;border-radius:20px;margin-top:3px;display:inline-block;text-align:center;${isClaimed ? 'background:rgba(46,204,113,0.12);color:#2d7a3a;' : (isUnlocked ? 'background:rgba(255,215,0,0.15);color:#b8860b;' : 'background:rgba(180,150,120,0.12);color:#8b7a6a;')}">${statusText}</div>
             ${isUnlocked && !isClaimed ? `
-                <button class="claim-btn" data-id="${def.id}">领取奖励</button>
+                <button class="claim-btn" data-id="${def.id}" style="margin-top:4px;padding:3px 18px;border:none;border-radius:20px;font-size:0.6rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#6f9e3f,#4c7a2a);color:white;transition:0.15s;font-family:'Georgia',serif;align-self:center;">领取奖励</button>
             ` : ''}
         `;
 
+        // ---- 绑定领取事件 ----
         var btn = card.querySelector('.claim-btn');
         if (btn) {
             btn.onclick = function() {
@@ -1368,20 +1530,18 @@ function renderAchievementList(category) {
         container.appendChild(card);
     }
 
-    console.log('✅ 成就列表渲染完成，共 ' + items.length + ' 张卡片');
+    console.log('✅ 成就列表渲染完成，共 ' + items.length + ' 张卡片（所有卡片高度统一）');
 }
 
-// ============================================
-// 进度计算（完整版 - 覆盖所有成就）
-// ============================================
+// ============================================================
+// 进度计算（所有探险类直接从 localStorage 读取）
+// ============================================================
 
 function getAchievementProgress(achievementId) {
     var def = ACHIEVEMENT_DEFS[achievementId];
-    if (!def) return null;
+    if (!def) return 0;
 
-    // 如果已经解锁或已领取，返回 100%
-    if (achievementState.unlocked.indexOf(achievementId) !== -1 ||
-        achievementState.claimed.indexOf(achievementId) !== -1) {
+    if (achievementState.claimed.indexOf(achievementId) !== -1) {
         return 100;
     }
 
@@ -1487,10 +1647,11 @@ function getAchievementProgress(achievementId) {
         return Math.min(100, Math.round((ordersCompleted20 / 20) * 100));
     }
     if (achievementId === 'farm_all') {
+        var farmData = _getLocalJSON('farm_data', { lands: [] });
         var unlockedCount = 0;
-        if (typeof farmLands !== 'undefined' && farmLands) {
-            for (var i = 0; i < farmLands.length; i++) {
-                if (farmLands[i].unlocked) unlockedCount++;
+        if (farmData.lands) {
+            for (var i = 0; i < farmData.lands.length; i++) {
+                if (farmData.lands[i].unlocked) unlockedCount++;
             }
         }
         return Math.min(100, Math.round((unlockedCount / 24) * 100));
@@ -1498,11 +1659,9 @@ function getAchievementProgress(achievementId) {
 
     // ---- 小游戏类 ----
     if (achievementId === 'minigame_memory') {
-        // 记忆大师：30秒内完成 -> 用 bestTime 反向计算进度
         var best = (window.minigameStats && window.minigameStats.bestTime) || 0;
         if (best <= 0) return 0;
         if (best <= 30) return 100;
-        // 30秒以上，按比例计算，60秒为0%
         return Math.min(100, Math.max(0, Math.round(((60 - best) / 30) * 100)));
     }
     if (achievementId === 'minigame_10') {
@@ -1518,14 +1677,13 @@ function getAchievementProgress(achievementId) {
         return Math.min(100, Math.round((plays100 / 100) * 100));
     }
     if (achievementId === 'minigame_lightning') {
-        // 闪电手：20秒内完成
         var bestL = (window.minigameStats && window.minigameStats.bestTime) || 0;
         if (bestL <= 0) return 0;
         if (bestL <= 20) return 100;
         return Math.min(100, Math.max(0, Math.round(((40 - bestL) / 20) * 100)));
     }
 
-    // ---- 隐藏成就（无进度概念，未完成则0%） ----
+    // ---- 隐藏成就 ----
     if (achievementId === 'hidden_one_night_rich' ||
         achievementId === 'hidden_speed_demon' ||
         achievementId === 'hidden_bean_king' ||
@@ -1538,41 +1696,58 @@ function getAchievementProgress(achievementId) {
         return 0;
     }
 
-    // ---- 探险类 ----
+    // ============================================================
+    // ★★★ 探险类成就（全部直接从 localStorage 读取）★★★
+    // ============================================================
+
+    // ---- 岛屿解锁 ----
     if (achievementId === 'explore_3') {
-        var un3 = 0;
-        if (typeof window.getUnlockedCount === 'function') {
-            un3 = window.getUnlockedCount();
+        var statusMap3 = _getLocalJSON('explore_region_status', {});
+        var count3 = 0;
+        for (var key in statusMap3) {
+            if (statusMap3[key] && statusMap3[key] !== 'locked') count3++;
         }
-        return Math.min(100, Math.round((un3 / 3) * 100));
+        return Math.min(100, Math.round((count3 / 3) * 100));
     }
     if (achievementId === 'explore_5') {
-        var un5 = 0;
-        if (typeof window.getUnlockedCount === 'function') {
-            un5 = window.getUnlockedCount();
+        var statusMap5 = _getLocalJSON('explore_region_status', {});
+        var count5 = 0;
+        for (var key in statusMap5) {
+            if (statusMap5[key] && statusMap5[key] !== 'locked') count5++;
         }
-        return Math.min(100, Math.round((un5 / 5) * 100));
+        return Math.min(100, Math.round((count5 / 5) * 100));
     }
     if (achievementId === 'explore_8') {
-        var un8 = 0;
-        if (typeof window.getUnlockedCount === 'function') {
-            un8 = window.getUnlockedCount();
+        var statusMap8 = _getLocalJSON('explore_region_status', {});
+        var count8 = 0;
+        for (var key in statusMap8) {
+            if (statusMap8[key] && statusMap8[key] !== 'locked') count8++;
         }
-        return Math.min(100, Math.round((un8 / 8) * 100));
+        return Math.min(100, Math.round((count8 / 8) * 100));
     }
     if (achievementId === 'explore_10') {
-        var un10 = 0;
-        if (typeof window.getUnlockedCount === 'function') {
-            un10 = window.getUnlockedCount();
+        var statusMap10 = _getLocalJSON('explore_region_status', {});
+        var count10 = 0;
+        for (var key in statusMap10) {
+            if (statusMap10[key] && statusMap10[key] !== 'locked') count10++;
         }
-        return Math.min(100, Math.round((un10 / 10) * 100));
+        return Math.min(100, Math.round((count10 / 10) * 100));
     }
+
+    // ---- 剧情 ----
     if (achievementId === 'explore_story_all') {
+        var storyProgress = _getLocalJSON('story_progress', {});
         var totalStories = 0, completedStories = 0;
-        if (typeof window.STORY_DATA !== 'undefined') {
-            for (var key in window.STORY_DATA) {
-                totalStories++;
-                if (window.STORY_DATA[key].completed) completedStories++;
+        for (var key in storyProgress) {
+            totalStories++;
+            if (storyProgress[key]) completedStories++;
+        }
+        if (totalStories === 0) {
+            if (typeof STORY_DATA !== 'undefined') {
+                for (var key in STORY_DATA) {
+                    totalStories++;
+                    if (STORY_DATA[key].completed) completedStories++;
+                }
             }
         }
         if (totalStories === 0) return 0;
@@ -1581,165 +1756,135 @@ function getAchievementProgress(achievementId) {
 
     // ---- 钓鱼 ----
     if (achievementId === 'fish_100') {
-        var f100 = (typeof window.totalFishCaught !== 'undefined') ? window.totalFishCaught : 0;
-        return Math.min(100, Math.round((f100 / 100) * 100));
+        var stats = _getLocalJSON('fishing_stats', {});
+        return Math.min(100, Math.round(((stats.totalCaught || 0) / 100) * 100));
     }
     if (achievementId === 'fish_500') {
-        var f500 = (typeof window.totalFishCaught !== 'undefined') ? window.totalFishCaught : 0;
-        return Math.min(100, Math.round((f500 / 500) * 100));
+        var stats = _getLocalJSON('fishing_stats', {});
+        return Math.min(100, Math.round(((stats.totalCaught || 0) / 500) * 100));
     }
     if (achievementId === 'fish_1000') {
-        var f1000 = (typeof window.totalFishCaught !== 'undefined') ? window.totalFishCaught : 0;
-        return Math.min(100, Math.round((f1000 / 1000) * 100));
+        var stats = _getLocalJSON('fishing_stats', {});
+        return Math.min(100, Math.round(((stats.totalCaught || 0) / 1000) * 100));
     }
     if (achievementId === 'fish_legend_10') {
-        var l10 = (typeof window.totalLegendaryFish !== 'undefined') ? window.totalLegendaryFish : 0;
-        return Math.min(100, Math.round((l10 / 10) * 100));
+        var stats = _getLocalJSON('fishing_stats', {});
+        return Math.min(100, Math.round(((stats.totalLegendary || 0) / 10) * 100));
     }
     if (achievementId === 'fish_legend_100') {
-        var l100 = (typeof window.totalLegendaryFish !== 'undefined') ? window.totalLegendaryFish : 0;
-        return Math.min(100, Math.round((l100 / 100) * 100));
+        var stats = _getLocalJSON('fishing_stats', {});
+        return Math.min(100, Math.round(((stats.totalLegendary || 0) / 100) * 100));
     }
 
     // ---- 挖矿 ----
     if (achievementId === 'mine_iron_100') {
-        var i100 = (typeof window.totalIronOre !== 'undefined') ? window.totalIronOre : 0;
-        return Math.min(100, Math.round((i100 / 100) * 100));
+        var data = _getLocalJSON('mining_data', {});
+        return Math.min(100, Math.round(((data.totalIron || 0) / 100) * 100));
     }
     if (achievementId === 'mine_iron_1000') {
-        var i1000 = (typeof window.totalIronOre !== 'undefined') ? window.totalIronOre : 0;
-        return Math.min(100, Math.round((i1000 / 1000) * 100));
+        var data = _getLocalJSON('mining_data', {});
+        return Math.min(100, Math.round(((data.totalIron || 0) / 1000) * 100));
     }
     if (achievementId === 'mine_diamond_10') {
-        var d10 = (typeof window.totalDiamond !== 'undefined') ? window.totalDiamond : 0;
-        return Math.min(100, Math.round((d10 / 10) * 100));
+        var data = _getLocalJSON('mining_data', {});
+        return Math.min(100, Math.round(((data.totalDiamond || 0) / 10) * 100));
     }
     if (achievementId === 'mine_diamond_100') {
-        var d100 = (typeof window.totalDiamond !== 'undefined') ? window.totalDiamond : 0;
-        return Math.min(100, Math.round((d100 / 100) * 100));
+        var data = _getLocalJSON('mining_data', {});
+        return Math.min(100, Math.round(((data.totalDiamond || 0) / 100) * 100));
     }
     if (achievementId === 'mine_depth_100') {
-        var depth = 0;
-        if (typeof window.miningState !== 'undefined' && window.miningState.depth !== undefined) {
-            depth = window.miningState.depth;
-        }
-        return Math.min(100, Math.round((depth / 100) * 100));
+        var data = _getLocalJSON('mining_data', {});
+        return Math.min(100, Math.round(((data.depth || 0) / 100) * 100));
     }
 
     // ---- 烹饪 ----
     if (achievementId === 'cook_100') {
-        var c100 = (typeof window.paniniState !== 'undefined' && paniniState.totalCooked !== undefined) ? paniniState.totalCooked : 0;
-        return Math.min(100, Math.round((c100 / 100) * 100));
+        var data = _getLocalJSON('panini_data', {});
+        return Math.min(100, Math.round(((data.totalCooked || 0) / 100) * 100));
     }
     if (achievementId === 'cook_200') {
-        var c200 = (typeof window.paniniState !== 'undefined' && paniniState.totalCooked !== undefined) ? paniniState.totalCooked : 0;
-        return Math.min(100, Math.round((c200 / 200) * 100));
+        var data = _getLocalJSON('panini_data', {});
+        return Math.min(100, Math.round(((data.totalCooked || 0) / 200) * 100));
     }
     if (achievementId === 'cook_500') {
-        var c500 = (typeof window.paniniState !== 'undefined' && paniniState.totalCooked !== undefined) ? paniniState.totalCooked : 0;
-        return Math.min(100, Math.round((c500 / 500) * 100));
+        var data = _getLocalJSON('panini_data', {});
+        return Math.min(100, Math.round(((data.totalCooked || 0) / 500) * 100));
     }
     if (achievementId === 'cook_recipes_15') {
-        var r15 = 0;
-        if (typeof window.paniniState !== 'undefined' && paniniState.unlockedRecipes) {
-            r15 = paniniState.unlockedRecipes.length;
-        }
+        var data = _getLocalJSON('panini_data', {});
+        var r15 = (data.unlockedRecipes && data.unlockedRecipes.length) || 0;
         return Math.min(100, Math.round((r15 / 15) * 100));
     }
     if (achievementId === 'cook_recipes_all') {
-        var rall = 0;
-        if (typeof window.paniniState !== 'undefined' && paniniState.unlockedRecipes) {
-            rall = paniniState.unlockedRecipes.length;
-        }
+        var data = _getLocalJSON('panini_data', {});
+        var rall = (data.unlockedRecipes && data.unlockedRecipes.length) || 0;
         return Math.min(100, Math.round((rall / 29) * 100));
     }
     if (achievementId === 'cook_dark') {
-        var dark = (typeof window.paniniState !== 'undefined' && paniniState.darkCooked !== undefined) ? paniniState.darkCooked : 0;
-        return Math.min(100, Math.round((dark / 1) * 100));
+        var data = _getLocalJSON('panini_data', {});
+        return Math.min(100, Math.round(((data.darkCooked || 0) / 1) * 100));
     }
 
-    // ---- 冒险者 ----
+    // ---- 冒险者等级 ----
     if (achievementId === 'adventurer_2') {
-        var rank2 = 0;
-        if (typeof window.adventurerState !== 'undefined') {
-            rank2 = window.adventurerState.rank;
-        }
-        return Math.min(100, Math.round((rank2 / 2) * 100));
+        var data = _getLocalJSON('adventurer_data', {});
+        return Math.min(100, Math.round(((data.rank || 1) / 2) * 100));
     }
     if (achievementId === 'adventurer_4') {
-        var rank4 = 0;
-        if (typeof window.adventurerState !== 'undefined') {
-            rank4 = window.adventurerState.rank;
-        }
-        return Math.min(100, Math.round((rank4 / 4) * 100));
+        var data = _getLocalJSON('adventurer_data', {});
+        return Math.min(100, Math.round(((data.rank || 1) / 4) * 100));
     }
     if (achievementId === 'adventurer_7') {
-        var rank7 = 0;
-        if (typeof window.adventurerState !== 'undefined') {
-            rank7 = window.adventurerState.rank;
-        }
-        return Math.min(100, Math.round((rank7 / 7) * 100));
+        var data = _getLocalJSON('adventurer_data', {});
+        return Math.min(100, Math.round(((data.rank || 1) / 7) * 100));
     }
     if (achievementId === 'adventurer_9') {
-        var rank9 = 0;
-        if (typeof window.adventurerState !== 'undefined') {
-            rank9 = window.adventurerState.rank;
-        }
-        return Math.min(100, Math.round((rank9 / 9) * 100));
+        var data = _getLocalJSON('adventurer_data', {});
+        return Math.min(100, Math.round(((data.rank || 1) / 9) * 100));
     }
 
     // ---- 章鱼投喂 ----
     if (achievementId === 'nomo_feed_100') {
-        var n100 = 0;
-        if (typeof window.getTotalFedCount === 'function') {
-            n100 = window.getTotalFedCount();
-        }
-        return Math.min(100, Math.round((n100 / 100) * 100));
+        var data = _getLocalJSON('nomo_feed_data', {});
+        return Math.min(100, Math.round(((data.totalCount || 0) / 100) * 100));
     }
     if (achievementId === 'nomo_feed_500') {
-        var n500 = 0;
-        if (typeof window.getTotalFedCount === 'function') {
-            n500 = window.getTotalFedCount();
-        }
-        return Math.min(100, Math.round((n500 / 500) * 100));
+        var data = _getLocalJSON('nomo_feed_data', {});
+        return Math.min(100, Math.round(((data.totalCount || 0) / 500) * 100));
     }
     if (achievementId === 'nomo_complete') {
-        return 0;
+        try {
+            return localStorage.getItem('nomo_completed') === 'true' ? 100 : 0;
+        } catch(e) { return 0; }
     }
 
     // ---- 能量 ----
     if (achievementId === 'energy_100') {
-        var e100 = 0;
-        if (typeof window.riceState !== 'undefined' && riceState.totalEnergyProduced !== undefined) {
-            e100 = riceState.totalEnergyProduced;
-        }
-        return Math.min(100, Math.round((e100 / 100) * 100));
+        var data = _getLocalJSON('rice_data', {});
+        return Math.min(100, Math.round(((data.totalEnergyProduced || 0) / 100) * 100));
     }
     if (achievementId === 'energy_500') {
-        var e500 = 0;
-        if (typeof window.riceState !== 'undefined' && riceState.totalEnergyProduced !== undefined) {
-            e500 = riceState.totalEnergyProduced;
-        }
-        return Math.min(100, Math.round((e500 / 500) * 100));
+        var data = _getLocalJSON('rice_data', {});
+        return Math.min(100, Math.round(((data.totalEnergyProduced || 0) / 500) * 100));
     }
 
     // ---- 交易 ----
     if (achievementId === 'trade_total_100') {
-        var t100 = (typeof window.tradeTotalCount !== 'undefined') ? window.tradeTotalCount : 0;
-        return Math.min(100, Math.round((t100 / 100) * 100));
+        var count = _getLocalNumber('trade_total_count', 0);
+        return Math.min(100, Math.round((count / 100) * 100));
     }
     if (achievementId === 'trade_total_500') {
-        var t500 = (typeof window.tradeTotalCount !== 'undefined') ? window.tradeTotalCount : 0;
-        return Math.min(100, Math.round((t500 / 500) * 100));
+        var count = _getLocalNumber('trade_total_count', 0);
+        return Math.min(100, Math.round((count / 500) * 100));
     }
 
-    // 默认：未匹配的成就返回 0（不显示进度条）
     return 0;
 }
 
-// ============================================
+// ============================================================
 // 外部调用
-// ============================================
+// ============================================================
 
 function updateAchievements() {
     loadAchievementData();
@@ -1755,6 +1900,8 @@ function clearAchievementData() {
     achievementState.claimed = [];
     achievementState.hiddenUnlocked = [];
     window.minigameStats = { totalPlays: 0, bestTime: 0, totalReward: 0 };
+    window.totalFishCaught = 0;
+    window.totalLegendaryFish = 0;
     luckyBoxStats = { maxGold: 0 };
     exchangeStats = { totalExchanges: 0 };
     gameTimeStats = { totalSeconds: 0 };
@@ -1765,9 +1912,9 @@ function clearAchievementData() {
     updateAchievementStats();
 }
 
-// ============================================
+// ============================================================
 // 初始化
-// ============================================
+// ============================================================
 
 loadAchievementData();
 
@@ -1778,7 +1925,6 @@ if (!window._gameTimeInterval) {
     }, 1000);
 }
 
-// 暴露全局接口
 window.ACHIEVEMENT_DEFS = ACHIEVEMENT_DEFS;
 window.ACHIEVEMENT_CATEGORIES = ACHIEVEMENT_CATEGORIES;
 window.achievementState = achievementState;
@@ -1799,5 +1945,8 @@ window.clearAchievementData = clearAchievementData;
 window.updateAchievements = updateAchievements;
 window.renderCategoryTabs = renderCategoryTabs;
 window.openAchievementModal = openAchievementModal;
+window.loadAchievementData = loadAchievementData;
+window.saveAchievementData = saveAchievementData;
 
 console.log('🏆 成就系统加载完成，共 ' + Object.keys(ACHIEVEMENT_DEFS).length + ' 个成就');
+console.log('📊 所有卡片结构已统一，探险类进度条强制显示');
