@@ -1,6 +1,7 @@
 // ============================================================
 // 商城系统（完整修复版）
 // 修复：每日库存凌晨4点自动重置（使用时间戳精确判断）
+// ★★★ 使用 window.checkDailyReset 确保不被其他文件覆盖 ★★★
 // 路径: js/shop.js
 // ============================================================
 
@@ -118,7 +119,7 @@ function initShop() {
     loadPlayerBag();
     
     // ===== 启动时检查每日重置 =====
-    var wasReset = checkDailyReset();
+    var wasReset = window.checkDailyReset();
     if (wasReset) {
         console.log('🔄 商城库存已每日重置（凌晨4点刷新）');
     }
@@ -128,7 +129,7 @@ function initShop() {
         clearInterval(_shopRefreshTimer);
     }
     _shopRefreshTimer = setInterval(function() {
-        var reset = checkDailyReset();
+        var reset = window.checkDailyReset();
         if (reset) {
             console.log('🔄 商城库存已自动重置（定时检查）');
             var modal = document.getElementById('shopModal');
@@ -156,17 +157,13 @@ function loadShopData() {
             shopState.resetDate = data.resetDate || null;
             
             // ===== 修复：兼容旧存档中的日期字符串 =====
-            // 如果 resetDate 是日期字符串（如 "2026-07-30"），将其转为时间戳
             if (shopState.resetDate !== null && typeof shopState.resetDate === 'string') {
-                // 检查是否为日期格式（包含 "-"）
                 if (shopState.resetDate.indexOf('-') !== -1) {
-                    // 将日期字符串转为时间戳（当天凌晨4点的时间戳）
                     var parts = shopState.resetDate.split('-');
                     if (parts.length === 3) {
                         var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                         d.setHours(4, 0, 0, 0);
                         shopState.resetDate = String(d.getTime());
-                        // 保存转换后的格式
                         saveShopData();
                         console.log('🔄 已将旧日期格式转换为时间戳:', shopState.resetDate);
                     }
@@ -184,7 +181,6 @@ function loadShopData() {
         shopState.resetDate = null;
     }
     
-    // 确保所有道具都有库存字段
     for (var id in SHOP_ITEMS) {
         if (shopState.inventory[id] === undefined) {
             shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
@@ -192,9 +188,8 @@ function loadShopData() {
     }
     
     // ===== 关键：加载后立即检查每日重置 =====
-    checkDailyReset();
+    window.checkDailyReset();
     
-    // 如果没有保存过数据，立即保存
     var saved = localStorage.getItem('shop_data');
     if (!saved) {
         saveShopData();
@@ -206,7 +201,7 @@ function saveShopData() {
         var data = {
             signIn: shopState.signIn,
             inventory: shopState.inventory,
-            resetDate: shopState.resetDate  // 时间戳字符串
+            resetDate: shopState.resetDate
         };
         localStorage.setItem('shop_data', JSON.stringify(data));
     } catch(e) {
@@ -215,10 +210,11 @@ function saveShopData() {
 }
 
 // ============================================================
-// 每日重置检查（凌晨4点刷新）- 修复版
+// ★★★ 核心修复：使用 window 绑定，防止被其他文件覆盖 ★★★
 // ============================================================
 
-function checkDailyReset() {
+window.checkDailyReset = function() {
+    console.log('🔍 [shop.js] 执行 checkDailyReset 检查...');
     var now = new Date();
     
     // 计算今天凌晨 4:00:00 的时间戳
@@ -228,9 +224,11 @@ function checkDailyReset() {
     
     // 获取上次重置时间戳
     var lastResetTimestamp = parseInt(shopState.resetDate);
+    console.log('📊 lastResetTimestamp:', lastResetTimestamp, 'today4amTimestamp:', today4amTimestamp);
     
     // 如果 resetDate 为 null 或无效（首次启动），强制触发重置
     if (isNaN(lastResetTimestamp) || lastResetTimestamp === 0) {
+        console.log('📊 首次启动或 resetDate 无效，初始化库存');
         for (var id in SHOP_ITEMS) {
             shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
         }
@@ -242,8 +240,8 @@ function checkDailyReset() {
     }
     
     // ===== 核心修复：比较时间戳 =====
-    // 如果 当前时间 >= 今天凌晨4点 且 上次重置时间 < 今天凌晨4点 → 触发重置
     if (now.getTime() >= today4amTimestamp && lastResetTimestamp < today4amTimestamp) {
+        console.log('📊 触发重置！当前时间 >= 今天4点，且上次重置 < 今天4点');
         for (var id in SHOP_ITEMS) {
             shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
         }
@@ -254,8 +252,12 @@ function checkDailyReset() {
         return true;
     }
     
+    console.log('📊 不需要重置');
     return false;
-}
+};
+
+// 保持向后兼容（但实际已被 window 覆盖）
+var checkDailyReset = window.checkDailyReset;
 
 // ============================================================
 // 商城红点提示
@@ -584,7 +586,7 @@ function showLuckyBoxResult(goldGain) {
 }
 
 // ============================================================
-// 立即生效效果
+// 立即生效效果（含 luckyBoxMaxGold 记录）
 // ============================================================
 
 function applyInstantEffect(itemId) {
@@ -593,6 +595,11 @@ function applyInstantEffect(itemId) {
             var goldGain = Math.floor(Math.random() * 90) + 10;
             if (typeof gold !== 'undefined') {
                 gold += goldGain;
+            }
+            
+            // ★★★ 记录最大值（用于成就） ★★★
+            if (goldGain > luckyBoxMaxGold) {
+                luckyBoxMaxGold = goldGain;
             }
             
             if (typeof luckyBoxStats !== 'undefined') {
@@ -647,7 +654,7 @@ function applyInstantEffect(itemId) {
 }
 
 // ============================================================
-// 使用背包道具
+// 使用背包道具（含 luckyBoxMaxGold 记录）
 // ============================================================
 
 function useBagItem(itemId) {
@@ -717,6 +724,10 @@ function useBagItem(itemId) {
             var goldGain = Math.floor(Math.random() * 90) + 10;
             if (typeof gold !== 'undefined') {
                 gold += goldGain;
+            }
+            
+            if (goldGain > luckyBoxMaxGold) {
+                luckyBoxMaxGold = goldGain;
             }
             
             if (typeof luckyBoxStats !== 'undefined') {
@@ -799,7 +810,7 @@ function bindShopEvents() {
 // ============================================================
 function openShop() {
     // ===== 检查每日重置 =====
-    var wasReset = checkDailyReset();
+    var wasReset = window.checkDailyReset();
     
     if (wasReset) {
         if (typeof showMessage === 'function') {
@@ -1111,10 +1122,11 @@ window.clearShopData = clearShopData;
 window.useBagItem = useBagItem;
 window.getBagItemCount = getBagItemCount;
 window.showLuckyBoxResult = showLuckyBoxResult;
-window.checkDailyReset = checkDailyReset;
 window.clearShopRefreshBadge = clearShopRefreshBadge;
 
-console.log('🏪 商城系统加载完成（凌晨4点补货版 + 时间戳修复）');
+// ★★★ 确保 checkDailyReset 已暴露（已在前面使用 window 绑定） ★★★
+console.log('🏪 商城系统加载完成（凌晨4点补货版 + 时间戳修复 + window绑定）');
+console.log('🔍 window.checkDailyReset 已定义，包含时间戳比较逻辑');
 
 // ============================================================
 // 自动初始化

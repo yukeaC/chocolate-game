@@ -169,7 +169,6 @@ function addFragment(source) {
     var newTotal = addFragmentToBackpack(1);
     saveTreasureData();
     
-    // ⭐ 修改为“恭喜你获得隐藏碎片！”
     if (typeof showMessage === 'function') {
         showMessage('🎉 恭喜你获得隐藏碎片！(' + newTotal + '/' + TREASURE_FRAGMENTS_NEEDED + ')', false);
     }
@@ -217,14 +216,12 @@ function assembleMap() {
     
     saveTreasureData();
     
-    // 刷新背包显示（如果背包打开）
     if (typeof window.renderBackpack === 'function') {
         var modal = document.getElementById('backpackModal');
         if (modal && !modal.classList.contains('hidden')) {
             window.renderBackpack();
         }
     }
-    // 更新地图标记
     if (typeof window.updateTreasureMarker === 'function') {
         window.updateTreasureMarker();
     }
@@ -246,12 +243,10 @@ function assembleMap() {
 function triggerTreasureEvent() {
     if (!treasureState.hasCompleteMap) return false;
     
-    // 显示隐藏事件开发中提示
     if (typeof showMessage === 'function') {
         showMessage('🎁 隐藏事件开发中... 敬请期待！', false);
     }
     
-    // 藏宝图完成 → 藏宝图消失，回到碎片收集模式
     treasureState.hasCompleteMap = false;
     treasureState.treasureRegionId = null;
     treasureState.treasurePosX = 0;
@@ -265,7 +260,6 @@ function triggerTreasureEvent() {
     
     saveTreasureData();
     
-    // 刷新背包显示（如果背包打开）
     if (typeof window.renderBackpack === 'function') {
         var modal = document.getElementById('backpackModal');
         if (modal && !modal.classList.contains('hidden')) {
@@ -346,7 +340,6 @@ function onVisitWelcomeBay() {
         var newTotal = addFragmentToBackpack(1);
         saveTreasureData();
         
-        // ⭐ 修改为“恭喜你获得隐藏碎片！”
         if (typeof showMessage === 'function') {
             showMessage('🎉 恭喜你获得隐藏碎片！(' + newTotal + '/' + TREASURE_FRAGMENTS_NEEDED + ')', false);
         }
@@ -389,6 +382,31 @@ function getRegionName(regionId) {
 }
 
 // ============================================================
+// ★★★ 新增：检查是否集齐全部收藏品（用于成就） ★★★
+// ============================================================
+
+function isAllCollectiblesCollected() {
+    // 如果 TREASURE_COLLECTIBLES 未定义，返回 false
+    if (typeof TREASURE_COLLECTIBLES === 'undefined') return false;
+    
+    try {
+        var collected = JSON.parse(localStorage.getItem('treasure_collected') || '[]');
+        var total = TREASURE_COLLECTIBLES.length;
+        if (total === 0) return false;
+        
+        var count = 0;
+        for (var i = 0; i < TREASURE_COLLECTIBLES.length; i++) {
+            if (collected.indexOf(TREASURE_COLLECTIBLES[i].id) !== -1) {
+                count++;
+            }
+        }
+        return count >= total;
+    } catch(e) {
+        return false;
+    }
+}
+
+// ============================================================
 // UI 更新（背包中的碎片由 renderBackpack 统一处理）
 // ============================================================
 function updateBackpackFragmentUI() {
@@ -412,7 +430,9 @@ function initTreasure() {
     }
 }
 
-// 暴露全局接口
+// ============================================================
+// ★★★ 暴露全局接口（确保所有函数都暴露） ★★★
+// ============================================================
 window.treasureState = treasureState;
 window.TREASURE_FRAGMENTS_NEEDED = TREASURE_FRAGMENTS_NEEDED;
 window.addFragment = addFragment;
@@ -434,6 +454,9 @@ window.consumeFragmentsFromBackpack = consumeFragmentsFromBackpack;
 window.getRegionName = getRegionName;
 window.getUnlockedRegions = getUnlockedRegions;
 
+// ★★★ 关键：暴露 isAllCollectiblesCollected 到全局（用于成就系统） ★★★
+window.isAllCollectiblesCollected = isAllCollectiblesCollected;
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTreasure);
 } else {
@@ -441,3 +464,4 @@ if (document.readyState === 'loading') {
 }
 
 console.log('🗺️ 藏宝图系统加载完成（碎片存入背包）');
+console.log('🗺️ isAllCollectiblesCollected 已暴露到全局');

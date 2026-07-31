@@ -771,23 +771,30 @@
 <canvas id="fireworksCanvas"></canvas>
 
 <!-- ===== 脚本文件（加载顺序很重要！） ===== -->
-<script src="js/config.js"></script>       <!-- 第1：配置 -->
-<script src="js/gameState.js"></script>    <!-- 第2：游戏状态（定义所有全局变量） -->
-<script src="js/utils.js"></script>        <!-- 第3：工具函数 -->
+<script src="js/config.js"></script>
+<script src="js/gameState.js"></script>
+<script src="js/utils.js"></script>
 <script src="js/fireworks.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/production.js"></script>
 <script src="js/order.js"></script>
 <script src="js/energy.js"></script>
 <script src="js/sell.js"></script>
-<script src="js/ui.js"></script>           <!-- 第8：UI 刷新（依赖 gameState 中的变量） -->
+<script src="js/ui.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/main.js"></script>
-<script src="js/achievements.js"></script>
-<script src="js/adventurer.js"></script>
-<script src="js/farm.js"></script>
+
+<!-- ===== 商城（在成就之前加载） ===== -->
 <script src="js/shop.js"></script>
+
+<!-- ===== 成就系统 ===== -->
+<script src="js/achievements.js"></script>
+
+<!-- ===== 探险地图相关（treasure.js 必须加载！） ===== -->
+<script src="js/adventurer.js"></script>
+<script src="js/treasure.js"></script>      <!-- ★★★ 新增：必须加载！ ★★★ -->
+<script src="js/farm.js"></script>
 <script src="js/stats.js"></script>
 <script src="js/tower.js"></script>
 <script src="js/index.js"></script>

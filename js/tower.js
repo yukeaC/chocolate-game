@@ -51,8 +51,8 @@ var towerState = {
     _farmHarvestsSinceStart: 0,
     _fishCaughtSinceStart: 0,
     _rareFishCaughtSinceStart: 0,
-    _ironMinedSinceStart: 0,      // 新增：铁矿计数
-    _diamondMinedSinceStart: 0,   // 新增：钻石计数
+    _ironMinedSinceStart: 0,
+    _diamondMinedSinceStart: 0,
     _cookCountSinceStart: 0,
     _tradeCountSinceStart: 0,
     _perfectCountSinceStart: 0,
@@ -96,7 +96,8 @@ function loadTowerData() {
             towerState._perfectCountSinceStart = data._perfectCountSinceStart || 0;
         }
     } catch(e) { console.warn('加载挑战塔数据失败:', e); }
-    checkDailyReset();
+    // ★★★ 修改：调用 checkTowerDailyReset ★★★
+    checkTowerDailyReset();
 }
 
 function saveTowerData() {
@@ -129,7 +130,8 @@ function saveTowerData() {
     } catch(e) { console.warn('保存挑战塔数据失败:', e); }
 }
 
-function checkDailyReset() {
+// ★★★ 修改：函数名改为 checkTowerDailyReset ★★★
+function checkTowerDailyReset() {
     var today = getTodayDateStr();
     if (towerState.lastResetDate !== today) {
         towerState.lastResetDate = today;
@@ -721,14 +723,11 @@ function claimReward(floor) {
     if (typeof gold !== 'undefined') gold += goldGain;
     
     rewards.items.forEach(function(item) {
-    if (typeof playerBag !== 'undefined') {
-        var addAmount = Math.floor(item.amount * multiplier);
-        // 如果原奖励不为0，但取整后为0，至少给1个（保留体验）
-        if (addAmount === 0 && item.amount > 0) addAmount = 1;
-        playerBag[item.id] = (playerBag[item.id] || 0) + addAmount;
-        if (typeof savePlayerBag === 'function') savePlayerBag();
-    }
-});
+        if (typeof playerBag !== 'undefined') {
+            playerBag[item.id] = (playerBag[item.id] || 0) + (item.amount * multiplier);
+            if (typeof savePlayerBag === 'function') savePlayerBag();
+        }
+    });
     
     var usedTime = (Date.now() - towerState.challengeStartTime) / 1000;
     var timeLimit = floorData.timeLimit;

@@ -33,6 +33,14 @@ let totalSold = 0;
 let totalEarned = 0;
 let totalBeansHarvested = 0;
 
+// ============================================================
+// ★★★ 新增：成就系统所需变量 ★★★
+// ============================================================
+let totalOrdersCompleted = 0;    // 订单完成总数（用于成就）
+let totalExchanges = 0;          // 豆子兑换金币总次数（用于成就）
+let totalGameTime = 0;           // 游戏总时长（秒）（用于成就）
+let luckyBoxMaxGold = 0;         // 单次幸运盒子最大金币数（用于成就）
+
 // 自动保存开关
 let autoSaveEnabled = true;
 

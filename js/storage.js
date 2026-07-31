@@ -66,7 +66,12 @@ function saveGameToLocal() {
         userProfile: userProfile || { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 },
         currentOrders: currentOrders || [],
         orderDate: getTodayDateStr(),
-        lastSyncTime: Date.now()
+        lastSyncTime: Date.now(),
+        // ★★★ 新增：成就系统变量持久化 ★★★
+        totalOrdersCompleted: totalOrdersCompleted || 0,
+        totalExchanges: totalExchanges || 0,
+        totalGameTime: totalGameTime || 0,
+        luckyBoxMaxGold: luckyBoxMaxGold || 0
     };
     const key = 'chocolate_save';
     localStorage.setItem(key, JSON.stringify(saveData));
@@ -96,6 +101,12 @@ function loadGameFromData(data) {
         autoSaveEnabled = data.autoSaveEnabled !== undefined ? data.autoSaveEnabled : true;
         exp = data.exp ?? 0;
         level = data.level ?? 1;
+
+        // ★★★ 新增：加载成就系统变量 ★★★
+        totalOrdersCompleted = data.totalOrdersCompleted || 0;
+        totalExchanges = data.totalExchanges || 0;
+        totalGameTime = data.totalGameTime || 0;
+        luckyBoxMaxGold = data.luckyBoxMaxGold || 0;
 
         if (data.userProfile && data.userProfile.nickname) {
             userProfile = {
@@ -234,6 +245,12 @@ function clearAllGameDataLocal() {
     totalBeansHarvested = 0;
     exp = 0;
     level = 1;
+    
+    // ★★★ 重置成就变量 ★★★
+    totalOrdersCompleted = 0;
+    totalExchanges = 0;
+    totalGameTime = 0;
+    luckyBoxMaxGold = 0;
 
     // 重置库存
     if (typeof inventory !== 'undefined') {

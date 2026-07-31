@@ -106,6 +106,9 @@ function completeOrderByProduct(productId, requiredQty, rewardGold, rewardExp, p
         totalEarned += rewardGold;
         if (typeof addExp === 'function') addExp(rewardExp);
         
+        // ★★★ 新增：累加订单完成总数（用于成就） ★★★
+        totalOrdersCompleted = (totalOrdersCompleted || 0) + 1;
+        
         showMessage('✅ 完成订单：' + productName + ' x' + requiredQty + '，获得 ' + rewardGold + ' 金币 + ' + rewardExp + ' 经验！', false);
         if (typeof soundOrderComplete === 'function') soundOrderComplete();
         
@@ -154,19 +157,18 @@ function getNextRefreshTime() {
 }
 
 // ============================================================
-// ★★★ 修复：改用时间戳存储上次刷新时间 ★★★
+// 改用时间戳存储上次刷新时间
 // ============================================================
 
 function getLastRefreshTimestamp() {
     var raw = localStorage.getItem('last_refresh_date');
     if (!raw) {
-        // 首次使用：返回 0，强制触发首次刷新
         return 0;
     }
     
     var timestamp = parseInt(raw);
     
-    // ★★★ 兼容旧存档：如果是日期字符串（如 "2026-07-30"），转换为时间戳 ★★★
+    // 兼容旧存档：如果是日期字符串，转换为时间戳
     if (isNaN(timestamp) || raw.indexOf('-') !== -1) {
         var parts = raw.split('-');
         if (parts.length === 3) {
@@ -188,7 +190,7 @@ function setLastRefreshTimestamp(timestamp) {
 }
 
 // ============================================================
-// ★★★ 修复：订单刷新（使用时间戳比较）★★★
+// 订单刷新（使用时间戳比较）
 // ============================================================
 
 function refreshOrdersIfNeeded() {
@@ -199,7 +201,7 @@ function refreshOrdersIfNeeded() {
     
     var lastRefresh = getLastRefreshTimestamp();
     
-    // ===== 如果当前时间 >= 今天凌晨4点 且 上次刷新时间 < 今天凌晨4点 → 触发刷新 =====
+    // 如果当前时间 >= 今天凌晨4点 且 上次刷新时间 < 今天凌晨4点 → 触发刷新
     if (now.getTime() >= today4amTimestamp && lastRefresh < today4amTimestamp) {
         currentOrders = generateFreshOrders();
         localStorage.setItem('order_date', getTodayDateStr());
@@ -287,14 +289,14 @@ function loadOrInitOrders() {
     }
     updateOrderStatusDisplay();
     
-    // ★★★ 兼容旧存档：如果 last_refresh_date 是日期字符串，自动转换 ★★★
+    // 兼容旧存档
     getLastRefreshTimestamp();
     
-    // ===== 定时器：每小时检查一次是否应刷新 =====
+    // 定时器：每小时检查一次
     if (window.orderDateTimer) clearInterval(window.orderDateTimer);
     window.orderDateTimer = setInterval(function() {
         refreshOrdersIfNeeded();
-    }, 3600000);  // 改为每小时检查一次（更精确）
+    }, 3600000);
 }
 
 function persistOrders() {

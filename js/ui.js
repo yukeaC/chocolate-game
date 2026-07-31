@@ -76,6 +76,8 @@ function exchangeBeansToGold() {
         if (cocoaBeans >= 50) {
             cocoaBeans -= 50;
             gold += 1;
+            // ★★★ 新增：累加兑换次数（用于成就） ★★★
+            totalExchanges = (totalExchanges || 0) + 1;
             showMessage('✨ 成功兑换 1 金币！剩余豆子: ' + cocoaBeans, false);
             refreshUI();
             if (autoSaveEnabled) saveGame();
@@ -94,6 +96,8 @@ function exchangeBeansToGold() {
     }
     cocoaBeans -= beansNeeded;
     gold += quantity;
+    // ★★★ 新增：累加兑换次数（用于成就） ★★★
+    totalExchanges = (totalExchanges || 0) + quantity;
     showMessage('✨ 成功兑换 ' + quantity + ' 金币！消耗 ' + beansNeeded + ' 豆子，剩余豆子: ' + cocoaBeans, false);
     refreshUI();
     if (autoSaveEnabled) saveGame();

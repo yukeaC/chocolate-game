@@ -750,14 +750,18 @@ var ACHIEVEMENT_DEFS = {
         reward: { gold: 200, beans: 200, exp: 80, energy_box: 1 }
     },
     hidden_signin_king: {
-        id: 'hidden_signin_king', category: 'special', name: '连续签到王', icon: '👑',
-        description: '连续签到 30 天',
-        isHidden: true,
-        check: function() {
-            return (typeof shopState !== 'undefined' && shopState.signIn && shopState.signIn.consecutiveDays >= 30);
-        },
-        reward: { gold: 300, exp: 100, energy_box: 2, lucky_box: 3 }
+    id: 'hidden_signin_king', category: 'special', name: '连续签到王', icon: '👑',
+    description: '连续签到 30 天',
+    isHidden: true,
+    check: function() {
+        try {
+            return shopState && shopState.signIn && shopState.signIn.consecutiveDays >= 30;
+        } catch(e) {
+            return false;
+        }
     },
+    reward: { gold: 300, exp: 100, energy_box: 2, lucky_box: 3 }
+},
     hidden_all_recipes: {
         id: 'hidden_all_recipes', category: 'special', name: '隐藏美食家', icon: '🍽️',
         description: '制作全部 8 种隐藏产品',
@@ -1921,6 +1925,8 @@ loadAchievementData();
 if (!window._gameTimeInterval) {
     window._gameTimeInterval = setInterval(function() {
         gameTimeStats.totalSeconds += 1;
+        // ★★★ 新增：同步累加 totalGameTime（用于成就） ★★★
+        totalGameTime = (totalGameTime || 0) + 1;
         if (gameTimeStats.totalSeconds % 60 === 0) saveAchievementData();
     }, 1000);
 }
