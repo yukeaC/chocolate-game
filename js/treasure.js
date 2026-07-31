@@ -457,6 +457,187 @@ window.getUnlockedRegions = getUnlockedRegions;
 // ★★★ 关键：暴露 isAllCollectiblesCollected 到全局（用于成就系统） ★★★
 window.isAllCollectiblesCollected = isAllCollectiblesCollected;
 
+// ============================================================
+// ★★★ 新增：藏宝图奖励生成与领取 ★★★
+// ============================================================
+
+// 收藏品定义（如果不存在则创建）
+if (typeof TREASURE_COLLECTIBLES === 'undefined') {
+    window.TREASURE_COLLECTIBLES = [
+        { id: 'ancient_coin', name: '远古硬币', icon: '🪙', rarity: 'common' },
+        { id: 'crystal_shard', name: '水晶碎片', icon: '💎', rarity: 'common' },
+        { id: 'golden_feather', name: '金色羽毛', icon: '🪶', rarity: 'rare' },
+        { id: 'dragon_scale', name: '龙鳞', icon: '🐉', rarity: 'rare' },
+        { id: 'moon_stone', name: '月光石', icon: '🌙', rarity: 'rare' },
+        { id: 'sun_medal', name: '太阳勋章', icon: '☀️', rarity: 'epic' },
+        { id: 'star_gem', name: '星辰宝石', icon: '⭐', rarity: 'epic' },
+        { id: 'void_core', name: '虚空核心', icon: '🌀', rarity: 'legendary' }
+    ];
+}
+
+function previewTreasureReward() {
+    try {
+        // 检查是否有完整藏宝图
+        if (!treasureState.hasCompleteMap) {
+            return null;
+        }
+
+        // 随机生成奖励品质
+        var rand = Math.random();
+        var quality = 'common';
+        var qualityIcon = '🟢';
+        var qualityLabel = '普通';
+        var qualityColor = '#8b8b8b';
+        
+        if (rand < 0.05) {
+            quality = 'legendary';
+            qualityIcon = '🌟';
+            qualityLabel = '传说';
+            qualityColor = '#ff6b00';
+        } else if (rand < 0.15) {
+            quality = 'epic';
+            qualityIcon = '💜';
+            qualityLabel = '史诗';
+            qualityColor = '#9b59b6';
+        } else if (rand < 0.35) {
+            quality = 'rare';
+            qualityIcon = '💙';
+            qualityLabel = '稀有';
+            qualityColor = '#2e86de';
+        }
+
+        // 生成奖励内容
+        var reward = {
+            coins: 10 + Math.floor(Math.random() * 30),
+            rep: 5 + Math.floor(Math.random() * 15),
+            items: [],
+            quality: quality,
+            qualityIcon: qualityIcon,
+            qualityLabel: qualityLabel,
+            qualityColor: qualityColor
+        };
+
+        // 额外物品奖励
+        if (quality === 'legendary' || quality === 'epic') {
+            reward.items.push({
+                icon: '🎁',
+                name: '能量宝箱',
+                amount: quality === 'legendary' ? 2 : 1
+            });
+        }
+        if (quality === 'rare' || quality === 'epic' || quality === 'legendary') {
+            reward.items.push({
+                icon: '🎰',
+                name: '幸运盒子',
+                amount: quality === 'legendary' ? 3 : quality === 'epic' ? 2 : 1
+            });
+        }
+
+        // 收藏品掉落
+        var collectibleDrop = Math.random();
+        if (collectibleDrop < 0.3 && window.TREASURE_COLLECTIBLES) {
+            var available = window.TREASURE_COLLECTIBLES;
+            var idx = Math.floor(Math.random() * available.length);
+            reward.collectible = available[idx];
+        }
+
+        // 能量奖励（随机）
+        if (Math.random() < 0.2 && typeof ENERGY_TYPES !== 'undefined') {
+            var energyTypes = ENERGY_TYPES || [
+                { id: 'cheese_powder', name: '高塔芝士粉' },
+                { id: 'inspiration_jelly', name: '灵感啫喱' },
+                { id: 'mimi_seedling', name: '米米苗苗' },
+                { id: 'time_pudding', name: '时光布丁' },
+                { id: 'warm_butter', name: '温暖黄油' },
+                { id: 'star_crystal', name: '星晶雪花' }
+            ];
+            var energyIdx = Math.floor(Math.random() * energyTypes.length);
+            reward.energy = energyTypes[energyIdx].id;
+        }
+
+        return reward;
+    } catch(e) {
+        console.warn('预览藏宝图奖励失败:', e);
+        return null;
+    }
+}
+
+function claimTreasure(reward) {
+    try {
+        if (!reward) return null;
+        if (!treasureState.hasCompleteMap) return null;
+
+        // 应用奖励
+        if (reward.coins && typeof addExploreCoins === 'function') {
+            addExploreCoins(reward.coins);
+        }
+        if (reward.rep && typeof addReputation === 'function') {
+            addReputation(reward.rep, '藏宝图宝藏');
+        }
+
+        // 物品奖励
+        if (reward.items && reward.items.length > 0 && typeof playerBag !== 'undefined') {
+            reward.items.forEach(function(item) {
+                var itemId = item.name === '能量宝箱' ? 'energy_box' : 
+                            (item.name === '幸运盒子' ? 'lucky_box' : 
+                            (item.name === '加速券' ? 'speed_up' : 
+                            (item.name === '刷新券' ? 'refresh' : null)));
+                if (itemId && playerBag[itemId] !== undefined) {
+                    playerBag[itemId] = (playerBag[itemId] || 0) + item.amount;
+                }
+            });
+            if (typeof savePlayerBag === 'function') savePlayerBag();
+        }
+
+        // 收藏品奖励
+        if (reward.collectible) {
+            var collected = JSON.parse(localStorage.getItem('treasure_collected') || '[]');
+            if (collected.indexOf(reward.collectible.id) === -1) {
+                collected.push(reward.collectible.id);
+                localStorage.setItem('treasure_collected', JSON.stringify(collected));
+            }
+        }
+
+        // 能量奖励
+        if (reward.energy && typeof energies !== 'undefined') {
+            energies[reward.energy] = (energies[reward.energy] || 0) + 1;
+        }
+
+        // 标记藏宝图已完成
+        treasureState.hasCompleteMap = false;
+        treasureState.treasureRegionId = null;
+        treasureState.treasurePosX = 0;
+        treasureState.treasurePosY = 0;
+        treasureState.isCompleted = false;
+        treasureState.completedCount = (treasureState.completedCount || 0) + 1;
+        saveTreasureData();
+
+        // 移除地图标记
+        if (typeof window.removeTreasureMarker === 'function') {
+            window.removeTreasureMarker();
+        }
+
+        // 触发成就检查
+        if (typeof window.checkAchievements === 'function') {
+            setTimeout(function() {
+                window.checkAchievements();
+            }, 300);
+        }
+
+        return reward;
+    } catch(e) {
+        console.warn('领取藏宝图奖励失败:', e);
+        return null;
+    }
+}
+
+// ★★★ 暴露到全局 ★★★
+window.previewTreasureReward = previewTreasureReward;
+window.claimTreasure = claimTreasure;
+window.TREASURE_COLLECTIBLES = window.TREASURE_COLLECTIBLES || TREASURE_COLLECTIBLES;
+
+console.log('🗺️ 藏宝图奖励系统已加载');
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTreasure);
 } else {
