@@ -17,7 +17,19 @@ var TRADE_PRICES = {
         golden_egg: 8,
         iron_ore: 3,
         diamond: 8,
-        dark_cuisine: 6
+        dark_cuisine: 6,
+// common → 9 探险币
+        golden_feather: 9,
+        wood_carving: 9,
+        // rare → 19 探险币
+        log_page: 19,
+        ancient_compass: 19,
+        golden_pocket_watch: 19,
+        // epic → 29 探险币
+        pearl_shell: 29,
+        ancient_pot: 29,
+        // legendary → 39 探险币
+        pearl_crown: 39
     },
     buy: {
         pearlfish: 6,
@@ -67,7 +79,15 @@ var TRADE_ITEMS = {
     rose_seed: { icon: '🌱', name: '玫瑰种子', category: '种子' },
     pickaxe: { icon: '⛏️', name: '镐头', category: '工具' },
     firecracker: { icon: '🧨', name: '鞭炮', category: '工具' },
-    dynamite: { icon: '💣', name: '炸药', category: '工具' }
+    dynamite: { icon: '💣', name: '炸药', category: '工具' },
+golden_feather: { icon: '🪶', name: '金色羽毛', category: '收藏品' },
+    wood_carving: { icon: '🪵', name: '沉船的木雕', category: '收藏品' },
+    log_page: { icon: '📜', name: '航海日志残页', category: '收藏品' },
+    ancient_compass: { icon: '🧭', name: '古老罗盘', category: '收藏品' },
+    golden_pocket_watch: { icon: '⌚', name: '金制怀表', category: '收藏品' },
+    pearl_shell: { icon: '🐚', name: '珍珠贝壳', category: '收藏品' },
+    ancient_pot: { icon: '🏺', name: '古代陶罐', category: '收藏品' },
+    pearl_crown: { icon: '👑', name: '珍珠王冠', category: '收藏品' }
 };
 
 // ===== 新增：交易总次数统计（成就用） =====
@@ -214,6 +234,67 @@ function sellItem(itemKey, amount) {
     var price = TRADE_PRICES.sell[itemKey];
     if (!price) return { success: false, msg: '该物品不支持出售' };
 
+    // ★★★ 检查是否为收藏品 ★★★
+    var isCollectible = false;
+    var collectibleId = null;
+    if (window.TREASURE_COLLECTIBLES) {
+        for (var i = 0; i < window.TREASURE_COLLECTIBLES.length; i++) {
+            if (window.TREASURE_COLLECTIBLES[i].id === itemKey) {
+                isCollectible = true;
+                collectibleId = itemKey;
+                break;
+            }
+        }
+    }
+
+    // ============================================================
+    // 收藏品出售逻辑
+    // ============================================================
+    if (isCollectible) {
+        // 从 treasure_collected 中移除指定数量
+        var collected = JSON.parse(localStorage.getItem('treasure_collected') || '[]');
+        var removed = 0;
+        for (var i = collected.length - 1; i >= 0 && removed < amount; i--) {
+            if (collected[i] === collectibleId) {
+                collected.splice(i, 1);
+                removed++;
+            }
+        }
+        if (removed === 0) {
+            return { success: false, msg: '你没有这件收藏品' };
+        }
+        localStorage.setItem('treasure_collected', JSON.stringify(collected));
+
+        var totalCoins = price * removed;
+        addTradeCoins(totalCoins);
+        tradeTotalCount += removed;
+        saveTradeTotalCount();
+
+        // 刷新背包（如果打开）
+        if (typeof window.renderBackpack === 'function') {
+            var modal = document.getElementById('backpackModal');
+            if (modal && !modal.classList.contains('hidden')) {
+                window.renderBackpack();
+            }
+        }
+
+        if (typeof onTowerTraded === 'function') onTowerTraded();
+        if (typeof soundTrade === 'function') soundTrade();
+        if (typeof soundCoin === 'function') soundCoin();
+
+        var itemName = TRADE_ITEMS[itemKey] ? TRADE_ITEMS[itemKey].name : itemKey;
+        return {
+            success: true,
+            msg: '出售收藏品 ' + itemName + ' ×' + removed + '，获得 ' + totalCoins + ' 探险币',
+            coins: totalCoins,
+            item: itemKey,
+            amount: removed
+        };
+    }
+
+    // ============================================================
+    // 普通物品出售逻辑
+    // ============================================================
     if (!isItemTradeable(itemKey, false)) {
         var region = ITEM_SOURCE_REGIONS[itemKey];
         var regionName = getRegionName(region);
@@ -231,17 +312,12 @@ function sellItem(itemKey, amount) {
 
     var totalCoins = price * amount;
     addTradeCoins(totalCoins);
-    // ===== 添加音效 =====
-    if (typeof soundTrade === 'function') soundTrade();
-    if (typeof soundCoin === 'function') soundCoin();
-    // ===== 音效添加结束 =====
-    // ===== 新增：交易次数累加 =====
     tradeTotalCount += amount;
     saveTradeTotalCount();
 
-    // ===== 挑战塔：交易成功（出售） =====
     if (typeof onTowerTraded === 'function') onTowerTraded();
-    // ===== 挑战塔结束 =====
+    if (typeof soundTrade === 'function') soundTrade();
+    if (typeof soundCoin === 'function') soundCoin();
 
     var itemName = TRADE_ITEMS[itemKey] ? TRADE_ITEMS[itemKey].name : itemKey;
     return {
@@ -252,6 +328,7 @@ function sellItem(itemKey, amount) {
         amount: amount
     };
 }
+
 
 function buyItem(itemKey, amount) {
     var price = TRADE_PRICES.buy[itemKey];
@@ -360,10 +437,45 @@ function getRegionName(regionId) {
 
 function getTradeInventory() {
     var backpack = getTradeBackpack();
+    var collected = window.getCollectedCollectibles ? window.getCollectedCollectibles() : [];
     var result = [];
     var canBuyTools = hasVisitedDumbpan();
 
+    // ★★★ 先添加收藏品（可出售） ★★★
+    if (collected.length > 0 && typeof window.TREASURE_COLLECTIBLES !== 'undefined') {
+        // 统计每种收藏品的数量
+        var collectibleCounts = {};
+        collected.forEach(function(id) {
+            collectibleCounts[id] = (collectibleCounts[id] || 0) + 1;
+        });
+
+        window.TREASURE_COLLECTIBLES.forEach(function(c) {
+            var count = collectibleCounts[c.id] || 0;
+            if (count > 0) {
+                var sellPrice = TRADE_PRICES.sell[c.id] || 0;
+                if (sellPrice > 0) {
+                    result.push({
+                        key: c.id,
+                        icon: c.icon,
+                        name: c.name,
+                        category: '收藏品',
+                        count: count,  // ★★★ 显示实际库存 ★★★
+                        sellPrice: sellPrice,
+                        buyPrice: 0,
+                        isSellable: true,
+                        isBuyable: false,
+                        isCollectible: true
+                    });
+                }
+            }
+        });
+    }
+
+    // ★★★ 原有物品逻辑 ★★★
     for (var key in TRADE_ITEMS) {
+        // 跳过收藏品（已在上方处理）
+        if (result.some(function(r) { return r.key === key; })) continue;
+        
         var count = backpack[key] || 0;
         var buyPrice = TRADE_PRICES.buy[key] || 0;
         var sellPrice = TRADE_PRICES.sell[key] || 0;
@@ -392,7 +504,8 @@ function getTradeInventory() {
                 sellPrice: sellPrice,
                 buyPrice: buyPrice,
                 isSellable: isSellable,
-                isBuyable: isBuyable
+                isBuyable: isBuyable,
+                isCollectible: false
             });
         }
     }

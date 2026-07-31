@@ -60,7 +60,7 @@ function loadRegionStatus() {
 }
 
 var selectedRegionId = 'welcome';
-var isTraveling = false; // 保留变量，但由 travel.js 管理状态
+var isTraveling = false;
 var playerLevel = 1;
 
 var mapOverlay = document.getElementById('mapOverlay');
@@ -177,9 +177,7 @@ function handleFirstArrival(regionId) {
     if (visitedRegions.indexOf(regionId) !== -1) return;
     visitedRegions.push(regionId);
     saveRegionStatus();
-    // ===== 添加音效 =====
     if (typeof soundDiscover === 'function') soundDiscover();
-    // ===== 音效添加结束 =====
     if (typeof onFirstArrival === 'function') {
         onFirstArrival(regionId);
     }
@@ -420,29 +418,50 @@ function updateNomoStats() {
 }
 
 // ============================================================
-// 渲染背包（分标签：物品 / 食物 · 包含黑暗料理 + 收藏品）
+// 渲染背包（完整版：物品 + 食物 + 收藏品 三标签）
 // ============================================================
 function renderBackpack() {
     var grid = document.getElementById('backpackGrid');
     if (!grid) return;
     grid.innerHTML = '';
 
+    // ---- 标签栏 ----
     var tabBar = document.createElement('div');
-    tabBar.style.cssText = 'grid-column:1/-1;display:flex;gap:8px;margin-bottom:8px;border-bottom:1px solid #e7c29e;padding-bottom:6px;';
-    var itemsTab = document.createElement('button');
-    itemsTab.textContent = '🎒 物品';
-    itemsTab.style.cssText = 'padding:4px 16px;border-radius:30px;border:1px solid #e7c29e;background:' + (backpackTab === 'items' ? '#6f9e3f' : '#f5ede4') + ';color:' + (backpackTab === 'items' ? '#fff' : '#5a2e1c') + ';cursor:pointer;font-size:0.7rem;font-weight:bold;transition:0.15s;';
-    itemsTab.onmouseover = function() { if (backpackTab !== 'items') this.style.background = '#ede0d2'; };
-    itemsTab.onmouseout = function() { if (backpackTab !== 'items') this.style.background = '#f5ede4'; };
-    itemsTab.onclick = function() { backpackTab = 'items'; renderBackpack(); };
-    tabBar.appendChild(itemsTab);
-    var foodTab = document.createElement('button');
-    foodTab.textContent = '🍳 食物';
-    foodTab.style.cssText = 'padding:4px 16px;border-radius:30px;border:1px solid #e7c29e;background:' + (backpackTab === 'food' ? '#6f9e3f' : '#f5ede4') + ';color:' + (backpackTab === 'food' ? '#fff' : '#5a2e1c') + ';cursor:pointer;font-size:0.7rem;font-weight:bold;transition:0.15s;';
-    foodTab.onmouseover = function() { if (backpackTab !== 'food') this.style.background = '#ede0d2'; };
-    foodTab.onmouseout = function() { if (backpackTab !== 'food') this.style.background = '#f5ede4'; };
-    foodTab.onclick = function() { backpackTab = 'food'; renderBackpack(); };
-    tabBar.appendChild(foodTab);
+    tabBar.style.cssText = 'grid-column:1/-1;display:flex;gap:8px;margin-bottom:8px;border-bottom:1px solid #e7c29e;padding-bottom:6px;flex-wrap:wrap;';
+
+    var tabs = [
+        { id: 'items', label: '🎒 物品' },
+        { id: 'food', label: '🍳 食物' },
+        { id: 'collectibles', label: '💎 收藏品' }
+    ];
+
+    tabs.forEach(function(tab) {
+        var btn = document.createElement('button');
+        btn.textContent = tab.label;
+        btn.style.cssText = [
+            'padding:4px 16px;',
+            'border-radius:30px;',
+            'border:1px solid #e7c29e;',
+            'background:' + (backpackTab === tab.id ? '#6f9e3f' : '#f5ede4') + ';',
+            'color:' + (backpackTab === tab.id ? '#fff' : '#5a2e1c') + ';',
+            'cursor:pointer;',
+            'font-size:0.7rem;',
+            'font-weight:bold;',
+            'transition:0.15s;'
+        ].join('');
+        btn.onmouseover = function() {
+            if (backpackTab !== tab.id) this.style.background = '#ede0d2';
+        };
+        btn.onmouseout = function() {
+            if (backpackTab !== tab.id) this.style.background = '#f5ede4';
+        };
+        btn.onclick = function() {
+            backpackTab = tab.id;
+            renderBackpack();
+        };
+        tabBar.appendChild(btn);
+    });
+
     grid.appendChild(tabBar);
 
     var backpack = getBackpack();
@@ -452,22 +471,81 @@ function renderBackpack() {
         window.PANINI_RECIPES.forEach(function(r) { foodIds.push(r.id); });
     }
     foodIds.push('dark_cuisine');
-    var specialKeys = ['treasure_fragment', 'rice_grain', 'golden_ear', 'cocoa_powder', 'rice_flour', 'ore_fuel', 'egg', 'golden_egg', 'rose_seed', 'rose', 'iron_ore', 'diamond'];
-    var filteredKeys = [];
-    if (backpackTab === 'items') {
-        filteredKeys = keys.filter(function(k) { return foodIds.indexOf(k) === -1 && (backpack[k] || 0) > 0; });
-    } else {
-        filteredKeys = keys.filter(function(k) { return foodIds.indexOf(k) !== -1 && (backpack[k] || 0) > 0; });
-    }
-    if (filteredKeys.length === 0) {
+
+    // ---- 收藏品标签页 ----
+if (backpackTab === 'collectibles') {
+    var collected = window.getCollectedCollectibles ? window.getCollectedCollectibles() : [];
+    if (collected.length === 0 || typeof window.TREASURE_COLLECTIBLES === 'undefined') {
         var emptyMsg = document.createElement('div');
         emptyMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;';
-        emptyMsg.textContent = backpackTab === 'items' ? '🎒 背包空空如也，去探险收集物品吧！' : '🍳 还没有食物，去帕尼尼大陆烹饪吧！';
+        emptyMsg.textContent = '💎 还没有收藏品，去探险寻宝吧！';
         grid.appendChild(emptyMsg);
         return;
     }
 
+    // 统计每种收藏品的数量
+    var collectibleCounts = {};
+    collected.forEach(function(id) {
+        collectibleCounts[id] = (collectibleCounts[id] || 0) + 1;
+    });
+
+    window.TREASURE_COLLECTIBLES.forEach(function(c) {
+        var count = collectibleCounts[c.id] || 0;
+        if (count > 0) {
+            var div = document.createElement('div');
+            var rarityColor = c.rarity === 'common' ? '#8b8b8b' : 
+                              (c.rarity === 'rare' ? '#2e86de' : 
+                              (c.rarity === 'epic' ? '#9b59b6' : '#ff6b00'));
+            var rarityLabel = c.rarity === 'common' ? '普通' : 
+                              (c.rarity === 'rare' ? '稀有' : 
+                              (c.rarity === 'epic' ? '史诗' : '传说'));
+            div.style.cssText = [
+                'background:linear-gradient(135deg,#fef9e7,#fdebd0);',
+                'border-radius:16px;',
+                'padding:8px;',
+                'text-align:center;',
+                'border:2px solid ' + rarityColor + ';',
+                'position:relative;',
+                'cursor:default;'
+            ].join('');
+            // ★★★ 修改：去掉"库存"文字，只显示 ×count ★★★
+            div.innerHTML = [
+                '<div style="font-size:2rem;">' + c.icon + '</div>',
+                '<div style="font-size:0.7rem;font-weight:bold;color:#5a2e1c;">' + c.name + '</div>',
+                '<div style="font-size:0.5rem;color:' + rarityColor + ';font-weight:bold;">' + rarityLabel + '</div>',
+                '<div style="font-size:0.9rem;font-weight:bold;color:#c4651e;margin-top:2px;">×' + count + '</div>'
+            ].join('');
+            grid.appendChild(div);
+        }
+    });
+    return;
+}
+
+    // ============================================================
+    // ★★★ 物品标签页 ★★★
+    // ============================================================
     if (backpackTab === 'items') {
+        var specialKeys = ['treasure_fragment', 'rice_grain', 'golden_ear', 'cocoa_powder', 'rice_flour', 'ore_fuel', 'egg', 'golden_egg', 'rose_seed', 'rose', 'iron_ore', 'diamond'];
+        var filteredKeys = keys.filter(function(k) { 
+            return foodIds.indexOf(k) === -1 && (backpack[k] || 0) > 0 && specialKeys.indexOf(k) !== -1;
+        });
+
+        // 特殊物品显示
+        var specialItems = [
+            { key: 'rice_grain', icon: '🌾', name: '稻谷', color: '#d4a050' },
+            { key: 'golden_ear', icon: '🌾', name: '金色稻穗', color: '#ffd700' },
+            { key: 'cocoa_powder', icon: '🍫', name: '可可粉', color: '#6f3f1a', img: 'images/cocopowder.png' },
+            { key: 'rice_flour', icon: '🌾', name: '面粉', color: '#d4a050', img: 'images/flour.png' },
+            { key: 'ore_fuel', icon: '⛽', name: '燃料', color: '#e67e22', img: 'images/fuel.png' },
+            { key: 'egg', icon: '🥚', name: '鸡蛋', color: '#f5d742' },
+            { key: 'golden_egg', icon: '🥚', name: '金蛋', color: '#ffd700' },
+            { key: 'rose_seed', icon: '🌱', name: '玫瑰种子', color: '#e91e63' },
+            { key: 'rose', icon: '🌹', name: '玫瑰', color: '#ff6b6b' },
+            { key: 'iron_ore', icon: '🪨', name: '铁矿', color: '#8d8d8d' },
+            { key: 'diamond', icon: '💎', name: '钻石', color: '#4fc3f7' }
+        ];
+
+        // 碎片
         var fragmentCount = backpack['treasure_fragment'] || 0;
         var hasCompleteMap = false;
         if (typeof treasureState !== 'undefined') hasCompleteMap = treasureState.hasCompleteMap;
@@ -495,19 +573,7 @@ function renderBackpack() {
             grid.appendChild(fragCard);
         }
 
-        var specialItems = [
-            { key: 'rice_grain', icon: '🌾', name: '稻谷', color: '#d4a050' },
-            { key: 'golden_ear', icon: '🌾', name: '金色稻穗', color: '#ffd700' },
-            { key: 'cocoa_powder', icon: '🍫', name: '可可粉', color: '#6f3f1a', img: 'images/cocopowder.png' },
-            { key: 'rice_flour', icon: '🌾', name: '面粉', color: '#d4a050', img: 'images/flour.png' },
-            { key: 'ore_fuel', icon: '⛽', name: '燃料', color: '#e67e22', img: 'images/fuel.png' },
-            { key: 'egg', icon: '🥚', name: '鸡蛋', color: '#f5d742' },
-            { key: 'golden_egg', icon: '🥚', name: '金蛋', color: '#ffd700' },
-            { key: 'rose_seed', icon: '🌱', name: '玫瑰种子', color: '#e91e63' },
-            { key: 'rose', icon: '🌹', name: '玫瑰', color: '#ff6b6b' },
-            { key: 'iron_ore', icon: '🪨', name: '铁矿', color: '#8d8d8d' },
-            { key: 'diamond', icon: '💎', name: '钻石', color: '#4fc3f7' }
-        ];
+        // 特殊物品
         for (var si = 0; si < specialItems.length; si++) {
             var sp = specialItems[si];
             var count = backpack[sp.key] || 0;
@@ -551,21 +617,10 @@ function renderBackpack() {
             }
         }
 
-        // 收藏品
-        var collected = window.getCollectedCollectibles ? window.getCollectedCollectibles() : [];
-        if (collected.length > 0 && typeof window.TREASURE_COLLECTIBLES !== 'undefined') {
-            window.TREASURE_COLLECTIBLES.forEach(function(c) {
-                if (collected.indexOf(c.id) !== -1) {
-                    var div = document.createElement('div');
-                    var rarityColor = c.rarity === 'common' ? '#8b8b8b' : (c.rarity === 'rare' ? '#2e86de' : '#f39c12');
-                    div.style.cssText = 'background:linear-gradient(135deg,#fef9e7,#fdebd0);border-radius:16px;padding:8px;text-align:center;border:2px solid ' + rarityColor + ';';
-                    div.innerHTML = '<div style="font-size:2rem;">' + c.icon + '</div><div style="font-size:0.65rem;font-weight:bold;color:#5a2e1c;">' + c.name + '</div><div style="font-size:0.5rem;color:#8b6b4a;">💎 收藏品</div>';
-                    grid.appendChild(div);
-                }
-            });
-        }
-
-        var fishKeys = filteredKeys.filter(function(k) { return specialKeys.indexOf(k) === -1 && foodIds.indexOf(k) === -1; });
+        // 鱼类
+        var fishKeys = keys.filter(function(k) { 
+            return specialKeys.indexOf(k) === -1 && foodIds.indexOf(k) === -1 && (backpack[k] || 0) > 0;
+        });
         for (var i = 0; i < fishKeys.length; i++) {
             var id = fishKeys[i];
             var count = backpack[id];
@@ -576,30 +631,41 @@ function renderBackpack() {
             item.innerHTML = '<div style="font-size:2rem;">' + fish.icon + '</div><div style="font-size:0.7rem;font-weight:bold;color:#5a2e1c;">' + fish.name + '</div><div style="font-size:0.9rem;font-weight:bold;color:#c4651e;">×' + count + '</div>';
             grid.appendChild(item);
         }
+
+        // 空状态
+        if (grid.children.length <= 1) {
+            var emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;';
+            emptyMsg.textContent = '🎒 背包空空如也，去探险收集物品吧！';
+            grid.appendChild(emptyMsg);
+        }
+        return;
     }
 
+    // ============================================================
+    // ★★★ 食物标签页 ★★★
+    // ============================================================
     if (backpackTab === 'food') {
-        var foodItems = filteredKeys.map(function(k) {
+        var foodKeys = keys.filter(function(k) { 
+            return foodIds.indexOf(k) !== -1 && (backpack[k] || 0) > 0;
+        });
+        if (foodKeys.length === 0) {
+            var emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;';
+            emptyMsg.textContent = '🍳 还没有食物，去帕尼尼大陆烹饪吧！';
+            grid.appendChild(emptyMsg);
+            return;
+        }
+        for (var fi = 0; fi < foodKeys.length; fi++) {
+            var key = foodKeys[fi];
+            var count = backpack[key];
             var recipe = null;
             if (typeof window.PANINI_RECIPES !== 'undefined') {
                 for (var ri = 0; ri < window.PANINI_RECIPES.length; ri++) {
-                    if (window.PANINI_RECIPES[ri].id === k) { recipe = window.PANINI_RECIPES[ri]; break; }
+                    if (window.PANINI_RECIPES[ri].id === key) { recipe = window.PANINI_RECIPES[ri]; break; }
                 }
             }
-            return { key: k, count: backpack[k], recipe: recipe };
-        });
-        foodItems.sort(function(a, b) {
-            if (a.key === 'dark_cuisine') return 1;
-            if (b.key === 'dark_cuisine') return -1;
-            if (a.recipe && !b.recipe) return -1;
-            if (!a.recipe && b.recipe) return 1;
-            return 0;
-        });
-        for (var fi = 0; fi < foodItems.length; fi++) {
-            var item = foodItems[fi];
-            var recipe = item.recipe;
-            var count = item.count;
-            if (!recipe && item.key === 'dark_cuisine') {
+            if (!recipe && key === 'dark_cuisine') {
                 var div = document.createElement('div');
                 div.style.cssText = 'background:linear-gradient(135deg,#2d1b0e,#4a2c1a);border-radius:16px;padding:8px;text-align:center;border:2px solid #6a4a2a;color:#f0e8d8;';
                 div.innerHTML = '<div style="font-size:2rem;">💀</div><div style="font-size:0.7rem;font-weight:bold;">黑暗料理</div><div style="font-size:0.9rem;font-weight:bold;">×' + count + '</div>';
@@ -612,6 +678,7 @@ function renderBackpack() {
             div.innerHTML = '<div style="font-size:2rem;">' + recipe.icon + '</div><div style="font-size:0.7rem;font-weight:bold;color:#5a2e1c;">' + recipe.name + '</div><div style="font-size:0.9rem;font-weight:bold;color:#c4651e;">×' + count + '</div>';
             grid.appendChild(div);
         }
+        return;
     }
 }
 
@@ -889,7 +956,6 @@ function handlePotClick() {
         roseData.todayWaterCount = (roseData.todayWaterCount || 0) + 1;
         roseData.lastWaterDate = today;
         localStorage.setItem('rose_plant_data', JSON.stringify(roseData));
-        // ⭐ 浇水声望 +2
         if (typeof window.addReputation === 'function') {
             window.addReputation(2, '玫瑰浇水');
         }
@@ -2234,7 +2300,6 @@ function showTreasureClaimPanel() {
 // 更新信息面板（包含嫑界洋特殊面板 + 小王子气泡）
 // ============================================================
 function updateInfoPanel() {
-    // 清理之前的小王子气泡定时器
     if (window._princeBubbleTimer) {
         clearInterval(window._princeBubbleTimer);
         window._princeBubbleTimer = null;
@@ -2318,47 +2383,42 @@ function updateInfoPanel() {
         infoMode.style.border = '2px solid rgba(255,215,150,0.25)';
     }
 
-    // 王子区域特殊背景（已移除星空背景，仅保留背影）
     if (isPrinceRegion) {
         var oldScene = document.getElementById('princeSceneBg');
-    if (oldScene) oldScene.remove();
-    var sceneDiv = document.createElement('div');
-    sceneDiv.id = 'princeSceneBg';
-    sceneDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#0a0a2e 0%,#1a1a3e 20%,#2d1b0e 55%,#4a2c1a 80%,#5a3a2a 100%);z-index:0;border-radius:16px;overflow:hidden;pointer-events:none;';
-    
-    var starHtml = '';
-    var starCount = 30 + Math.floor(Math.random() * 15);
-    for (var s = 0; s < starCount; s++) {
-        var topPercent = Math.random() * 75;
-        var leftPercent = Math.random() * 100;
-        var size = 1 + Math.floor(Math.random() * 2);
-        var delay = Math.random() * 2;
-        var opacity = 0.3 + Math.random() * 0.5;
-        starHtml += '<div class="pd-star" style="position:absolute;top:' + topPercent + '%;left:' + leftPercent + '%;width:' + size + 'px;height:' + size + 'px;background:white;border-radius:50%;opacity:' + opacity + ';animation:pdTwinkle 2s ease-in-out infinite alternate;animation-delay:' + delay + 's;z-index:2;pointer-events:none;"></div>';
-    }
-    sceneDiv.innerHTML = starHtml;
-    
-    // ===== 添加沙丘（三重叠沙丘） =====
-   // ===== 高沙丘（更壮观） =====
-var dunesHtml = '';
-dunesHtml += '<div class="pd-dunes" style="position:absolute;bottom:0;left:0;width:100%;height:150px;z-index:1;pointer-events:none;overflow:hidden;">';
-dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:0;left:-10%;width:120%;height:120px;border-radius:50%;background:rgba(180,140,100,0.08);"></div>';
-dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:15px;left:-10%;width:120%;height:85px;border-radius:50%;background:rgba(160,120,80,0.06);transform:rotate(-3deg);"></div>';
-dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:30px;left:-10%;width:120%;height:55px;border-radius:50%;background:rgba(140,100,60,0.04);transform:rotate(2deg);"></div>';
-dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:45px;left:-10%;width:120%;height:30px;border-radius:50%;background:rgba(120,80,50,0.03);transform:rotate(-1deg);"></div>';
-dunesHtml += '</div>';
-    sceneDiv.insertAdjacentHTML('beforeend', dunesHtml);
-    // ===== 沙丘添加结束 =====
-    
-    infoMode.prepend(sceneDiv);
+        if (oldScene) oldScene.remove();
+        var sceneDiv = document.createElement('div');
+        sceneDiv.id = 'princeSceneBg';
+        sceneDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#0a0a2e 0%,#1a1a3e 20%,#2d1b0e 55%,#4a2c1a 80%,#5a3a2a 100%);z-index:0;border-radius:16px;overflow:hidden;pointer-events:none;';
+        
+        var starHtml = '';
+        var starCount = 30 + Math.floor(Math.random() * 15);
+        for (var s = 0; s < starCount; s++) {
+            var topPercent = Math.random() * 75;
+            var leftPercent = Math.random() * 100;
+            var size = 1 + Math.floor(Math.random() * 2);
+            var delay = Math.random() * 2;
+            var opacity = 0.3 + Math.random() * 0.5;
+            starHtml += '<div class="pd-star" style="position:absolute;top:' + topPercent + '%;left:' + leftPercent + '%;width:' + size + 'px;height:' + size + 'px;background:white;border-radius:50%;opacity:' + opacity + ';animation:pdTwinkle 2s ease-in-out infinite alternate;animation-delay:' + delay + 's;z-index:2;pointer-events:none;"></div>';
+        }
+        sceneDiv.innerHTML = starHtml;
+        
+        var dunesHtml = '';
+        dunesHtml += '<div class="pd-dunes" style="position:absolute;bottom:0;left:0;width:100%;height:150px;z-index:1;pointer-events:none;overflow:hidden;">';
+        dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:0;left:-10%;width:120%;height:120px;border-radius:50%;background:rgba(180,140,100,0.08);"></div>';
+        dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:15px;left:-10%;width:120%;height:85px;border-radius:50%;background:rgba(160,120,80,0.06);transform:rotate(-3deg);"></div>';
+        dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:30px;left:-10%;width:120%;height:55px;border-radius:50%;background:rgba(140,100,60,0.04);transform:rotate(2deg);"></div>';
+        dunesHtml += '  <div class="pd-dune" style="position:absolute;bottom:45px;left:-10%;width:120%;height:30px;border-radius:50%;background:rgba(120,80,50,0.03);transform:rotate(-1deg);"></div>';
+        dunesHtml += '</div>';
+        sceneDiv.insertAdjacentHTML('beforeend', dunesHtml);
+        
+        infoMode.prepend(sceneDiv);
 
-    var princeBackDiv = document.createElement('div');
-    princeBackDiv.id = 'princeBackDiv';
-    princeBackDiv.style.cssText = 'position:absolute;left:40%;bottom:50px;z-index:1;pointer-events:none;opacity:0.9;transform:translateX(-50%);';
-    princeBackDiv.innerHTML = '<img src="images/backofprince.png" alt="小王子背影" style="width:auto;height:360px;max-height:360px;filter:drop-shadow(0 2px 30px rgba(0,0,0,0.3));" onerror="this.style.display=\'none\';">';
-    infoMode.appendChild(princeBackDiv);
+        var princeBackDiv = document.createElement('div');
+        princeBackDiv.id = 'princeBackDiv';
+        princeBackDiv.style.cssText = 'position:absolute;left:40%;bottom:50px;z-index:1;pointer-events:none;opacity:0.9;transform:translateX(-50%);';
+        princeBackDiv.innerHTML = '<img src="images/backofprince.png" alt="小王子背影" style="width:auto;height:360px;max-height:360px;filter:drop-shadow(0 2px 30px rgba(0,0,0,0.3));" onerror="this.style.display=\'none\';">';
+        infoMode.appendChild(princeBackDiv);
 
-        // ---- 花盆逻辑 ----
         var dialoguePlayed = localStorage.getItem('rose_seed_dialogue_played') === 'true';
         var backpack = getBackpack();
         var hasRoseSeed = (backpack['rose_seed'] || 0) > 0;
@@ -2370,7 +2430,6 @@ dunesHtml += '</div>';
         }
         if (hasPotUnlocked) { updateFlowerPot(); }
 
-        // ===== 左上角小王子气泡 =====
         var princeBubbleContainer = document.createElement('div');
         princeBubbleContainer.id = 'princeBubbleTopLeft';
         princeBubbleContainer.style.cssText = 'position:absolute;top:260px;left:160px;z-index:5;pointer-events:none;';
@@ -2520,7 +2579,6 @@ dunesHtml += '</div>';
         actionsDiv.appendChild(travelBtn);
     }
 
-    // ---- 各区域卡片 ----
     if (current.id === 'nocean' && selected.id === 'nocean' && isUnlocked) {
         var isFishingActive = false;
         if (typeof window.fishing !== 'undefined' && window.fishing.isActive) {
@@ -2776,7 +2834,6 @@ function closeBountyBoard() {
 // 关闭地图
 // ============================================================
 document.getElementById('closeMapBtn').addEventListener('click', function() {
-    // 允许在航行中关闭地图，航行状态会保留在 localStorage 中，下次进入时恢复
     window.location.href = 'index.html';
 });
 
@@ -2817,11 +2874,9 @@ function initMap() {
     loadRegionStatus();
     syncPlayerLevel();
 
-    // ★ 尝试恢复航行（由 travel.js 处理）★
     if (window.travel && window.travel.resumeOnLoad) {
         var resumed = window.travel.resumeOnLoad();
         if (resumed) {
-            // 航行已恢复，无需继续初始化
             return;
         }
     }
@@ -2878,7 +2933,7 @@ function initMap() {
 }
 
 // ============================================================
-// 暴露全局接口（原有接口保持不变，航行接口由 travel.js 提供）
+// 暴露全局接口
 // ============================================================
 window.FISH_TYPES = FISH_TYPES;
 window.regions = regions;
