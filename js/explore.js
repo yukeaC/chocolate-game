@@ -472,54 +472,54 @@ function renderBackpack() {
     }
     foodIds.push('dark_cuisine');
 
-    // ---- 收藏品标签页 ----
-if (backpackTab === 'collectibles') {
-    var collected = window.getCollectedCollectibles ? window.getCollectedCollectibles() : [];
-    if (collected.length === 0 || typeof window.TREASURE_COLLECTIBLES === 'undefined') {
-        var emptyMsg = document.createElement('div');
-        emptyMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;';
-        emptyMsg.textContent = '💎 还没有收藏品，去探险寻宝吧！';
-        grid.appendChild(emptyMsg);
+    // ============================================================
+    // ★★★ 收藏品标签页 ★★★
+    // ============================================================
+    if (backpackTab === 'collectibles') {
+        var collected = window.getCollectedCollectibles ? window.getCollectedCollectibles() : [];
+        if (collected.length === 0 || typeof window.TREASURE_COLLECTIBLES === 'undefined') {
+            var emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;';
+            emptyMsg.textContent = '💎 还没有收藏品，去探险寻宝吧！';
+            grid.appendChild(emptyMsg);
+            return;
+        }
+
+        var collectibleCounts = {};
+        collected.forEach(function(id) {
+            collectibleCounts[id] = (collectibleCounts[id] || 0) + 1;
+        });
+
+        window.TREASURE_COLLECTIBLES.forEach(function(c) {
+            var count = collectibleCounts[c.id] || 0;
+            if (count > 0) {
+                var div = document.createElement('div');
+                var rarityColor = c.rarity === 'common' ? '#8b8b8b' : 
+                                  (c.rarity === 'rare' ? '#2e86de' : 
+                                  (c.rarity === 'epic' ? '#9b59b6' : '#ff6b00'));
+                var rarityLabel = c.rarity === 'common' ? '普通' : 
+                                  (c.rarity === 'rare' ? '稀有' : 
+                                  (c.rarity === 'epic' ? '史诗' : '传说'));
+                div.style.cssText = [
+                    'background:linear-gradient(135deg,#fef9e7,#fdebd0);',
+                    'border-radius:16px;',
+                    'padding:8px;',
+                    'text-align:center;',
+                    'border:2px solid ' + rarityColor + ';',
+                    'position:relative;',
+                    'cursor:default;'
+                ].join('');
+                div.innerHTML = [
+                    '<div style="font-size:2rem;">' + c.icon + '</div>',
+                    '<div style="font-size:0.7rem;font-weight:bold;color:#5a2e1c;">' + c.name + '</div>',
+                    '<div style="font-size:0.5rem;color:' + rarityColor + ';font-weight:bold;">' + rarityLabel + '</div>',
+                    '<div style="font-size:0.9rem;font-weight:bold;color:#c4651e;margin-top:2px;">×' + count + '</div>'
+                ].join('');
+                grid.appendChild(div);
+            }
+        });
         return;
     }
-
-    // 统计每种收藏品的数量
-    var collectibleCounts = {};
-    collected.forEach(function(id) {
-        collectibleCounts[id] = (collectibleCounts[id] || 0) + 1;
-    });
-
-    window.TREASURE_COLLECTIBLES.forEach(function(c) {
-        var count = collectibleCounts[c.id] || 0;
-        if (count > 0) {
-            var div = document.createElement('div');
-            var rarityColor = c.rarity === 'common' ? '#8b8b8b' : 
-                              (c.rarity === 'rare' ? '#2e86de' : 
-                              (c.rarity === 'epic' ? '#9b59b6' : '#ff6b00'));
-            var rarityLabel = c.rarity === 'common' ? '普通' : 
-                              (c.rarity === 'rare' ? '稀有' : 
-                              (c.rarity === 'epic' ? '史诗' : '传说'));
-            div.style.cssText = [
-                'background:linear-gradient(135deg,#fef9e7,#fdebd0);',
-                'border-radius:16px;',
-                'padding:8px;',
-                'text-align:center;',
-                'border:2px solid ' + rarityColor + ';',
-                'position:relative;',
-                'cursor:default;'
-            ].join('');
-            // ★★★ 修改：去掉"库存"文字，只显示 ×count ★★★
-            div.innerHTML = [
-                '<div style="font-size:2rem;">' + c.icon + '</div>',
-                '<div style="font-size:0.7rem;font-weight:bold;color:#5a2e1c;">' + c.name + '</div>',
-                '<div style="font-size:0.5rem;color:' + rarityColor + ';font-weight:bold;">' + rarityLabel + '</div>',
-                '<div style="font-size:0.9rem;font-weight:bold;color:#c4651e;margin-top:2px;">×' + count + '</div>'
-            ].join('');
-            grid.appendChild(div);
-        }
-    });
-    return;
-}
 
     // ============================================================
     // ★★★ 物品标签页 ★★★
@@ -530,7 +530,6 @@ if (backpackTab === 'collectibles') {
             return foodIds.indexOf(k) === -1 && (backpack[k] || 0) > 0 && specialKeys.indexOf(k) !== -1;
         });
 
-        // 特殊物品显示
         var specialItems = [
             { key: 'rice_grain', icon: '🌾', name: '稻谷', color: '#d4a050' },
             { key: 'golden_ear', icon: '🌾', name: '金色稻穗', color: '#ffd700' },
@@ -545,7 +544,6 @@ if (backpackTab === 'collectibles') {
             { key: 'diamond', icon: '💎', name: '钻石', color: '#4fc3f7' }
         ];
 
-        // 碎片
         var fragmentCount = backpack['treasure_fragment'] || 0;
         var hasCompleteMap = false;
         if (typeof treasureState !== 'undefined') hasCompleteMap = treasureState.hasCompleteMap;
@@ -573,7 +571,6 @@ if (backpackTab === 'collectibles') {
             grid.appendChild(fragCard);
         }
 
-        // 特殊物品
         for (var si = 0; si < specialItems.length; si++) {
             var sp = specialItems[si];
             var count = backpack[sp.key] || 0;
@@ -617,7 +614,6 @@ if (backpackTab === 'collectibles') {
             }
         }
 
-        // 鱼类
         var fishKeys = keys.filter(function(k) { 
             return specialKeys.indexOf(k) === -1 && foodIds.indexOf(k) === -1 && (backpack[k] || 0) > 0;
         });
@@ -632,7 +628,6 @@ if (backpackTab === 'collectibles') {
             grid.appendChild(item);
         }
 
-        // 空状态
         if (grid.children.length <= 1) {
             var emptyMsg = document.createElement('div');
             emptyMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 0;color:#a56b3a;font-size:0.9rem;';
@@ -2829,33 +2824,41 @@ function closeBountyBoard() {
     if (infoMode) infoMode.style.display = 'flex';
     if (bountyMode) bountyMode.style.display = 'none';
 }
+// ============================================================
+// ★★★ 关闭地图按钮 ★★★
+// ============================================================
+var closeMapBtn = document.getElementById('closeMapBtn');
+if (closeMapBtn) {
+    closeMapBtn.addEventListener('click', function() {
+        window.location.href = 'index.html';
+    });
+}
 
 // ============================================================
-// 关闭地图
+// ★★★ 背包按钮 ★★★
 // ============================================================
-document.getElementById('closeMapBtn').addEventListener('click', function() {
-    window.location.href = 'index.html';
-});
+var backpackBtn = document.getElementById('backpackBtn');
+if (backpackBtn) {
+    backpackBtn.addEventListener('click', function() {
+        var modal = document.getElementById('backpackModal');
+        if (modal) {
+            renderBackpack();
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        }
+    });
+}
 
-// ============================================================
-// 背包按钮
-// ============================================================
-document.getElementById('backpackBtn').addEventListener('click', function() {
-    var modal = document.getElementById('backpackModal');
-    if (modal) {
-        renderBackpack();
-        modal.classList.remove('hidden');
-        document.body.classList.add('modal-open');
-    }
-});
-
-document.getElementById('closeBackpackBtn').addEventListener('click', function() {
-    var modal = document.getElementById('backpackModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-    }
-});
+var closeBackpackBtn = document.getElementById('closeBackpackBtn');
+if (closeBackpackBtn) {
+    closeBackpackBtn.addEventListener('click', function() {
+        var modal = document.getElementById('backpackModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        }
+    });
+}
 
 var backpackModal = document.getElementById('backpackModal');
 if (backpackModal) {
@@ -2868,9 +2871,15 @@ if (backpackModal) {
 }
 
 // ============================================================
-// 初始化地图
+// ★★★ 地图初始化（仅在 explore.html 中执行）★★★
 // ============================================================
 function initMap() {
+    // 检查关键元素是否存在
+    if (!mapOverlay || !shipMarker) {
+        console.warn('⚠️ 地图关键元素缺失，跳过地图初始化');
+        return;
+    }
+
     loadRegionStatus();
     syncPlayerLevel();
 
@@ -2932,8 +2941,34 @@ function initMap() {
     }
 }
 
+// ★★★ 只有在探险页面才初始化地图 ★★★
+var isExplorePage = document.getElementById('mapArea') !== null;
+
+if (isExplorePage) {
+    var mapImage = document.getElementById('mapImage');
+    if (mapImage) {
+        if (mapImage.complete && mapImage.naturalWidth > 0) {
+            initMap();
+        } else {
+            mapImage.addEventListener('load', initMap);
+            setTimeout(function() {
+                if (!window._mapInitialized) {
+                    initMap();
+                    window._mapInitialized = true;
+                }
+            }, 2000);
+        }
+    } else {
+        // 地图图片不存在，但仍然尝试初始化（使用纯色背景）
+        console.warn('⚠️ mapImage 不存在，直接初始化地图（使用纯色背景）');
+        initMap();
+    }
+} else {
+    console.log('ℹ️ 当前页面不是探险地图（explore.html），跳过地图初始化');
+}
+
 // ============================================================
-// 暴露全局接口
+// 暴露全局接口（始终暴露，供主界面使用）
 // ============================================================
 window.FISH_TYPES = FISH_TYPES;
 window.regions = regions;
@@ -2976,15 +3011,4 @@ window.handleFirstArrival = handleFirstArrival;
     document.head.appendChild(style);
 })();
 
-var mapImage = document.getElementById('mapImage');
-if (mapImage.complete && mapImage.naturalWidth > 0) {
-    initMap();
-} else {
-    mapImage.addEventListener('load', initMap);
-    setTimeout(function() {
-        if (!window._mapInitialized) {
-            initMap();
-            window._mapInitialized = true;
-        }
-    }, 2000);
-}
+console.log('✅ explore.js 加载完成（收藏品标签 + 页面检测兼容）');

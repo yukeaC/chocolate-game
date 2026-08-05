@@ -1048,9 +1048,16 @@ function challengeCompleted(floor) {
             };
         }
         floating.onclick = function(e) {
-            if (e.target.closest('#towerAbandonBtn')) return;
-            openTowerInfo();
-        };
+    if (e.target.closest('#towerAbandonBtn')) return;
+    // 检测是否在探险地图（判断是否存在地图容器）
+    var isExplore = document.getElementById('mapArea') !== null;
+    if (isExplore) {
+        // 在探险地图中，跳转到主游戏并携带参数
+        window.location.href = 'index.html?claimTower=true';
+    } else {
+        openTowerInfo();
+    }
+};
     }
     clearTowerTimers();
     saveTowerData();

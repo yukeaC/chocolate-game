@@ -770,26 +770,58 @@
 
 <canvas id="fireworksCanvas"></canvas>
 
-<script src="js/storyData.js"></script>
-<script src="js/storyRenderer.js"></script>
-<script src="js/adventurer.js"></script>
-<script src="js/treasure.js"></script>
-<script src="js/princeDialogue.js"></script>
-<script src="js/fishing.js"></script>
-<script src="js/princeGame.js"></script>
-<script src="js/sudoku.js"></script>
-<script src="js/trade.js"></script>
-<script src="js/explore-regions.js"></script>
-<script src="js/mining.js"></script>
-<script src="js/rice.js"></script>
-<script src="js/grinder.js"></script>
-<script src="js/panini.js"></script>
-<script src="js/bounty.js"></script>
-<script src="js/travel.js"></script>
+<!-- ===== 脚本文件（加载顺序很重要！） ===== -->
+<script src="js/config.js"></script>
+<script src="js/gameState.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/fireworks.js"></script>
+<script src="js/upgrades.js"></script>
+<script src="js/production.js"></script>
+<script src="js/order.js"></script>
+<script src="js/energy.js"></script>
+<script src="js/sell.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/sound.js"></script>
-<script src="js/explore.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/main.js"></script>
+
+<!-- ===== 商城（在成就之前加载） ===== -->
+<script src="js/shop.js"></script>
+
+<!-- ===== 成就系统 ===== -->
+<script src="js/achievements.js"></script>
+
+<!-- ===== 探险地图相关（treasure.js 必须加载！） ===== -->
+<script src="js/adventurer.js"></script>
+<script src="js/treasure.js"></script>      <!-- ★★★ 新增：必须加载！ ★★★ -->
+<script src="js/farm.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/tower.js"></script>
+<script src="js/index.js"></script>
+<script src="js/saveManager.js"></script>
 
 <script>
+
+// ============================================
+// 检测 URL 参数，自动打开挑战塔领取面板
+// ============================================
+(function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('claimTower') === 'true') {
+        // 等待页面完全加载后执行
+        setTimeout(function() {
+            if (typeof openTowerInfo === 'function') {
+                openTowerInfo();
+            } else {
+                console.warn('⚠️ openTowerInfo 未定义，请确保 tower.js 已加载');
+            }
+            // 清除 URL 参数，避免刷新后重复触发
+            try {
+                history.replaceState({}, document.title, window.location.pathname);
+            } catch(e) {}
+        }, 500);
+    }
+})();
     // 初始化挑战塔
     if (typeof initTower === 'function') {
         initTower();

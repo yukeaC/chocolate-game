@@ -332,7 +332,16 @@ function renderSudokuGame() {
                 }
                 if (isError) cls += ' sd-error';
             }
-            boardHTML += '<div class="' + cls + '" data-row="' + r + '" data-col="' + c + '" onclick="onSudokuCellClick(' + r + ',' + c + ')">' + display + '</div>';
+            
+            // ★★★ 区分题目和玩家填写 ★★★
+            var style = '';
+            if (isGiven) {
+                style = 'color: #d4a050; font-weight: 700;';  // 题目：深金色 + 加粗
+            } else if (value !== -1) {
+                style = 'color: #7ecfff; font-weight: 400;';  // 玩家填：亮蓝色
+            }
+            
+            boardHTML += '<div class="' + cls + '" style="' + style + '" data-row="' + r + '" data-col="' + c + '" onclick="onSudokuCellClick(' + r + ',' + c + ')">' + display + '</div>';
         }
         boardHTML += '</div>';
     }

@@ -1,5 +1,6 @@
 // ============================================================
 // mining.js · 沙锅洲 · 挖矿小游戏（含成就统计 + 挑战塔钩子）
+// 修复：数据持久化 - 防止进度丢失
 // ============================================================
 console.log('⛏️ 挖矿系统加载中...');
 
@@ -21,8 +22,13 @@ var miningState = {
     isMining: false,
     basket: [],
     totalIron: 0,
-    totalDiamond: 0
+    totalDiamond: 0,
+    _dataLoaded: false   // ★★★ 新增：数据加载标记
 };
+
+// ============================================================
+// ★★★ 数据持久化（增强版）★★★
+// ============================================================
 
 function saveMiningData() {
     try {
@@ -34,49 +40,157 @@ function saveMiningData() {
             tools: miningState.tools,
             lastClaimDate: miningState.lastClaimDate,
             totalIron: miningState.totalIron,
-            totalDiamond: miningState.totalDiamond
+            totalDiamond: miningState.totalDiamond,
+            _savedAt: Date.now()
         };
         localStorage.setItem('mining_data', JSON.stringify(data));
+        // ★★★ 同时保存一份备份 ★★★
+        localStorage.setItem('mining_data_backup', JSON.stringify(data));
         window.totalIronOre = miningState.totalIron;
         window.totalDiamond = miningState.totalDiamond;
-    } catch(e) { console.warn('保存矿洞数据失败:', e); }
+        miningState._dataLoaded = true;
+        return true;
+    } catch(e) {
+        console.warn('保存矿洞数据失败:', e);
+        return false;
+    }
 }
 
 function loadMiningData() {
     try {
         var saved = localStorage.getItem('mining_data');
-        if (saved) {
-            var data = JSON.parse(saved);
-            miningState.depth = data.depth || 0;
-            miningState.rows = data.rows || [];
-            miningState.currentRowIndex = data.currentRowIndex || 0;
-            miningState.basket = data.basket || [];
-            miningState.tools = data.tools || { pickaxe: 0, firecracker: 0, dynamite: 0 };
-            miningState.lastClaimDate = data.lastClaimDate || null;
-            miningState.totalIron = data.totalIron || 0;
-            miningState.totalDiamond = data.totalDiamond || 0;
-            window.totalIronOre = miningState.totalIron;
-            window.totalDiamond = miningState.totalDiamond;
-
-            // 补全旧存档中缺少 content 的格子
-            for (var r = 0; r < miningState.rows.length; r++) {
-                var row = miningState.rows[r];
-                if (row && row.cells) {
-                    for (var c = 0; c < row.cells.length; c++) {
-                        var cell = row.cells[c];
-                        if (cell && cell.content === undefined) {
-                            cell.content = getRandomResult();
+        if (!saved) {
+            // ★★★ 尝试从备份恢复 ★★★
+            var backup = localStorage.getItem('mining_data_backup');
+            if (backup) {
+                console.log('📂 主数据不存在，尝试从备份恢复...');
+                saved = backup;
+                // 将备份恢复为主数据
+                localStorage.setItem('mining_data', backup);
+            } else {
+                return false;
+            }
+        }
+        
+        var data = JSON.parse(saved);
+        
+        // ★★★ 验证数据完整性 ★★★
+        if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
+            console.warn('⚠️ 矿洞数据损坏（rows 无效），尝试从备份恢复...');
+            var backup = localStorage.getItem('mining_data_backup');
+            if (backup) {
+                data = JSON.parse(backup);
+                if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
+                    return false;
+                }
+                // 修复主数据
+                localStorage.setItem('mining_data', backup);
+            } else {
+                return false;
+            }
+        }
+        
+        // ★★★ 验证行数是否正确（应为6行） ★★★
+        if (data.rows.length < MINING_CONFIG.ROWS) {
+            console.warn('⚠️ 矿洞行数不足（' + data.rows.length + '行），补齐到' + MINING_CONFIG.ROWS + '行');
+            var existingRows = data.rows.slice();
+            for (var i = existingRows.length; i < MINING_CONFIG.ROWS; i++) {
+                var newRow = createRow();
+                // 如果有上一行，继承已挖掘状态
+                if (i > 0 && existingRows[i-1]) {
+                    var prevRow = existingRows[i-1];
+                    for (var c = 0; c < MINING_CONFIG.COLS; c++) {
+                        if (prevRow.cells[c].state === 'mined_dirt' || prevRow.cells[c].state === 'mined_item') {
+                            newRow.cells[c].state = 'revealed';
                         }
                     }
                 }
+                existingRows.push(newRow);
             }
-            return true;
+            data.rows = existingRows;
         }
-    } catch(e) { console.warn('加载矿洞数据失败:', e); }
-    return false;
+        
+        // ★★★ 验证每行的列数是否正确（应为7列） ★★★
+        for (var r = 0; r < data.rows.length; r++) {
+            if (!data.rows[r].cells || data.rows[r].cells.length !== MINING_CONFIG.COLS) {
+                console.warn('⚠️ 第' + r + '行列数不正确，重新生成');
+                data.rows[r].cells = [];
+                for (var c = 0; c < MINING_CONFIG.COLS; c++) {
+                    data.rows[r].cells.push(createEmptyCell());
+                }
+            }
+        }
+        
+        // 补全旧存档中缺少 content 的格子
+        for (var r = 0; r < data.rows.length; r++) {
+            var row = data.rows[r];
+            if (row && row.cells) {
+                for (var c = 0; c < row.cells.length; c++) {
+                    var cell = row.cells[c];
+                    if (cell && cell.content === undefined) {
+                        cell.content = getRandomResult();
+                    }
+                }
+            }
+        }
+        
+        miningState.depth = data.depth || 0;
+        miningState.rows = data.rows;
+        miningState.currentRowIndex = data.currentRowIndex || 0;
+        miningState.basket = data.basket || [];
+        miningState.tools = data.tools || { pickaxe: 0, firecracker: 0, dynamite: 0 };
+        miningState.lastClaimDate = data.lastClaimDate || null;
+        miningState.totalIron = data.totalIron || 0;
+        miningState.totalDiamond = data.totalDiamond || 0;
+        window.totalIronOre = miningState.totalIron;
+        window.totalDiamond = miningState.totalDiamond;
+        miningState._dataLoaded = true;
+        
+        console.log('📂 矿洞数据加载成功，深度: ' + miningState.depth + '，行数: ' + miningState.rows.length);
+        return true;
+    } catch(e) {
+        console.warn('加载矿洞数据失败:', e);
+        // ★★★ 尝试从备份恢复 ★★★
+        try {
+            var backup = localStorage.getItem('mining_data_backup');
+            if (backup) {
+                console.log('📂 尝试从备份恢复数据...');
+                localStorage.setItem('mining_data', backup);
+                return loadMiningData(); // 递归调用重新加载
+            }
+        } catch(e2) {}
+        return false;
+    }
 }
 
-function clearMiningData() { localStorage.removeItem('mining_data'); }
+// ============================================================
+// ★★★ 手动恢复挖矿数据（控制台调试用）★★★
+// ============================================================
+function restoreMiningData() {
+    var backup = localStorage.getItem('mining_data_backup');
+    if (!backup) {
+        console.log('❌ 没有找到备份数据');
+        return false;
+    }
+    try {
+        localStorage.setItem('mining_data', backup);
+        var result = loadMiningData();
+        if (result) {
+            console.log('✅ 挖矿数据已从备份恢复！');
+            if (typeof renderMiningUI === 'function') renderMiningUI();
+            return true;
+        }
+    } catch(e) {
+        console.warn('恢复失败:', e);
+    }
+    return false;
+}
+window.restoreMiningData = restoreMiningData;
+
+function clearMiningData() { 
+    localStorage.removeItem('mining_data');
+    localStorage.removeItem('mining_data_backup');
+}
 
 function getMiningBackpack() {
     try { var data = localStorage.getItem('explore_backpack'); return data ? JSON.parse(data) : {}; } catch(e) { return {}; }
@@ -159,10 +273,7 @@ function getRandomResult() {
 
 function createEmptyCell() {
     var result = getRandomResult();
-    return { 
-        state: 'hidden', 
-        content: result
-    };
+    return { state: 'hidden', content: result };
 }
 
 function createRow() {
@@ -281,9 +392,6 @@ function isToolValidForCell(rowIndex, colIndex) {
     return true;
 }
 
-// ============================================================
-// mineSingleCell · 挖矿核心逻辑（含挑战塔钩子）
-// ============================================================
 function mineSingleCell(rowIndex, colIndex) {
     var row = miningState.rows[rowIndex];
     if (!row) return;
@@ -323,7 +431,6 @@ function mineSingleCell(rowIndex, colIndex) {
             if (typeof window.addReputation === 'function') {
                 window.addReputation(2, '挖矿获得铁矿');
             }
-            // ===== 挑战塔：挖到铁矿 =====
             if (typeof onTowerMined === 'function') {
                 onTowerMined('iron');
             }
@@ -332,7 +439,6 @@ function mineSingleCell(rowIndex, colIndex) {
             if (typeof window.addReputation === 'function') {
                 window.addReputation(5, '挖矿获得钻石');
             }
-            // ===== 挑战塔：挖到钻石 =====
             if (typeof onTowerMined === 'function') {
                 onTowerMined('diamond');
             }
@@ -391,19 +497,42 @@ function showMiningStatus(msg, isError) {
     }
 }
 
+// ============================================================
+// ★★★ 初始化挖矿（增强版 - 防止数据丢失）★★★
+// ============================================================
 function initMining() {
     console.log('⛏️ 进入挖矿模式...');
+    
+    // ★★★ 防止重复加载 ★★★
+    if (miningState._dataLoaded && miningState.rows.length > 0) {
+        console.log('📂 数据已加载，跳过初始化');
+        // 仍然刷新 UI
+        if (typeof renderMiningUI === 'function') renderMiningUI();
+        return;
+    }
+    
+    // 首先尝试加载数据
     var hasSavedData = loadMiningData();
-    if (!hasSavedData || miningState.rows.length === 0) {
+    
+    if (hasSavedData && miningState.rows.length > 0) {
+        console.log('📂 已加载保存的矿洞数据，深度: ' + miningState.depth + '，行数: ' + miningState.rows.length);
+        miningState._dataLoaded = true;
+    } else {
+        // ★★★ 没有有效数据，初始化新矿洞 ★★★
         console.log('🆕 没有保存的矿洞数据，初始化新矿洞');
         initMiningGrid();
         miningState.tools = { pickaxe: 0, firecracker: 0, dynamite: 0 };
         miningState.lastClaimDate = null;
+        miningState.basket = [];
+        miningState.totalIron = 0;
+        miningState.totalDiamond = 0;
+        miningState.depth = 0;
+        miningState._dataLoaded = true;
         saveMiningData();
-    } else {
-        console.log('📂 已加载保存的矿洞数据，深度: ' + miningState.depth);
-        if (miningState.rows.length === 0) { initMiningGrid(); saveMiningData(); }
+        console.log('✅ 新矿洞已初始化');
     }
+    
+    // 检查每日免费镐头
     var today = getTodayDateStr();
     if (miningState.lastClaimDate !== today) {
         miningState.tools.pickaxe += MINING_CONFIG.FREE_PICKAXE_DAILY;
@@ -417,6 +546,7 @@ function initMining() {
             showMiningStatus('⛏️ 当前镐头 ' + miningState.tools.pickaxe + ' 个，点击浅棕色格子挖掘', false);
         }
     }
+    
     var miningMode = document.getElementById('miningMode');
     if (miningMode) { miningMode.style.display = 'block'; } else { console.error('❌ miningMode 不存在'); return; }
     var infoMode = document.getElementById('infoMode');
@@ -710,6 +840,11 @@ function resetMiningData() {
             initMiningGrid();
             miningState.tools = { pickaxe: 0, firecracker: 0, dynamite: 0 };
             miningState.lastClaimDate = null;
+            miningState.basket = [];
+            miningState.totalIron = 0;
+            miningState.totalDiamond = 0;
+            miningState.depth = 0;
+            miningState._dataLoaded = false;
             saveMiningData();
             renderMiningUI();
         }
@@ -717,11 +852,15 @@ function resetMiningData() {
     }
 }
 
+// ============================================================
+// 暴露全局接口
+// ============================================================
 window.mining = {
     init: initMining, exit: exitMining, isActive: function() { return miningState.isActive; },
     getState: function() { return miningState; }, getIronOre: getIronOreCount, getDiamond: getDiamondCount,
     claimFree: claimFreePickaxe, addTool: addTool, getTools: function() { return miningState.tools; },
-    showBasket: showBasketModal, reset: resetMiningData
+    showBasket: showBasketModal, reset: resetMiningData,
+    restore: restoreMiningData  // ★★★ 新增：手动恢复函数 ★★★
 };
 
 window.initMining = initMining;
@@ -732,8 +871,9 @@ window.getDiamondCount = getDiamondCount;
 window.addTool = addTool;
 window.showBasketModal = showBasketModal;
 window.resetMiningData = resetMiningData;
+window.restoreMiningData = restoreMiningData;  // ★★★ 新增 ★★★
 
 window.totalIronOre = miningState.totalIron;
 window.totalDiamond = miningState.totalDiamond;
 
-console.log('⛏️ 挖矿系统加载完成（含挑战塔钩子）');
+console.log('⛏️ 挖矿系统加载完成（含数据持久化修复 + 备份恢复）');
