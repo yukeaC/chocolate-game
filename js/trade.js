@@ -18,17 +18,13 @@ var TRADE_PRICES = {
         iron_ore: 3,
         diamond: 8,
         dark_cuisine: 6,
-// common → 9 探险币
         golden_feather: 9,
         wood_carving: 9,
-        // rare → 19 探险币
         log_page: 19,
         ancient_compass: 19,
         golden_pocket_watch: 19,
-        // epic → 29 探险币
         pearl_shell: 29,
         ancient_pot: 29,
-        // legendary → 39 探险币
         pearl_crown: 39
     },
     buy: {
@@ -80,7 +76,7 @@ var TRADE_ITEMS = {
     pickaxe: { icon: '⛏️', name: '镐头', category: '工具' },
     firecracker: { icon: '🧨', name: '鞭炮', category: '工具' },
     dynamite: { icon: '💣', name: '炸药', category: '工具' },
-golden_feather: { icon: '🪶', name: '金色羽毛', category: '收藏品' },
+    golden_feather: { icon: '🪶', name: '金色羽毛', category: '收藏品' },
     wood_carving: { icon: '🪵', name: '沉船的木雕', category: '收藏品' },
     log_page: { icon: '📜', name: '航海日志残页', category: '收藏品' },
     ancient_compass: { icon: '🧭', name: '古老罗盘', category: '收藏品' },
@@ -90,9 +86,8 @@ golden_feather: { icon: '🪶', name: '金色羽毛', category: '收藏品' },
     pearl_crown: { icon: '👑', name: '珍珠王冠', category: '收藏品' }
 };
 
-// ===== 新增：交易总次数统计（成就用） =====
+// ===== 交易总次数统计（成就用） =====
 var tradeTotalCount = 0;
-// 从 localStorage 恢复
 try {
     var saved = localStorage.getItem('trade_total_count');
     if (saved) tradeTotalCount = parseInt(saved) || 0;
@@ -210,20 +205,39 @@ function spendMainGold(amount) {
 }
 
 // ============================================================
-// 获取挖矿工具数量
+// 获取挖矿工具数量 (修复版)
 // ============================================================
 function getMiningTools() {
     try {
-        var saved = localStorage.getItem('mining_tools');
-        return saved ? JSON.parse(saved) : { pickaxe: 0, firecracker: 0, dynamite: 0 };
-    } catch(e) { return { pickaxe: 0, firecracker: 0, dynamite: 0 }; }
+        var saved = localStorage.getItem('mining_data');
+        if (saved) {
+            var data = JSON.parse(saved);
+            return data.tools || { pickaxe: 0, firecracker: 0, dynamite: 0 };
+        }
+    } catch(e) {
+        console.warn('获取挖矿工具失败:', e);
+    }
+    return { pickaxe: 0, firecracker: 0, dynamite: 0 };
 }
+
 function addMiningTool(toolType, amount) {
-    var tools = getMiningTools();
-    tools[toolType] = (tools[toolType] || 0) + amount;
-    localStorage.setItem('mining_tools', JSON.stringify(tools));
-    if (typeof window.mining !== 'undefined' && window.mining.addTool) {
-        window.mining.addTool(toolType, amount);
+    // 直接更新 mining_data 中的 tools
+    try {
+        var miningData = JSON.parse(localStorage.getItem('mining_data') || '{}');
+        if (!miningData.tools) miningData.tools = { pickaxe: 0, firecracker: 0, dynamite: 0 };
+        miningData.tools[toolType] = (miningData.tools[toolType] || 0) + amount;
+        localStorage.setItem('mining_data', JSON.stringify(miningData));
+        console.log('⛏️ 已添加工具 ' + toolType + ' x' + amount + ' 到 mining_data');
+    } catch(e) {
+        console.warn('更新挖矿工具失败:', e);
+    }
+
+    // 同步更新内存中的 miningState (如果已加载)
+    if (typeof window.mining !== 'undefined' && window.mining.getState) {
+        var state = window.mining.getState();
+        if (state && state.tools) {
+            state.tools[toolType] = (state.tools[toolType] || 0) + amount;
+        }
     }
 }
 
@@ -234,7 +248,7 @@ function sellItem(itemKey, amount) {
     var price = TRADE_PRICES.sell[itemKey];
     if (!price) return { success: false, msg: '该物品不支持出售' };
 
-    // ★★★ 检查是否为收藏品 ★★★
+    // 检查是否为收藏品
     var isCollectible = false;
     var collectibleId = null;
     if (window.TREASURE_COLLECTIBLES) {
@@ -247,11 +261,8 @@ function sellItem(itemKey, amount) {
         }
     }
 
-    // ============================================================
     // 收藏品出售逻辑
-    // ============================================================
     if (isCollectible) {
-        // 从 treasure_collected 中移除指定数量
         var collected = JSON.parse(localStorage.getItem('treasure_collected') || '[]');
         var removed = 0;
         for (var i = collected.length - 1; i >= 0 && removed < amount; i--) {
@@ -270,7 +281,6 @@ function sellItem(itemKey, amount) {
         tradeTotalCount += removed;
         saveTradeTotalCount();
 
-        // 刷新背包（如果打开）
         if (typeof window.renderBackpack === 'function') {
             var modal = document.getElementById('backpackModal');
             if (modal && !modal.classList.contains('hidden')) {
@@ -292,9 +302,7 @@ function sellItem(itemKey, amount) {
         };
     }
 
-    // ============================================================
-    // 普通物品出售逻辑
-    // ============================================================
+    // 普通物品出售
     if (!isItemTradeable(itemKey, false)) {
         var region = ITEM_SOURCE_REGIONS[itemKey];
         var regionName = getRegionName(region);
@@ -329,7 +337,6 @@ function sellItem(itemKey, amount) {
     };
 }
 
-
 function buyItem(itemKey, amount) {
     var price = TRADE_PRICES.buy[itemKey];
     if (!price) return { success: false, msg: '该物品不支持购买' };
@@ -355,21 +362,16 @@ function buyItem(itemKey, amount) {
     if (!spendTradeCoins(totalCost)) {
         return { success: false, msg: '扣费失败' };
     }
-    // ===== 添加音效 =====
     if (typeof soundTrade === 'function') soundTrade();
     if (typeof soundCoin === 'function') soundCoin();
-    // ===== 音效添加结束 =====
 
     var itemName = TRADE_ITEMS[itemKey] ? TRADE_ITEMS[itemKey].name : itemKey;
 
     if (itemKey === 'pickaxe' || itemKey === 'firecracker' || itemKey === 'dynamite') {
         addMiningTool(itemKey, amount);
-        // ===== 新增：交易次数累加 =====
         tradeTotalCount += amount;
         saveTradeTotalCount();
-    // ===== 挑战塔：交易成功（购买） =====
-    if (typeof onTowerTraded === 'function') onTowerTraded();
-    // ===== 挑战塔结束 =====
+        if (typeof onTowerTraded === 'function') onTowerTraded();
         return {
             success: true,
             msg: '购买 ' + itemName + ' ×' + amount + '，消耗 ' + totalCost + ' 探险币（已存入挖矿工具）',
@@ -380,7 +382,6 @@ function buyItem(itemKey, amount) {
     }
 
     addTradeItem(itemKey, amount);
-    // ===== 新增：交易次数累加 =====
     tradeTotalCount += amount;
     saveTradeTotalCount();
 
@@ -406,8 +407,6 @@ function exchangeGoldToCoins(amount) {
     }
 
     addTradeCoins(amount);
-
-    // ===== 新增：交易次数累加（兑换也算一次交易） =====
     tradeTotalCount += amount;
     saveTradeTotalCount();
 
@@ -441,9 +440,8 @@ function getTradeInventory() {
     var result = [];
     var canBuyTools = hasVisitedDumbpan();
 
-    // ★★★ 先添加收藏品（可出售） ★★★
+    // 先添加收藏品（可出售）
     if (collected.length > 0 && typeof window.TREASURE_COLLECTIBLES !== 'undefined') {
-        // 统计每种收藏品的数量
         var collectibleCounts = {};
         collected.forEach(function(id) {
             collectibleCounts[id] = (collectibleCounts[id] || 0) + 1;
@@ -459,7 +457,7 @@ function getTradeInventory() {
                         icon: c.icon,
                         name: c.name,
                         category: '收藏品',
-                        count: count,  // ★★★ 显示实际库存 ★★★
+                        count: count,
                         sellPrice: sellPrice,
                         buyPrice: 0,
                         isSellable: true,
@@ -471,11 +469,9 @@ function getTradeInventory() {
         });
     }
 
-    // ★★★ 原有物品逻辑 ★★★
+    // 原有物品逻辑
     for (var key in TRADE_ITEMS) {
-        // 跳过收藏品（已在上方处理）
         if (result.some(function(r) { return r.key === key; })) continue;
-        
         var count = backpack[key] || 0;
         var buyPrice = TRADE_PRICES.buy[key] || 0;
         var sellPrice = TRADE_PRICES.sell[key] || 0;
@@ -513,7 +509,7 @@ function getTradeInventory() {
 }
 
 // ============================================================
-// 交易UI渲染（略，保持原样）
+// 交易UI渲染
 // ============================================================
 var tradeState = {
     activeTab: 'sell',
@@ -826,7 +822,6 @@ window.tradeExchangeInputChange = tradeExchangeInputChange;
 window.tradeExecuteExchange = tradeExecuteExchange;
 window.renderTradeUI = renderTradeUI;
 
-// ===== 新增：暴露交易次数统计 =====
 window.tradeTotalCount = tradeTotalCount;
 
 console.log('🏪 交易系统已重新配置（含成就统计）');

@@ -1,25 +1,31 @@
 // ============================================================
-// saveManager.js · 存档导入/导出（复制粘贴版）
-// 修复：支持超长存档码、增加错误处理、添加进度反馈
+// saveManager.js · 存档导入/导出（完美修复版）
+// 修复：确保主游戏数据（chocolate_save）完整迁移
 // ============================================================
 
-console.log('💾 存档管理器加载中（复制粘贴版）...');
+console.log('💾 存档管理器加载中（完美修复版）...');
 
-// 所有需要保存的 localStorage key
+// ============================================================
+// 所有需要保存的 localStorage key（完整列表）
+// ============================================================
 var SAVE_KEYS = [
-    // 主游戏
-    'chocolate_save',
+    // ----- 主游戏（核心） -----
+    'chocolate_save',          // 等级、升级、资源、库存、槽位等
     'order_date',
     'savedOrders',
     'last_refresh_date',
-    // 农场
+    
+    // ----- 农场 -----
     'farm_data',
-    // 商城
+    
+    // ----- 商城 -----
     'shop_data',
     'player_bag',
-    // 成就
+    
+    // ----- 成就 -----
     'achievement_data',
-    // 探险地图
+    
+    // ----- 探险地图 -----
     'explore_coins',
     'explore_backpack',
     'explore_region_status',
@@ -43,30 +49,44 @@ var SAVE_KEYS = [
     'rose_pot_unlocked',
     'nomo_feed_data',
     'nomo_completed',
-    // 挑战塔
+    
+    // ----- 挑战塔 -----
     'tower_data',
-    // 其他
-    'explore_travel_state'
+    
+    // ----- 其他（兼容旧版本） -----
+    'double_gold_active',
+    'cardmatch_reward_beans',
+    'cardmatch_reward_amount',
+    'cardmatch_reward_time',
+    'minigame_stats'
 ];
 
-// ===== 导出：打包 → 压缩 → Base64 =====
+// ============================================================
+// 导出：打包 → 压缩 → Base64
+// ============================================================
 function exportSaveToClipboard() {
     try {
         var bundle = {};
         var totalSize = 0;
+        var missingKeys = [];
+
         for (var i = 0; i < SAVE_KEYS.length; i++) {
             var key = SAVE_KEYS[i];
             var value = localStorage.getItem(key);
             if (value !== null) {
                 bundle[key] = value;
                 totalSize += value.length;
+            } else {
+                missingKeys.push(key);
             }
         }
+        
         // 添加元数据
         bundle._meta = {
-            version: 2,
+            version: 3,                    // 版本升级
             timestamp: Date.now(),
-            count: Object.keys(bundle).length - 1
+            count: Object.keys(bundle).length - 1,
+            missing: missingKeys
         };
 
         var json = JSON.stringify(bundle);
@@ -75,18 +95,16 @@ function exportSaveToClipboard() {
         // Base64 编码（支持中文）
         var base64 = btoa(encodeURIComponent(compressed));
 
-        // ★★★ 显示存档码长度供参考 ★★★
         console.log('📦 存档码长度: ' + base64.length + ' 字符');
         console.log('📦 数据项数: ' + (Object.keys(bundle).length - 1));
+        if (missingKeys.length > 0) {
+            console.warn('⚠️ 以下键不存在，已跳过:', missingKeys.join(', '));
+        }
 
         // 复制到剪贴板
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(base64).then(function() {
-                if (typeof showMessage === 'function') {
-                    showMessage('✅ 存档码已复制！长度: ' + base64.length + ' 字符', false);
-                } else {
-                    alert('✅ 存档码已复制到剪贴板！');
-                }
+                showSaveMessage('✅ 存档码已复制！长度: ' + base64.length + ' 字符', false);
             }).catch(function() {
                 fallbackCopy(base64);
             });
@@ -96,11 +114,7 @@ function exportSaveToClipboard() {
         return base64;
     } catch(e) {
         console.error('导出失败:', e);
-        if (typeof showMessage === 'function') {
-            showMessage('❌ 导出失败: ' + e.message, true);
-        } else {
-            alert('导出失败: ' + e.message);
-        }
+        showSaveMessage('❌ 导出失败: ' + e.message, true);
         return null;
     }
 }
@@ -115,24 +129,17 @@ function fallbackCopy(text) {
     textarea.select();
     try {
         document.execCommand('copy');
-        if (typeof showMessage === 'function') {
-            showMessage('✅ 存档码已复制！长度: ' + text.length + ' 字符', false);
-        } else {
-            alert('✅ 存档码已复制到剪贴板！');
-        }
+        showSaveMessage('✅ 存档码已复制！长度: ' + text.length + ' 字符', false);
     } catch(e) {
-        if (typeof showMessage === 'function') {
-            showMessage('❌ 复制失败，请手动复制下方文本', true);
-        }
+        showSaveMessage('❌ 复制失败，请手动复制', true);
         prompt('请手动复制以下存档码：', text);
     }
     document.body.removeChild(textarea);
 }
 
 // ============================================================
-// ★★★ 导入：使用文本域代替 prompt（解决长度限制）★★★
+// 导入：文本域方式（支持超长存档码）
 // ============================================================
-
 function importSaveFromClipboard() {
     // 尝试从剪贴板读取
     if (navigator.clipboard && navigator.clipboard.readText) {
@@ -150,9 +157,7 @@ function importSaveFromClipboard() {
     }
 }
 
-// ★★★ 新增：使用文本域导入（支持超长存档码）★★★
 function showLargeTextImportDialog() {
-    // 检查是否已有导入对话框
     var existing = document.getElementById('importDialogOverlay');
     if (existing) {
         existing.remove();
@@ -204,7 +209,6 @@ function showLargeTextImportDialog() {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    // 绑定事件
     var closeBtn = document.getElementById('importDialogClose');
     var confirmBtn = document.getElementById('importConfirmBtn');
     var textArea = document.getElementById('importTextArea');
@@ -225,13 +229,11 @@ function showLargeTextImportDialog() {
             return;
         }
         closeDialog();
-        // 延迟执行，让对话框关闭后再导入
         setTimeout(function() {
             doImport(text);
         }, 100);
     });
 
-    // 键盘快捷键：Ctrl+Enter 确认
     textArea.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             confirmBtn.click();
@@ -241,16 +243,14 @@ function showLargeTextImportDialog() {
         }
     });
 
-    // 自动聚焦
     setTimeout(function() {
         textArea.focus();
     }, 100);
 }
 
 // ============================================================
-// ★★★ 核心导入函数（增强版）★★★
+// ★★★ 核心导入函数（完美修复版）★★★
 // ============================================================
-
 function doImport(base64) {
     try {
         console.log('📥 开始导入存档...');
@@ -260,17 +260,12 @@ function doImport(base64) {
         try {
             compressed = decodeURIComponent(atob(base64));
         } catch(e) {
-            // 尝试直接解码（兼容无 URI 编码的旧格式）
             try {
                 compressed = atob(base64);
                 console.log('📥 使用旧格式解码成功');
             } catch(e2) {
                 console.error('解码失败:', e2);
-                if (typeof showMessage === 'function') {
-                    showMessage('❌ 存档码格式错误，请检查是否完整复制', true);
-                } else {
-                    alert('❌ 存档码格式错误，请检查是否完整复制');
-                }
+                showSaveMessage('❌ 存档码格式错误，请检查是否完整复制', true);
                 return;
             }
         }
@@ -281,40 +276,28 @@ function doImport(base64) {
             bundle = JSON.parse(compressed);
         } catch(e) {
             console.error('解析失败:', e);
-            if (typeof showMessage === 'function') {
-                showMessage('❌ 存档数据损坏，无法解析', true);
-            } else {
-                alert('❌ 存档数据损坏，无法解析');
-            }
+            showSaveMessage('❌ 存档数据损坏，无法解析', true);
             return;
         }
 
         // 3. 验证元数据
         if (!bundle._meta) {
-            if (typeof showMessage === 'function') {
-                showMessage('❌ 存档码格式不兼容（缺少元数据）', true);
-            } else {
-                alert('❌ 存档码格式不兼容（缺少元数据）');
-            }
+            showSaveMessage('❌ 存档码格式不兼容（缺少元数据）', true);
             return;
         }
 
-        if (bundle._meta.version !== 2) {
-            if (typeof showMessage === 'function') {
-                showMessage('❌ 存档码版本不兼容（当前版本: 2，存档版本: ' + bundle._meta.version + '）', true);
-            } else {
-                alert('❌ 存档码版本不兼容（当前版本: 2，存档版本: ' + bundle._meta.version + '）');
-            }
+        // 兼容旧版本（version 2 和 3 都支持）
+        if (bundle._meta.version < 2 || bundle._meta.version > 3) {
+            showSaveMessage('❌ 存档码版本不兼容（当前支持 v2~v3，存档版本: ' + bundle._meta.version + '）', true);
             return;
         }
 
-        // 4. 显示存档信息
         var itemCount = bundle._meta.count || 0;
         var timestamp = bundle._meta.timestamp || 0;
         var dateStr = timestamp ? new Date(timestamp).toLocaleString() : '未知';
         console.log('📥 存档信息: ' + itemCount + ' 项数据，创建于 ' + dateStr);
 
-        // 5. 二次确认
+        // 4. 二次确认
         var confirmMsg = '⚠️ 导入将覆盖当前所有进度！\n\n';
         confirmMsg += '📦 包含 ' + itemCount + ' 项数据\n';
         confirmMsg += '📅 存档时间: ' + dateStr + '\n\n';
@@ -324,15 +307,28 @@ function doImport(base64) {
             return;
         }
 
-        // 6. 写入 localStorage
+        // 5. 清除所有现有数据（避免残留）
+        console.log('📥 正在清除现有数据...');
+        for (var i = 0; i < SAVE_KEYS.length; i++) {
+            try {
+                localStorage.removeItem(SAVE_KEYS[i]);
+            } catch(e) {}
+        }
+
+        // 6. 写入新数据
         var count = 0;
         var errors = [];
+        var hasChocolateSave = false;
         for (var key in bundle) {
             if (key === '_meta') continue;
             if (SAVE_KEYS.indexOf(key) !== -1) {
                 try {
                     localStorage.setItem(key, bundle[key]);
                     count++;
+                    console.log('📥 写入: ' + key + ' (' + (bundle[key] ? bundle[key].length : 0) + ' 字符)');
+                    if (key === 'chocolate_save') {
+                        hasChocolateSave = true;
+                    }
                 } catch(e) {
                     errors.push(key + ': ' + e.message);
                 }
@@ -347,45 +343,118 @@ function doImport(base64) {
 
         console.log('📥 导入成功！已恢复 ' + count + ' 项数据');
 
-        // 7. 显示成功消息
-        if (typeof showMessage === 'function') {
-            showMessage('✅ 导入成功！已恢复 ' + count + ' 项数据，页面即将刷新', false);
-        } else {
-            alert('✅ 导入成功！已恢复 ' + count + ' 项数据，页面即将刷新');
+        // ★★★ 7. 强制重新加载主游戏数据（关键修复） ★★★
+        if (hasChocolateSave) {
+            try {
+                // 从 localStorage 重新读取主游戏数据
+                var raw = localStorage.getItem('chocolate_save');
+                if (raw) {
+                    var data = JSON.parse(raw);
+                    // 调用 storage.js 中的加载函数（如果存在）
+                    if (typeof loadGameFromData === 'function') {
+                        var loaded = loadGameFromData(data);
+                        console.log('📥 主游戏数据重新加载: ' + (loaded ? '成功' : '失败'));
+                    } else {
+                        // 降级：手动刷新变量（但 loadGameFromData 更安全）
+                        console.warn('⚠️ loadGameFromData 未定义，将尝试通过刷新页面加载');
+                    }
+                }
+            } catch(e) {
+                console.warn('⚠️ 重新加载主游戏数据失败:', e);
+            }
         }
 
-        // 8. 强制刷新
-        setTimeout(function() {
-            // 保存当前游戏状态，确保数据持久化
-            if (typeof saveGame === 'function') {
-                try { saveGame(); } catch(e) {}
-            }
-            location.reload();
-        }, 1200);
+        // ★★★ 8. 刷新所有 UI（即使没有主游戏数据，也要刷新其他部分） ★★★
+        if (typeof refreshUI === 'function') {
+            refreshUI();
+            console.log('📥 UI 已刷新');
+        }
+        if (typeof renderSlots === 'function') {
+            renderSlots();
+        }
+        if (typeof renderQuickSell === 'function') {
+            renderQuickSell();
+        }
+        if (typeof renderShopUI === 'function') {
+            renderShopUI();
+        }
+        if (typeof renderWarehouseModal === 'function') {
+            renderWarehouseModal();
+        }
+        if (typeof updateAchievements === 'function') {
+            updateAchievements();
+        }
+        if (typeof updateAdventurerUI === 'function') {
+            updateAdventurerUI();
+        }
+        if (typeof initTower === 'function') {
+            initTower();
+        }
+        if (typeof updateTowerEntry === 'function') {
+            updateTowerEntry();
+        }
+
+        // 强制更新订单显示
+        if (typeof updateOrderStatusDisplay === 'function') {
+            updateOrderStatusDisplay();
+        }
+
+        // ★★★ 9. 强制重新计算正在生产的槽位 ★★★
+        if (typeof recalcAllProducingSlots === 'function') {
+            recalcAllProducingSlots();
+        }
+
+        // ★★★ 10. 保存导入时间戳，防止自动保存立即覆盖 ★★★
+        localStorage.setItem('_imported_at', String(Date.now()));
+
+        // 11. 显示成功消息
+        var msg = '✅ 导入成功！已恢复 ' + count + ' 项数据';
+        if (hasChocolateSave) {
+            msg += '，主游戏数据已恢复';
+        } else {
+            msg += '，但未找到主游戏数据（可能存档不完整）';
+        }
+        showSaveMessage(msg, false);
+
+        // 12. 提示刷新（虽然数据已恢复，但为保险起见建议刷新）
+        if (!confirm('数据已恢复！是否立即刷新页面以确保完全生效？')) {
+            return;
+        }
+        // 硬刷新
+        localStorage.setItem('_import_complete', 'true');
+        location.reload(true);
 
     } catch(e) {
         console.error('导入失败:', e);
         var errorMsg = e.message || '未知错误';
-        // 提供更具体的错误信息
         if (errorMsg.includes('InvalidCharacterError') || errorMsg.includes('atob')) {
             errorMsg = '存档码格式无效，请检查是否完整复制（可能包含非法字符）';
         } else if (errorMsg.includes('SyntaxError') || errorMsg.includes('JSON')) {
             errorMsg = '存档数据损坏，请重新导出';
         }
-        if (typeof showMessage === 'function') {
-            showMessage('❌ 导入失败: ' + errorMsg, true);
-        } else {
-            alert('导入失败: ' + errorMsg);
-        }
+        showSaveMessage('❌ 导入失败: ' + errorMsg, true);
     }
 }
 
 // ============================================================
-// ★★★ 暴露全局接口 ★★★
+// 辅助函数：显示消息（兼容主游戏）
+// ============================================================
+function showSaveMessage(msg, isError) {
+    if (typeof showMessage === 'function') {
+        showMessage(msg, isError);
+    } else if (typeof showLightToast === 'function') {
+        showLightToast(msg);
+    } else {
+        alert(msg);
+    }
+}
+
+// ============================================================
+// 暴露全局接口
 // ============================================================
 window.exportSaveToClipboard = exportSaveToClipboard;
 window.importSaveFromClipboard = importSaveFromClipboard;
 window.doImport = doImport;
 window.showLargeTextImportDialog = showLargeTextImportDialog;
 
-console.log('💾 存档管理器加载完成（修复版 - 支持超长存档码）');
+console.log('💾 存档管理器加载完成（完美修复版）');

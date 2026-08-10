@@ -354,11 +354,17 @@ function updateBagCount() {
 }
 
 // ============================================================
-// 日期工具
+// 日期工具函数 (修复版)
 // ============================================================
 
 function getTodayDateStr() {
     var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function getYesterdayDateStr() {
+    var d = new Date();
+    d.setDate(d.getDate() - 1);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
@@ -383,23 +389,19 @@ function createShopModal() {
 }
 
 // ============================================================
-// 签到系统
+// 签到系统 (修复版)
 // ============================================================
 
 function getSignInStatus() {
     var today = getTodayDateStr();
+    var yesterday = getYesterdayDateStr();
     var lastDate = shopState.signIn.lastDate;
-    
     var signedToday = (lastDate === today);
     var consecutive = shopState.signIn.consecutiveDays;
-    
-    if (lastDate) {
-        var yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        var yesterdayStr = yesterday.toISOString().slice(0, 10);
-        if (lastDate !== today && lastDate !== yesterdayStr) {
-            consecutive = 0;
-        }
+
+    // 如果 lastDate 既不是今天也不是昨天，重置连续天数
+    if (lastDate && lastDate !== today && lastDate !== yesterday) {
+        consecutive = 0;
     }
 
     return {
@@ -411,6 +413,7 @@ function getSignInStatus() {
 
 function doSignIn() {
     var today = getTodayDateStr();
+    var yesterday = getYesterdayDateStr();
     var lastDate = shopState.signIn.lastDate;
     
     if (lastDate === today) {
@@ -420,13 +423,10 @@ function doSignIn() {
         return false;
     }
 
-    var yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    var yesterdayStr = yesterday.toISOString().slice(0, 10);
-    
     var consecutive = shopState.signIn.consecutiveDays;
     
-    if (lastDate === yesterdayStr) {
+    // 检查是否连续签到
+    if (lastDate === yesterday) {
         consecutive = consecutive + 1;
     } else {
         consecutive = 1;
@@ -586,7 +586,7 @@ function showLuckyBoxResult(goldGain) {
 }
 
 // ============================================================
-// 立即生效效果（含 luckyBoxMaxGold 记录）
+// 立即生效效果
 // ============================================================
 
 function applyInstantEffect(itemId) {
@@ -654,7 +654,7 @@ function applyInstantEffect(itemId) {
 }
 
 // ============================================================
-// 使用背包道具（含 luckyBoxMaxGold 记录）
+// 使用背包道具
 // ============================================================
 
 function useBagItem(itemId) {

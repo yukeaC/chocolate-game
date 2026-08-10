@@ -1,5 +1,4 @@
 // js/storage.js
-
 // ============================================
 // 防御性检查：确保全局变量已定义（不用 var 重新声明）
 // ============================================
@@ -67,7 +66,6 @@ function saveGameToLocal() {
         currentOrders: currentOrders || [],
         orderDate: getTodayDateStr(),
         lastSyncTime: Date.now(),
-        // ★★★ 新增：成就系统变量持久化 ★★★
         totalOrdersCompleted: totalOrdersCompleted || 0,
         totalExchanges: totalExchanges || 0,
         totalGameTime: totalGameTime || 0,
@@ -80,58 +78,111 @@ function saveGameToLocal() {
 window.saveGameToLocal = saveGameToLocal;
 
 // ============================================
-// 加载游戏数据
+// 加载游戏数据（增强版：自动修复缺失字段）
 // ============================================
 function loadGameFromData(data) {
     try {
-        cocoaBeans = data.cocoaBeans ?? 0;
-        gold = data.gold ?? 0;
-        miaoBargainLevel = data.miaoBargainLevel ?? 0;
-        productionSpeedLevel = data.productionSpeedLevel ?? 0;
-        workaholicLevel = data.workaholicLevel ?? 0;
-        expBoostLevel = data.expBoostLevel ?? 0;
-        totalProduced = data.totalProduced ?? 0;
-        totalSold = data.totalSold ?? 0;
-        totalEarned = data.totalEarned ?? 0;
-        totalBeansHarvested = data.totalBeansHarvested ?? 0;
-        inventory = data.inventory ?? {};
-        for (let id in PRODUCTS) if (inventory[id] === undefined) inventory[id] = 0;
-        if (data.energies) Object.assign(energies, data.energies);
-        if (data.hiddenInventory) Object.assign(hiddenInventory, data.hiddenInventory);
-        autoSaveEnabled = data.autoSaveEnabled !== undefined ? data.autoSaveEnabled : true;
-        exp = data.exp ?? 0;
-        level = data.level ?? 1;
-
-        // ★★★ 新增：加载成就系统变量 ★★★
-        totalOrdersCompleted = data.totalOrdersCompleted || 0;
-        totalExchanges = data.totalExchanges || 0;
-        totalGameTime = data.totalGameTime || 0;
-        luckyBoxMaxGold = data.luckyBoxMaxGold || 0;
-
-        if (data.userProfile && data.userProfile.nickname) {
-            userProfile = {
-                nickname: data.userProfile.nickname,
-                nicknameChanged: data.userProfile.nicknameChanged || false,
-                nicknameChangeCount: data.userProfile.nicknameChangeCount || 0
-            };
-        } else {
-            userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
+        // 如果 data 是字符串，先解析
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch(e) { return false; }
         }
+        if (!data || typeof data !== 'object') return false;
 
-        if (data.slots) {
+        // ===== 自动补全缺失字段 =====
+        data.cocoaBeans = data.cocoaBeans ?? 0;
+        data.gold = data.gold ?? 0;
+        data.miaoBargainLevel = data.miaoBargainLevel ?? 0;
+        data.productionSpeedLevel = data.productionSpeedLevel ?? 0;
+        data.workaholicLevel = data.workaholicLevel ?? 0;
+        data.expBoostLevel = data.expBoostLevel ?? 0;
+        data.totalProduced = data.totalProduced ?? 0;
+        data.totalSold = data.totalSold ?? 0;
+        data.totalEarned = data.totalEarned ?? 0;
+        data.totalBeansHarvested = data.totalBeansHarvested ?? 0;
+        data.exp = data.exp ?? 0;
+        data.level = data.level ?? 1;
+        data.autoSaveEnabled = data.autoSaveEnabled !== undefined ? data.autoSaveEnabled : true;
+        data.totalOrdersCompleted = data.totalOrdersCompleted || 0;
+        data.totalExchanges = data.totalExchanges || 0;
+        data.totalGameTime = data.totalGameTime || 0;
+        data.luckyBoxMaxGold = data.luckyBoxMaxGold || 0;
+
+        // 库存
+        if (!data.inventory || typeof data.inventory !== 'object') data.inventory = {};
+        for (let id in PRODUCTS) if (data.inventory[id] === undefined) data.inventory[id] = 0;
+
+        // 能量
+        if (!data.energies || typeof data.energies !== 'object') data.energies = {};
+        for (let e of ENERGY_TYPES) if (data.energies[e.id] === undefined) data.energies[e.id] = 0;
+
+        // 隐藏库存
+        if (!data.hiddenInventory || typeof data.hiddenInventory !== 'object') data.hiddenInventory = {};
+        for (let r of HIDDEN_RECIPES) if (data.hiddenInventory[r.id] === undefined) data.hiddenInventory[r.id] = 0;
+
+        // 用户资料
+        if (!data.userProfile || typeof data.userProfile !== 'object') {
+            data.userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
+        }
+        if (!data.userProfile.nickname) data.userProfile.nickname = generateRandomNickname();
+
+        // 槽位
+        if (!data.slots || !Array.isArray(data.slots) || data.slots.length !== TOTAL_SLOTS) {
+            data.slots = [];
             for (let i = 0; i < TOTAL_SLOTS; i++) {
-                if (data.slots[i]) slots[i] = data.slots[i];
-                else slots[i] = { unlocked: (i === 0), productId: null, remainingSec: 0, status: 'idle' };
+                data.slots.push({ unlocked: (i === 0), productId: null, remainingSec: 0, status: 'idle' });
             }
         }
+        // 确保每个槽位字段完整
+        for (let i = 0; i < TOTAL_SLOTS; i++) {
+            if (!data.slots[i]) data.slots[i] = { unlocked: (i === 0), productId: null, remainingSec: 0, status: 'idle' };
+            if (data.slots[i].unlocked === undefined) data.slots[i].unlocked = (i === 0);
+            if (data.slots[i].productId === undefined) data.slots[i].productId = null;
+            if (data.slots[i].remainingSec === undefined) data.slots[i].remainingSec = 0;
+            if (data.slots[i].status === undefined) data.slots[i].status = 'idle';
+        }
+
+        // 订单
+        if (!data.currentOrders || !Array.isArray(data.currentOrders)) {
+            data.currentOrders = generateFreshOrders();
+        }
+        if (data.orderDate) localStorage.setItem('order_date', data.orderDate);
+
+        // 重新赋值给全局变量
+        cocoaBeans = data.cocoaBeans;
+        gold = data.gold;
+        miaoBargainLevel = data.miaoBargainLevel;
+        productionSpeedLevel = data.productionSpeedLevel;
+        workaholicLevel = data.workaholicLevel;
+        expBoostLevel = data.expBoostLevel;
+        totalProduced = data.totalProduced;
+        totalSold = data.totalSold;
+        totalEarned = data.totalEarned;
+        totalBeansHarvested = data.totalBeansHarvested;
+        exp = data.exp;
+        level = data.level;
+        autoSaveEnabled = data.autoSaveEnabled;
+        totalOrdersCompleted = data.totalOrdersCompleted;
+        totalExchanges = data.totalExchanges;
+        totalGameTime = data.totalGameTime;
+        luckyBoxMaxGold = data.luckyBoxMaxGold;
+
+        Object.assign(inventory, data.inventory);
+        Object.assign(energies, data.energies);
+        Object.assign(hiddenInventory, data.hiddenInventory);
+        userProfile = data.userProfile;
+        slots = data.slots;
+        currentOrders = data.currentOrders;
+
+        // 重新计算生产
         recalcAllProducingSlots();
 
-        currentOrders = data.currentOrders || generateFreshOrders();
-        localStorage.setItem('order_date', data.orderDate || getTodayDateStr());
+        // 更新订单状态显示
         if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
+
+        console.log('✅ 存档加载成功，等级:', level);
         return true;
     } catch(e) {
-        console.error('加载存档数据失败:', e);
+        console.error('加载存档失败:', e.message);
         return false;
     }
 }
@@ -185,210 +236,84 @@ window.recalcAllProducingSlots = recalcAllProducingSlots;
 function clearAllGameDataLocal() {
     console.log('🗑️ 开始清除所有游戏数据...');
 
-    // ===== 1. 清除所有 localStorage 游戏数据 =====
     var keysToRemove = [
-        // 主游戏
-        'chocolate_save',
-        'order_date',
-        'savedOrders',
-        'farm_data',
-        'cardmatch_reward_beans',
-        'cardmatch_reward_amount',
-        'cardmatch_reward_time',
-        'double_gold_active',
-        'shop_data',
-        'player_bag',
-        'achievement_data',
-        'last_refresh_date',
-        // 探险地图 + 子系统
-        'adventurer_data',
-        'explore_region_status',
-        'explore_visited',
-        'explore_coins',
-        'explore_backpack',
-        'treasure_data',
-        'prince_dialogue_state',
-        'croissant_state',
-        'story_progress',
-        'fishing_daily',
-        'fishing_stats',
-        'mining_data',
-        'panini_data',
-        'rice_data',
-        'bounty_data',
-        'nomo_feed_data',
-        'nomo_completed',
-        'rose_plant_data',
-        'rose_seed_dialogue_played',
-        'rose_pot_unlocked',
-        'trade_total_count',
-        'explore_travel_state',
-        'tower_data',
-        'sudoku_rewards'
+        'chocolate_save', 'order_date', 'savedOrders', 'farm_data', 'cardmatch_reward_beans',
+        'cardmatch_reward_amount', 'cardmatch_reward_time', 'double_gold_active', 'shop_data',
+        'player_bag', 'achievement_data', 'last_refresh_date', 'adventurer_data',
+        'explore_region_status', 'explore_visited', 'explore_coins', 'explore_backpack',
+        'treasure_data', 'prince_dialogue_state', 'croissant_state', 'story_progress',
+        'fishing_daily', 'fishing_stats', 'mining_data', 'panini_data', 'rice_data',
+        'bounty_data', 'nomo_feed_data', 'nomo_completed', 'rose_plant_data',
+        'rose_seed_dialogue_played', 'rose_pot_unlocked', 'trade_total_count',
+        'explore_travel_state', 'tower_data', 'sudoku_rewards'
     ];
+    for (var i = 0; i < keysToRemove.length; i++) localStorage.removeItem(keysToRemove[i]);
 
-    for (var i = 0; i < keysToRemove.length; i++) {
-        localStorage.removeItem(keysToRemove[i]);
-    }
-    console.log('🗑️ localStorage 数据已清除');
+    // 重置全局变量
+    cocoaBeans = 0; gold = 0; miaoBargainLevel = 0; productionSpeedLevel = 0;
+    workaholicLevel = 0; expBoostLevel = 0; totalProduced = 0; totalSold = 0;
+    totalEarned = 0; totalBeansHarvested = 0; exp = 0; level = 1;
+    totalOrdersCompleted = 0; totalExchanges = 0; totalGameTime = 0; luckyBoxMaxGold = 0;
 
-    // ===== 2. 重置所有全局变量 =====
-    cocoaBeans = 0;
-    gold = 0;
-    miaoBargainLevel = 0;
-    productionSpeedLevel = 0;
-    workaholicLevel = 0;
-    expBoostLevel = 0;
-    totalProduced = 0;
-    totalSold = 0;
-    totalEarned = 0;
-    totalBeansHarvested = 0;
-    exp = 0;
-    level = 1;
-    
-    // ★★★ 重置成就变量 ★★★
-    totalOrdersCompleted = 0;
-    totalExchanges = 0;
-    totalGameTime = 0;
-    luckyBoxMaxGold = 0;
+    if (typeof inventory !== 'undefined') for (var id in PRODUCTS) inventory[id] = 0;
+    if (typeof hiddenInventory !== 'undefined') for (var r of HIDDEN_RECIPES) hiddenInventory[r.id] = 0;
+    if (typeof energies !== 'undefined') for (var e of ENERGY_TYPES) energies[e.id] = 0;
 
-    // 重置库存
-    if (typeof inventory !== 'undefined') {
-        for (var id in PRODUCTS) inventory[id] = 0;
-    }
-    if (typeof hiddenInventory !== 'undefined') {
-        for (var r of HIDDEN_RECIPES) hiddenInventory[r.id] = 0;
-    }
-    if (typeof energies !== 'undefined') {
-        for (var e of ENERGY_TYPES) energies[e.id] = 0;
-    }
-
-    // 重置工坊槽位
     if (typeof slots !== 'undefined') {
         for (var i = 0; i < TOTAL_SLOTS; i++) {
             slots[i] = { unlocked: (i === 0), productId: null, remainingSec: 0, status: 'idle' };
             if (slotTimers[i]) clearTimeout(slotTimers[i]);
             if (slotIntervals[i]) clearInterval(slotIntervals[i]);
-            slotTimers[i] = null;
-            slotIntervals[i] = null;
+            slotTimers[i] = null; slotIntervals[i] = null;
         }
     }
 
-    // 重置昵称
     if (typeof userProfile !== 'undefined') {
         userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
     }
 
-    // 重置订单
-    if (typeof currentOrders !== 'undefined') {
-        currentOrders = generateFreshOrders();
-    }
+    if (typeof currentOrders !== 'undefined') currentOrders = generateFreshOrders();
     localStorage.setItem('order_date', getTodayDateStr());
     if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
 
-    // 重置农场
     if (typeof resetFarmLands === 'function') resetFarmLands();
-
-    // 重置成就
     if (typeof clearAchievementData === 'function') clearAchievementData();
-
-    // 重置商城背包
     if (typeof shopState !== 'undefined') {
-        shopState = {
-            signIn: { lastDate: null, consecutiveDays: 0, signedToday: false },
-            inventory: {},
-            resetDate: null
-        };
-        for (var id in SHOP_ITEMS) {
-            shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
-        }
+        shopState = { signIn: { lastDate: null, consecutiveDays: 0, signedToday: false }, inventory: {}, resetDate: null };
+        for (var id in SHOP_ITEMS) shopState.inventory[id] = SHOP_ITEMS[id].maxStock;
     }
-    if (typeof playerBag !== 'undefined') {
-        for (var id in playerBag) {
-            playerBag[id] = 0;
-        }
-    }
+    if (typeof playerBag !== 'undefined') { for (var id in playerBag) playerBag[id] = 0; }
 
     // 重置探险地图变量
     if (typeof adventurerState !== 'undefined') {
-        adventurerState = {
-            rank: 1,
-            reputation: 0,
-            totalEarnedRep: 0,
-            claimedRankRewards: [],
-            records: []
-        };
+        adventurerState = { rank: 1, reputation: 0, totalEarnedRep: 0, claimedRankRewards: [], records: [] };
     }
     if (typeof treasureState !== 'undefined') {
-        treasureState = {
-            hasCompleteMap: false,
-            treasureRegionId: null,
-            treasurePosX: 0,
-            treasurePosY: 0,
-            isCompleted: false,
-            completedCount: 0,
-            fishCounter: 0,
-            lastKabuDate: null,
-            kabuGivenToday: false
-        };
+        treasureState = { hasCompleteMap: false, treasureRegionId: null, treasurePosX: 0, treasurePosY: 0, isCompleted: false, completedCount: 0, fishCounter: 0, lastKabuDate: null, kabuGivenToday: false };
     }
     if (typeof regions !== 'undefined') {
         for (var i = 0; i < regions.length; i++) {
-            if (regions[i].id === 'welcome') {
-                regions[i].status = 'current';
-            } else {
-                regions[i].status = 'locked';
-            }
+            if (regions[i].id === 'welcome') regions[i].status = 'current';
+            else regions[i].status = 'locked';
         }
     }
     if (typeof visitedRegions !== 'undefined') visitedRegions = [];
-    if (typeof STORY_DATA !== 'undefined') {
-        for (var key in STORY_DATA) {
-            STORY_DATA[key].completed = false;
-        }
-    }
-    if (typeof princeLocalState !== 'undefined') {
-        princeLocalState = { currentIndex: 0, isCompleted: false, hasVisited: false, randomIndex: -1 };
-    }
-    if (typeof croissantState !== 'undefined') {
-        croissantState = { currentIndex: 0, isCompleted: false, hasVisited: false, randomIndex: -1 };
-    }
-    if (typeof fishingState !== 'undefined') {
-        fishingState.todayCount = 0;
-        fishingState.todayCatch = 0;
-        fishingState.basket = [];
-    }
+    if (typeof STORY_DATA !== 'undefined') { for (var key in STORY_DATA) STORY_DATA[key].completed = false; }
+    if (typeof princeLocalState !== 'undefined') princeLocalState = { currentIndex: 0, isCompleted: false, hasVisited: false, randomIndex: -1 };
+    if (typeof croissantState !== 'undefined') croissantState = { currentIndex: 0, isCompleted: false, hasVisited: false, randomIndex: -1 };
+    if (typeof fishingState !== 'undefined') { fishingState.todayCount = 0; fishingState.todayCatch = 0; fishingState.basket = []; }
 
-    // 重置挑战塔
     if (typeof towerState !== 'undefined') {
         towerState = {
-            currentFloor: 1,
-            highestFloor: 0,
-            stars: {},
-            claimedFirstReward: {},
-            lastResetDate: '',
-            totalStars: 0,
-            history: [],
-            challengeStatus: 'idle',
-            challengeFloor: 0,
-            challengeStartTime: 0,
-            challengeTimeLimit: 0,
-            challengeTarget: null,
-            _snapshot: {},
-            _ordersCompletedSinceStart: 0,
-            _farmHarvestsSinceStart: 0,
-            _fishCaughtSinceStart: 0,
-            _mineCountSinceStart: 0,
-            _cookCountSinceStart: 0,
-            _tradeCountSinceStart: 0,
-            _perfectCountSinceStart: 0,
-            _historyView: 'list'
+            currentFloor: 1, highestFloor: 0, stars: {}, claimedFirstReward: {}, lastResetDate: '',
+            totalStars: 0, history: [], challengeStatus: 'idle', challengeFloor: 0,
+            challengeStartTime: 0, challengeTimeLimit: 0, challengeTarget: null,
+            _snapshot: {}, _ordersCompletedSinceStart: 0, _farmHarvestsSinceStart: 0,
+            _fishCaughtSinceStart: 0, _mineCountSinceStart: 0, _cookCountSinceStart: 0,
+            _tradeCountSinceStart: 0, _perfectCountSinceStart: 0, _historyView: 'list'
         };
     }
 
-    console.log('🗑️ 所有游戏数据已清除（含探险、挖矿、挑战塔等）');
-
-    // ===== 3. 刷新 UI =====
     if (typeof refreshUI === 'function') refreshUI();
     if (typeof renderSlots === 'function') renderSlots();
     if (typeof renderQuickSell === 'function') renderQuickSell();
@@ -405,14 +330,20 @@ async function saveGame() {
 window.saveGame = saveGame;
 
 async function loadGame() {
-    let loaded = loadGameFromLocal();
+    // 直接尝试加载，不轻易重置
+    var loaded = loadGameFromLocal();
     if (!loaded) {
+        console.log('🆕 没有有效存档，初始化新游戏');
         clearAllGameDataLocal();
         await saveGame();
-        if (typeof showMessage === 'function') showMessage('✨ 欢迎！开始你的甜点工坊之旅', false);
+        if (typeof showMessage === 'function') {
+            showMessage('✨ 欢迎！开始你的甜点工坊之旅', false);
+        }
+    } else {
+        recalcAllProducingSlots();
+        if (typeof refreshUI === 'function') refreshUI();
+        console.log('✅ 游戏加载完成');
     }
-    recalcAllProducingSlots();
-    if (typeof refreshUI === 'function') refreshUI();
     return loaded;
 }
 window.loadGame = loadGame;
@@ -456,27 +387,17 @@ window.restartSlotTimer = restartSlotTimer;
 // ============================================
 function initGame() {
     console.log('🎮 开始初始化游戏...');
-
-    // 清理旧的计时器
     for (let i = 0; i < TOTAL_SLOTS; i++) {
         if (slotTimers[i]) clearTimeout(slotTimers[i]);
         if (slotIntervals[i]) clearInterval(slotIntervals[i]);
         slotTimers[i] = null;
         slotIntervals[i] = null;
     }
-
-    // 加载存档
     loadGame();
-
-    // 确保用户昵称存在
     if (!userProfile || !userProfile.nickname) {
         userProfile = { nickname: generateRandomNickname(), nicknameChanged: false, nicknameChangeCount: 0 };
     }
-
-    // 重新计算离线生产
     recalcAllProducingSlots();
-
-    // 重启正在生产的槽位
     for (let i = 0; i < TOTAL_SLOTS; i++) {
         if (slots[i] && slots[i].status === 'producing' && slots[i].remainingSec > 0) {
             restartSlotTimer(i);
@@ -485,25 +406,17 @@ function initGame() {
             if (typeof renderSlots === 'function') renderSlots();
         }
     }
-
-    // 启动全局生产计时器
     if (typeof startGlobalProductionTimer === 'function') {
         startGlobalProductionTimer();
         console.log('⏰ 全局生产计时器已启动');
     }
-
-    // 初始化 UI
     if (typeof window.initGameUI === 'function') {
         window.initGameUI();
     }
-
     console.log('✅ 单机版游戏初始化完成');
 }
 window.initGame = initGame;
 
-// ============================================
-// 页面加载时自动初始化
-// ============================================
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(initGame, 100);
@@ -511,4 +424,4 @@ if (document.readyState === 'loading') {
 } else {
     setTimeout(initGame, 100);
 }
-console.log('✅ storage.js 加载完成（防御性检查已添加）');
+console.log('✅ storage.js 加载完成（增强版：自动修复缺失字段）');

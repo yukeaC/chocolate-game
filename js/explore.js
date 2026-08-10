@@ -851,9 +851,20 @@ function updateFlowerPot() {
 // 花盆点击逻辑（包含浇水声望 +2）
 // ============================================================
 function handlePotClick() {
-    var defaultRoseData = { planted: false, plantDate: null, waterCount: 0, harvestCount: 0, stageTriggered: { seed: false, sprout: false, bud: false, bloom: false }, lastWaterDate: null, hasFirstRose: false, todayWaterCount: 0 };
+    var defaultRoseData = {
+        planted: false,
+        plantDate: null,
+        waterCount: 0,
+        harvestCount: 0,
+        stageTriggered: { seed: false, sprout: false, bud: false, bloom: false },
+        lastWaterDate: null,
+        hasFirstRose: false,
+        todayWaterCount: 0
+    };
+    
     var rawData = localStorage.getItem('rose_plant_data');
     var roseData = defaultRoseData;
+    
     if (rawData) {
         try {
             var parsed = JSON.parse(rawData);
@@ -865,18 +876,30 @@ function handlePotClick() {
             roseData.hasFirstRose = parsed.hasFirstRose || false;
             roseData.todayWaterCount = parseInt(parsed.todayWaterCount) || 0;
             if (parsed.stageTriggered && typeof parsed.stageTriggered === 'object') {
-                roseData.stageTriggered = { seed: parsed.stageTriggered.seed || false, sprout: parsed.stageTriggered.sprout || false, bud: parsed.stageTriggered.bud || false, bloom: parsed.stageTriggered.bloom || false };
+                roseData.stageTriggered = {
+                    seed: parsed.stageTriggered.seed || false,
+                    sprout: parsed.stageTriggered.sprout || false,
+                    bud: parsed.stageTriggered.bud || false,
+                    bloom: parsed.stageTriggered.bloom || false
+                };
             } else {
                 roseData.stageTriggered = { seed: false, sprout: false, bud: false, bloom: false };
             }
-        } catch(e) { console.warn('解析玫瑰数据失败，使用默认值:', e); roseData = defaultRoseData; }
+        } catch(e) {
+            console.warn('解析玫瑰数据失败，使用默认值:', e);
+            roseData = defaultRoseData;
+        }
     }
+    
     var backpack = getBackpack();
     var today = getTodayDateStr();
     var waterCount = roseData.waterCount;
     var isBloomed = (waterCount >= 100);
     var isPlanted = roseData.planted || false;
+    
+    // ★★★ 修复：小王子离开后，允许继续种植 ★★★
     if (roseData.hasFirstRose) {
+        // 如果当前种植了且已开花 -> 收获
         if (isBloomed && isPlanted) {
             backpack['rose'] = (backpack['rose'] || 0) + 1;
             roseData.planted = false;
@@ -884,13 +907,56 @@ function handlePotClick() {
             roseData.todayWaterCount = 0;
             localStorage.setItem('rose_plant_data', JSON.stringify(roseData));
             saveBackpack(backpack);
-            showToast('🌹 收获了一朵玫瑰！', 1500);
+            showToast('🌹 又收获了一朵玫瑰！', 1500);
             updateFlowerPot();
-            if (typeof renderBackpack === 'function') { var modal = document.getElementById('backpackModal'); if (modal && !modal.classList.contains('hidden')) renderBackpack(); }
-        } else { showToast('🌹 小王子已经带着玫瑰离开了……但你还可以继续种植', 2000); }
-        return;
+            if (typeof renderBackpack === 'function') {
+                var modal = document.getElementById('backpackModal');
+                if (modal && !modal.classList.contains('hidden')) renderBackpack();
+            }
+            return;
+        }
+        
+        // 如果没有种植，允许种植新的玫瑰种子
+        if (!isPlanted) {
+            if ((backpack['rose_seed'] || 0) > 0) {
+                backpack['rose_seed']--;
+                saveBackpack(backpack);
+                roseData.planted = true;
+                roseData.plantDate = today;
+                roseData.waterCount = 0;
+                roseData.todayWaterCount = 0;
+                localStorage.setItem('rose_plant_data', JSON.stringify(roseData));
+                showToast('🌱 玫瑰种子已种植！', 1500);
+                updateFlowerPot();
+                if (typeof renderBackpack === 'function') {
+                    var modal = document.getElementById('backpackModal');
+                    if (modal && !modal.classList.contains('hidden')) renderBackpack();
+                }
+            } else {
+                showToast('💤 没有玫瑰种子，去可颂商店购买', 2000);
+            }
+            return;
+        }
+        
+        // 如果 hasFirstRose 为 true，且已种植但未开花，则进行浇水逻辑（继续往下执行）
+        // 注意：这里不能 return，需要继续执行到浇水部分
+        // 但如果已种植且未开花，则继续执行下面的浇水逻辑
+        // 如果 hasFirstRose 为 true 且既没有种植也没有开花，理论上不会发生
+        // 但如果没有种植，上面已经处理了，所以这里只处理已种植且未开花的情况
+        if (isPlanted && !isBloomed) {
+            // 进入浇水逻辑（下方）
+        } else {
+            // 其他情况（例如 hasFirstRose 为 true，但种植状态异常）
+            return;
+        }
     }
-    if (isBloomed && isPlanted) {
+    
+    // ============================================================
+    // 以下逻辑处理第一次开花和日常浇水
+    // ============================================================
+    
+    // 如果是第一次开花（hasFirstRose 为 false，且已开花）
+    if (isBloomed && isPlanted && !roseData.hasFirstRose) {
         if (!roseData.stageTriggered.bloom) {
             roseData.stageTriggered.bloom = true;
             localStorage.setItem('rose_plant_data', JSON.stringify(roseData));
@@ -906,11 +972,16 @@ function handlePotClick() {
                 saveBackpack(bp);
                 showToast('🌹 小王子带着玫瑰离开了……留下了一片花瓣', 3000);
                 updateFlowerPot();
-                if (typeof renderBackpack === 'function') { var modal = document.getElementById('backpackModal'); if (modal && !modal.classList.contains('hidden')) renderBackpack(); }
+                if (typeof renderBackpack === 'function') {
+                    var modal = document.getElementById('backpackModal');
+                    if (modal && !modal.classList.contains('hidden')) renderBackpack();
+                }
                 if (typeof randomFireworks === 'function') randomFireworks(4);
             });
             return;
         }
+        
+        // 如果已触发剧情但未收获（极少情况），直接收获
         backpack['rose'] = (backpack['rose'] || 0) + 1;
         roseData.planted = false;
         roseData.waterCount = 0;
@@ -919,10 +990,15 @@ function handlePotClick() {
         saveBackpack(backpack);
         showToast('🌹 收获了一朵玫瑰！', 1500);
         updateFlowerPot();
-        if (typeof renderBackpack === 'function') { var modal = document.getElementById('backpackModal'); if (modal && !modal.classList.contains('hidden')) renderBackpack(); }
+        if (typeof renderBackpack === 'function') {
+            var modal = document.getElementById('backpackModal');
+            if (modal && !modal.classList.contains('hidden')) renderBackpack();
+        }
         return;
     }
-    if (!isPlanted) {
+    
+    // 如果没有种植，尝试种植
+    if (!isPlanted && !roseData.hasFirstRose) {
         if ((backpack['rose_seed'] || 0) > 0) {
             backpack['rose_seed']--;
             saveBackpack(backpack);
@@ -935,15 +1011,28 @@ function handlePotClick() {
             updateFlowerPot();
             setTimeout(function() {
                 var data = JSON.parse(localStorage.getItem('rose_plant_data') || '{"planted":false,"plantDate":null,"waterCount":0,"harvestCount":0,"stageTriggered":{"seed":false,"sprout":false,"bud":false,"bloom":false},"lastWaterDate":null,"hasFirstRose":false,"todayWaterCount":0}');
-                if (!data.stageTriggered.seed) { data.stageTriggered.seed = true; localStorage.setItem('rose_plant_data', JSON.stringify(data)); }
+                if (!data.stageTriggered.seed) {
+                    data.stageTriggered.seed = true;
+                    localStorage.setItem('rose_plant_data', JSON.stringify(data));
+                }
             }, 500);
-            if (typeof renderBackpack === 'function') { var modal = document.getElementById('backpackModal'); if (modal && !modal.classList.contains('hidden')) renderBackpack(); }
-        } else { showToast('💤 没有玫瑰种子，去可颂商店购买', 2000); }
+            if (typeof renderBackpack === 'function') {
+                var modal = document.getElementById('backpackModal');
+                if (modal && !modal.classList.contains('hidden')) renderBackpack();
+            }
+        } else {
+            showToast('💤 没有玫瑰种子，去可颂商店购买', 2000);
+        }
         return;
     }
+    
+    // 浇水逻辑 (已种植且未开花)
     if (isPlanted && !isBloomed) {
         var dewCount = backpack['star_dew'] || 0;
-        if (dewCount <= 0) { showToast('💧 没有星光露珠！完成悬赏任务可以获得露珠', 2000); return; }
+        if (dewCount <= 0) {
+            showToast('💧 没有星光露珠！完成悬赏任务可以获得露珠', 2000);
+            return;
+        }
         backpack['star_dew'] = dewCount - 1;
         saveBackpack(backpack);
         var newWaterCount = waterCount + 1;
@@ -951,13 +1040,22 @@ function handlePotClick() {
         roseData.todayWaterCount = (roseData.todayWaterCount || 0) + 1;
         roseData.lastWaterDate = today;
         localStorage.setItem('rose_plant_data', JSON.stringify(roseData));
+        
         if (typeof window.addReputation === 'function') {
             window.addReputation(2, '玫瑰浇水');
         }
+        
         showToast('💧 浇水成功！(' + newWaterCount + '/100) 剩余露珠: ' + (dewCount - 1), 1000);
-        setTimeout(function() { var target = document.getElementById('potEffectTarget'); if (target) playWaterEffect(target); }, 100);
+        setTimeout(function() {
+            var target = document.getElementById('potEffectTarget');
+            if (target) playWaterEffect(target);
+        }, 100);
         updateFlowerPot();
-        if (typeof renderBackpack === 'function') { var modal = document.getElementById('backpackModal'); if (modal && !modal.classList.contains('hidden')) renderBackpack(); }
+        if (typeof renderBackpack === 'function') {
+            var modal = document.getElementById('backpackModal');
+            if (modal && !modal.classList.contains('hidden')) renderBackpack();
+        }
+        
         var data = JSON.parse(localStorage.getItem('rose_plant_data') || '{"planted":false,"plantDate":null,"waterCount":0,"harvestCount":0,"stageTriggered":{"seed":false,"sprout":false,"bud":false,"bloom":false},"lastWaterDate":null,"hasFirstRose":false,"todayWaterCount":0}');
         if (!data.stageTriggered) data.stageTriggered = { seed: false, sprout: false, bud: false, bloom: false };
         if (newWaterCount >= 30 && !data.stageTriggered.sprout) {

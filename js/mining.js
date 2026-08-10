@@ -1,6 +1,6 @@
 // ============================================================
-// mining.js · 沙锅洲 · 挖矿小游戏（含成就统计 + 挑战塔钩子）
-// 修复：数据持久化 - 防止进度丢失
+// mining.js · 沙锅洲 · 挖矿小游戏（增强保存版）
+// 修复：localStorage 配额不足时自动降级保存
 // ============================================================
 console.log('⛏️ 挖矿系统加载中...');
 
@@ -23,11 +23,12 @@ var miningState = {
     basket: [],
     totalIron: 0,
     totalDiamond: 0,
-    _dataLoaded: false   // ★★★ 新增：数据加载标记
+    _dataLoaded: false,
+    _hasMinimalSave: false
 };
 
 // ============================================================
-// ★★★ 数据持久化（增强版）★★★
+// ★★★ 数据持久化（增强版 - 多重保险）★★★
 // ============================================================
 
 function saveMiningData() {
@@ -37,66 +38,206 @@ function saveMiningData() {
             rows: miningState.rows,
             currentRowIndex: miningState.currentRowIndex,
             basket: miningState.basket,
-            tools: miningState.tools,
+            tools: miningState.tools || { pickaxe: 0, firecracker: 0, dynamite: 0 },
             lastClaimDate: miningState.lastClaimDate,
             totalIron: miningState.totalIron,
             totalDiamond: miningState.totalDiamond,
             _savedAt: Date.now()
         };
-        localStorage.setItem('mining_data', JSON.stringify(data));
-        // ★★★ 同时保存一份备份 ★★★
-        localStorage.setItem('mining_data_backup', JSON.stringify(data));
+        
+        var json = JSON.stringify(data);
+        
+        // ===== 1. 保存主数据 =====
+        try {
+            localStorage.setItem('mining_data', json);
+            miningState._hasMinimalSave = false;
+        } catch(mainErr) {
+            // 主数据保存失败（通常是配额不足）
+            console.warn('⚠️ 主数据保存失败，尝试精简保存:', mainErr);
+            
+            // ===== 2. 降级：保存精简数据（不含 rows） =====
+            try {
+                var minimalData = {
+                    depth: miningState.depth,
+                    currentRowIndex: miningState.currentRowIndex,
+                    tools: miningState.tools,
+                    lastClaimDate: miningState.lastClaimDate,
+                    totalIron: miningState.totalIron,
+                    totalDiamond: miningState.totalDiamond,
+                    basket: miningState.basket,
+                    _savedAt: Date.now(),
+                    _isMinimal: true
+                };
+                localStorage.setItem('mining_data_minimal', JSON.stringify(minimalData));
+                miningState._hasMinimalSave = true;
+                console.log('✅ 精简数据已保存（含深度、工具、统计，不含网格）');
+            } catch(minimalErr) {
+                console.error('❌ 精简数据也保存失败:', minimalErr);
+                // 最后尝试：只保存最核心的数据
+                try {
+                    var coreData = {
+                        depth: miningState.depth,
+                        tools: miningState.tools,
+                        totalIron: miningState.totalIron,
+                        totalDiamond: miningState.totalDiamond,
+                        _savedAt: Date.now()
+                    };
+                    localStorage.setItem('mining_data_core', JSON.stringify(coreData));
+                    miningState._hasMinimalSave = true;
+                    console.log('✅ 核心数据已保存（仅深度、工具、统计）');
+                } catch(coreErr) {
+                    console.error('❌ 核心数据也保存失败，无法保存进度');
+                }
+            }
+        }
+        
+        // ===== 3. 保存备份（独立捕获异常，不影响主数据） =====
+        try {
+            localStorage.setItem('mining_data_backup', json);
+        } catch(backupErr) {
+            console.warn('⚠️ 备份写入失败（可能存储空间不足）:', backupErr);
+            // 尝试清理旧备份后重试
+            try {
+                localStorage.removeItem('mining_data_backup');
+                localStorage.setItem('mining_data_backup', json);
+                console.log('✅ 清理后备份写入成功');
+            } catch(retryErr) {
+                console.warn('⚠️ 备份写入最终失败，但主数据已保存');
+            }
+        }
+        
         window.totalIronOre = miningState.totalIron;
         window.totalDiamond = miningState.totalDiamond;
         miningState._dataLoaded = true;
         return true;
+        
     } catch(e) {
-        console.warn('保存矿洞数据失败:', e);
+        console.error('❌ saveMiningData 出现异常:', e);
         return false;
     }
 }
 
 function loadMiningData() {
+    var data = null;
+    var source = '';
+    
+    // ===== 1. 尝试加载主数据 =====
     try {
         var saved = localStorage.getItem('mining_data');
-        if (!saved) {
-            // ★★★ 尝试从备份恢复 ★★★
-            var backup = localStorage.getItem('mining_data_backup');
-            if (backup) {
-                console.log('📂 主数据不存在，尝试从备份恢复...');
-                saved = backup;
-                // 将备份恢复为主数据
-                localStorage.setItem('mining_data', backup);
+        if (saved) {
+            data = JSON.parse(saved);
+            if (data && data.rows && Array.isArray(data.rows) && data.rows.length > 0) {
+                source = '主数据';
+                console.log('📂 从主数据加载成功');
             } else {
-                return false;
+                // 主数据损坏，标记为无效
+                data = null;
+                console.warn('⚠️ 主数据损坏（rows 无效）');
             }
         }
-        
-        var data = JSON.parse(saved);
-        
-        // ★★★ 验证数据完整性 ★★★
-        if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
-            console.warn('⚠️ 矿洞数据损坏（rows 无效），尝试从备份恢复...');
+    } catch(e) {
+        console.warn('⚠️ 主数据解析失败:', e);
+        data = null;
+    }
+    
+    // ===== 2. 主数据无效，尝试从备份恢复 =====
+    if (!data) {
+        try {
             var backup = localStorage.getItem('mining_data_backup');
             if (backup) {
-                data = JSON.parse(backup);
-                if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
-                    return false;
+                var parsed = JSON.parse(backup);
+                if (parsed && parsed.rows && Array.isArray(parsed.rows) && parsed.rows.length > 0) {
+                    data = parsed;
+                    source = '备份';
+                    console.log('📂 从备份恢复成功');
+                    // 将备份恢复为主数据
+                    try {
+                        localStorage.setItem('mining_data', backup);
+                    } catch(e) {}
+                } else {
+                    console.warn('⚠️ 备份数据也损坏');
                 }
-                // 修复主数据
-                localStorage.setItem('mining_data', backup);
-            } else {
-                return false;
             }
+        } catch(e) {
+            console.warn('⚠️ 备份解析失败:', e);
         }
-        
-        // ★★★ 验证行数是否正确（应为6行） ★★★
-        if (data.rows.length < MINING_CONFIG.ROWS) {
-            console.warn('⚠️ 矿洞行数不足（' + data.rows.length + '行），补齐到' + MINING_CONFIG.ROWS + '行');
-            var existingRows = data.rows.slice();
+    }
+    
+    // ===== 3. 备份也无效，尝试从精简数据恢复 =====
+    if (!data) {
+        try {
+            var minimal = localStorage.getItem('mining_data_minimal');
+            if (minimal) {
+                var parsed = JSON.parse(minimal);
+                if (parsed && parsed.depth !== undefined) {
+                    // 用精简数据重建 rows（生成新的矿洞网格）
+                    console.log('📂 从精简数据恢复（将生成新网格）');
+                    data = parsed;
+                    data.rows = [];
+                    for (var r = 0; r < MINING_CONFIG.ROWS; r++) {
+                        var newRow = createRow();
+                        // 第一行默认揭示
+                        if (r === 0) {
+                            for (var c = 0; c < MINING_CONFIG.COLS; c++) {
+                                newRow.cells[c].state = 'revealed';
+                            }
+                        }
+                        data.rows.push(newRow);
+                    }
+                    data.currentRowIndex = 0;
+                    source = '精简数据（已重建网格）';
+                    miningState._hasMinimalSave = true;
+                    console.log('📂 从精简数据恢复，深度:', data.depth);
+                }
+            }
+        } catch(e) {
+            console.warn('⚠️ 精简数据解析失败:', e);
+        }
+    }
+    
+    // ===== 4. 所有数据都无效，尝试核心数据 =====
+    if (!data) {
+        try {
+            var core = localStorage.getItem('mining_data_core');
+            if (core) {
+                var parsed = JSON.parse(core);
+                if (parsed && parsed.depth !== undefined) {
+                    console.log('📂 从核心数据恢复（深度、工具、统计）');
+                    data = parsed;
+                    data.rows = [];
+                    for (var r = 0; r < MINING_CONFIG.ROWS; r++) {
+                        var newRow = createRow();
+                        if (r === 0) {
+                            for (var c = 0; c < MINING_CONFIG.COLS; c++) {
+                                newRow.cells[c].state = 'revealed';
+                            }
+                        }
+                        data.rows.push(newRow);
+                    }
+                    data.currentRowIndex = 0;
+                    data.basket = [];
+                    source = '核心数据（已重建网格）';
+                }
+            }
+        } catch(e) {
+            console.warn('⚠️ 核心数据解析失败:', e);
+        }
+    }
+    
+    // ===== 5. 所有恢复都失败，返回 false =====
+    if (!data) {
+        console.log('📂 没有有效的存档数据');
+        return false;
+    }
+    
+    // ===== 6. 应用数据 =====
+    try {
+        // 确保行数正确
+        if (!data.rows || data.rows.length < MINING_CONFIG.ROWS) {
+            console.warn('⚠️ 行数不足，补齐到', MINING_CONFIG.ROWS);
+            var existingRows = data.rows || [];
             for (var i = existingRows.length; i < MINING_CONFIG.ROWS; i++) {
                 var newRow = createRow();
-                // 如果有上一行，继承已挖掘状态
                 if (i > 0 && existingRows[i-1]) {
                     var prevRow = existingRows[i-1];
                     for (var c = 0; c < MINING_CONFIG.COLS; c++) {
@@ -110,10 +251,9 @@ function loadMiningData() {
             data.rows = existingRows;
         }
         
-        // ★★★ 验证每行的列数是否正确（应为7列） ★★★
+        // 确保每行列数正确
         for (var r = 0; r < data.rows.length; r++) {
             if (!data.rows[r].cells || data.rows[r].cells.length !== MINING_CONFIG.COLS) {
-                console.warn('⚠️ 第' + r + '行列数不正确，重新生成');
                 data.rows[r].cells = [];
                 for (var c = 0; c < MINING_CONFIG.COLS; c++) {
                     data.rows[r].cells.push(createEmptyCell());
@@ -121,7 +261,7 @@ function loadMiningData() {
             }
         }
         
-        // 补全旧存档中缺少 content 的格子
+        // 补全 content
         for (var r = 0; r < data.rows.length; r++) {
             var row = data.rows[r];
             if (row && row.cells) {
@@ -134,11 +274,28 @@ function loadMiningData() {
             }
         }
         
+        // ★★★ 加载 tools ★★★
+        miningState.tools = data.tools || { pickaxe: 0, firecracker: 0, dynamite: 0 };
+        
+        // 兼容旧版 mining_tools
+        try {
+            var oldTools = localStorage.getItem('mining_tools');
+            if (oldTools) {
+                var parsedTools = JSON.parse(oldTools);
+                for (var key in parsedTools) {
+                    if (miningState.tools[key] !== undefined) {
+                        miningState.tools[key] += parsedTools[key];
+                    }
+                }
+                localStorage.removeItem('mining_tools');
+                console.log('🔄 已合并旧版 mining_tools 数据');
+            }
+        } catch(e) {}
+        
         miningState.depth = data.depth || 0;
         miningState.rows = data.rows;
         miningState.currentRowIndex = data.currentRowIndex || 0;
         miningState.basket = data.basket || [];
-        miningState.tools = data.tools || { pickaxe: 0, firecracker: 0, dynamite: 0 };
         miningState.lastClaimDate = data.lastClaimDate || null;
         miningState.totalIron = data.totalIron || 0;
         miningState.totalDiamond = data.totalDiamond || 0;
@@ -146,19 +303,11 @@ function loadMiningData() {
         window.totalDiamond = miningState.totalDiamond;
         miningState._dataLoaded = true;
         
-        console.log('📂 矿洞数据加载成功，深度: ' + miningState.depth + '，行数: ' + miningState.rows.length);
+        console.log('📂 矿洞数据加载成功（来源: ' + source + '），深度: ' + miningState.depth);
         return true;
+        
     } catch(e) {
-        console.warn('加载矿洞数据失败:', e);
-        // ★★★ 尝试从备份恢复 ★★★
-        try {
-            var backup = localStorage.getItem('mining_data_backup');
-            if (backup) {
-                console.log('📂 尝试从备份恢复数据...');
-                localStorage.setItem('mining_data', backup);
-                return loadMiningData(); // 递归调用重新加载
-            }
-        } catch(e2) {}
+        console.error('❌ 应用数据时出错:', e);
         return false;
     }
 }
@@ -167,22 +316,24 @@ function loadMiningData() {
 // ★★★ 手动恢复挖矿数据（控制台调试用）★★★
 // ============================================================
 function restoreMiningData() {
-    var backup = localStorage.getItem('mining_data_backup');
-    if (!backup) {
-        console.log('❌ 没有找到备份数据');
-        return false;
-    }
-    try {
-        localStorage.setItem('mining_data', backup);
-        var result = loadMiningData();
-        if (result) {
-            console.log('✅ 挖矿数据已从备份恢复！');
-            if (typeof renderMiningUI === 'function') renderMiningUI();
-            return true;
+    var sources = ['mining_data_backup', 'mining_data_minimal', 'mining_data_core'];
+    for (var i = 0; i < sources.length; i++) {
+        try {
+            var data = localStorage.getItem(sources[i]);
+            if (data) {
+                localStorage.setItem('mining_data', data);
+                var result = loadMiningData();
+                if (result) {
+                    console.log('✅ 从 ' + sources[i] + ' 恢复成功！');
+                    if (typeof renderMiningUI === 'function') renderMiningUI();
+                    return true;
+                }
+            }
+        } catch(e) {
+            console.warn('从 ' + sources[i] + ' 恢复失败:', e);
         }
-    } catch(e) {
-        console.warn('恢复失败:', e);
     }
+    console.log('❌ 没有找到可恢复的数据');
     return false;
 }
 window.restoreMiningData = restoreMiningData;
@@ -190,7 +341,13 @@ window.restoreMiningData = restoreMiningData;
 function clearMiningData() { 
     localStorage.removeItem('mining_data');
     localStorage.removeItem('mining_data_backup');
+    localStorage.removeItem('mining_data_minimal');
+    localStorage.removeItem('mining_data_core');
 }
+
+// ============================================================
+// 以下为原有函数（保持不变）
+// ============================================================
 
 function getMiningBackpack() {
     try { var data = localStorage.getItem('explore_backpack'); return data ? JSON.parse(data) : {}; } catch(e) { return {}; }
@@ -498,27 +655,26 @@ function showMiningStatus(msg, isError) {
 }
 
 // ============================================================
-// ★★★ 初始化挖矿（增强版 - 防止数据丢失）★★★
+// ★★★ 初始化挖矿（增强版）★★★
 // ============================================================
 function initMining() {
     console.log('⛏️ 进入挖矿模式...');
     
-    // ★★★ 防止重复加载 ★★★
     if (miningState._dataLoaded && miningState.rows.length > 0) {
         console.log('📂 数据已加载，跳过初始化');
-        // 仍然刷新 UI
-        if (typeof renderMiningUI === 'function') renderMiningUI();
+        // ★★★ 增加强制重绘 ★★★
+        var mode = document.getElementById('miningMode');
+        if (mode) mode.style.display = 'block';
+        renderMiningUI();
         return;
     }
     
-    // 首先尝试加载数据
     var hasSavedData = loadMiningData();
     
     if (hasSavedData && miningState.rows.length > 0) {
-        console.log('📂 已加载保存的矿洞数据，深度: ' + miningState.depth + '，行数: ' + miningState.rows.length);
+        console.log('📂 已加载保存的矿洞数据，深度: ' + miningState.depth);
         miningState._dataLoaded = true;
     } else {
-        // ★★★ 没有有效数据，初始化新矿洞 ★★★
         console.log('🆕 没有保存的矿洞数据，初始化新矿洞');
         initMiningGrid();
         miningState.tools = { pickaxe: 0, firecracker: 0, dynamite: 0 };
@@ -548,11 +704,31 @@ function initMining() {
     }
     
     var miningMode = document.getElementById('miningMode');
-    if (miningMode) { miningMode.style.display = 'block'; } else { console.error('❌ miningMode 不存在'); return; }
+    if (miningMode) {
+        miningMode.style.display = 'block';
+        // ★★★ 强制浏览器重排，确保样式生效 ★★★
+        void miningMode.offsetHeight;
+    } else {
+        console.error('❌ miningMode 不存在');
+        return;
+    }
+    
     var infoMode = document.getElementById('infoMode');
     if (infoMode) infoMode.style.display = 'none';
+    
     miningState.isActive = true;
     renderMiningUI();
+    
+    // ★★★ 新增：延迟重试机制，防止容器未完全渲染 ★★★
+    var self = this;
+    setTimeout(function() {
+        var container = document.getElementById('miningContainer');
+        if (!container || container.innerHTML.trim() === '') {
+            console.warn('⛏️ 首次渲染可能未成功，重试一次...');
+            renderMiningUI();
+        }
+    }, 100);
+    
     console.log('⛏️ 挖矿模式已启动，当前镐头: ' + miningState.tools.pickaxe + '，深度: ' + miningState.depth);
 }
 
@@ -750,14 +926,40 @@ function renderMiningGrid() {
 }
 
 function renderMiningUI() {
+    // ★★★ 修复：确保容器存在 ★★★
     var container = document.getElementById('miningContainer');
-    if (!container) return;
-    if (miningState.rows.length === 0) initMiningGrid();
+    if (!container) {
+        // 尝试从 miningMode 中查找或创建容器
+        var mode = document.getElementById('miningMode');
+        if (mode) {
+            // 检查是否已有 container
+            var existing = mode.querySelector('#miningContainer');
+            if (existing) {
+                container = existing;
+            } else {
+                container = document.createElement('div');
+                container.id = 'miningContainer';
+                mode.appendChild(container);
+                console.log('⛏️ 已自动创建 miningContainer');
+            }
+        } else {
+            console.error('❌ miningMode 不存在，无法渲染挖矿 UI');
+            return;
+        }
+    }
+    
+    // 确保 rows 已初始化
+    if (miningState.rows.length === 0) {
+        console.log('⛏️ rows 为空，初始化矿洞网格');
+        initMiningGrid();
+    }
+    
     container.style.display = 'block';
     var ironCount = getIronOreCount();
     var diamondCount = getDiamondCount();
     var basketCount = getBasketCount();
     var depth = miningState.depth;
+    
     container.innerHTML = `
         <div class="mining-wrapper">
             <div class="mining-stats-bar">
@@ -790,6 +992,7 @@ function renderMiningUI() {
             <div class="mining-status" id="miningStatus">⛏️ 点击浅棕色格子挖掘</div>
         </div>
     `;
+    
     document.querySelectorAll('.mining-tool-side-btn').forEach(function(btn) {
         btn.onclick = function() { miningState.selectedTool = this.dataset.tool; renderMiningUI(); };
     });
@@ -860,7 +1063,7 @@ window.mining = {
     getState: function() { return miningState; }, getIronOre: getIronOreCount, getDiamond: getDiamondCount,
     claimFree: claimFreePickaxe, addTool: addTool, getTools: function() { return miningState.tools; },
     showBasket: showBasketModal, reset: resetMiningData,
-    restore: restoreMiningData  // ★★★ 新增：手动恢复函数 ★★★
+    restore: restoreMiningData
 };
 
 window.initMining = initMining;
@@ -871,9 +1074,9 @@ window.getDiamondCount = getDiamondCount;
 window.addTool = addTool;
 window.showBasketModal = showBasketModal;
 window.resetMiningData = resetMiningData;
-window.restoreMiningData = restoreMiningData;  // ★★★ 新增 ★★★
+window.restoreMiningData = restoreMiningData;
 
 window.totalIronOre = miningState.totalIron;
 window.totalDiamond = miningState.totalDiamond;
 
-console.log('⛏️ 挖矿系统加载完成（含数据持久化修复 + 备份恢复）');
+console.log('⛏️ 挖矿系统加载完成（多重保险保存 + 自动降级）');

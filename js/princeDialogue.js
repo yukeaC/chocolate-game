@@ -307,16 +307,17 @@ function getPrinceStory(stage) {
     }
 }
 
-// ---- 播放玫瑰支线剧情 ----
+// ============================================================
+// 播放玫瑰支线剧情（修复版 - 使用本地头像）
+// ============================================================
 function playPrinceStory(stage, onComplete) {
 
-// ===== 阶段一（种子）直接跳过，不播放对话 =====
+    // 阶段一（种子）直接跳过，不播放对话
     if (stage === 'seed') {
         console.log('🌹 阶段一（种子）已跳过，直接完成');
         if (typeof onComplete === 'function') onComplete();
         return;
     }
-    // ===== 跳过结束 =====
 
     var nodes = getPrinceStory(stage);
     if (!nodes) {
@@ -324,16 +325,19 @@ function playPrinceStory(stage, onComplete) {
         return;
     }
 
+    // ★★★ 修复：移除 emoji，使用本地头像 ★★★
     var storyNodes = nodes.map(function(node) {
-        var isCocoa = node.speaker === '可可';
-        var isNono = node.speaker === '嫑嫑';
-        var isPrince = node.speaker === '小王子';
-        var emoji = isCocoa ? '🐻‍🍫' : (isNono ? '🐧' : '🌹');
-        var avatar = node.avatar || (isCocoa ? 'cocoa' : (isNono ? 'nono' : 'prince'));
+        // 根据说话人确定头像类型
+        var avatarType = 'default';
+        if (node.speaker === '可可') avatarType = 'cocoa';
+        else if (node.speaker === '嫑嫑') avatarType = 'nono';
+        else if (node.speaker === '小王子') avatarType = 'prince';
+        // 如果节点本身指定了 avatar，优先使用
+        if (node.avatar) avatarType = node.avatar;
+        
         return {
             speaker: node.speaker,
-            emoji: emoji,
-            avatar: avatar,
+            avatar: avatarType,   // 'cocoa' | 'nono' | 'prince'
             text: node.text
         };
     });
