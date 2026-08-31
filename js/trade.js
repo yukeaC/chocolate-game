@@ -1,10 +1,11 @@
 // ============================================================
 // trade.js · 可颂大陆 · 交易系统（含成就统计）
+// 修改：购买珍珠鱼→金枪鱼，出售稻谷
 // ============================================================
 console.log('🏪 交易系统加载中...');
 
 // ============================================================
-// 价格配置
+// 价格配置（已修改）
 // ============================================================
 var TRADE_PRICES = {
     sell: {
@@ -18,6 +19,9 @@ var TRADE_PRICES = {
         iron_ore: 3,
         diamond: 8,
         dark_cuisine: 6,
+        // ★★★ 新增：普通稻谷可出售 ★★★
+        rice_grain: 1,
+        // 收藏品
         golden_feather: 9,
         wood_carving: 9,
         log_page: 19,
@@ -28,7 +32,8 @@ var TRADE_PRICES = {
         pearl_crown: 39
     },
     buy: {
-        pearlfish: 6,
+        // ★★★ 修改：珍珠鱼 → 金枪鱼 ★★★
+        tuna: 6,
         legendfish: 10,
         egg: 12,
         golden_ear: 5,
@@ -53,6 +58,7 @@ var ITEM_SOURCE_REGIONS = {
     golden_ear: 'rice',
     ore_fuel: 'baxian',
     dark_cuisine: null,
+    rice_grain: 'rice',      // 稻谷来源大米洲（出售不需要，但保留）
     rose_seed: null,
     pickaxe: 'dumbpan',
     firecracker: 'dumbpan',
@@ -72,6 +78,8 @@ var TRADE_ITEMS = {
     golden_ear: { icon: '🌾', name: '金色稻穗', category: '特殊' },
     ore_fuel: { icon: '⛽', name: '燃料', category: '材料' },
     dark_cuisine: { icon: '💀', name: '黑暗料理', category: '食物' },
+    // ★★★ 新增：稻谷物品定义 ★★★
+    rice_grain: { icon: '🌾', name: '稻谷', category: '材料' },
     rose_seed: { icon: '🌱', name: '玫瑰种子', category: '种子' },
     pickaxe: { icon: '⛏️', name: '镐头', category: '工具' },
     firecracker: { icon: '🧨', name: '鞭炮', category: '工具' },
@@ -824,4 +832,4 @@ window.renderTradeUI = renderTradeUI;
 
 window.tradeTotalCount = tradeTotalCount;
 
-console.log('🏪 交易系统已重新配置（含成就统计）');
+console.log('🏪 交易系统已更新（购买金枪鱼，出售稻谷）');

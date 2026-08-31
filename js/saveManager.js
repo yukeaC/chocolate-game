@@ -83,22 +83,21 @@ function exportSaveToClipboard() {
         
         // 添加元数据
         bundle._meta = {
-            version: 3,                    // 版本升级
+            version: 3,
             timestamp: Date.now(),
             count: Object.keys(bundle).length - 1,
             missing: missingKeys
         };
 
         var json = JSON.stringify(bundle);
-        // 压缩（去除多余空格）
         var compressed = json.replace(/\s+/g, '');
-        // Base64 编码（支持中文）
         var base64 = btoa(encodeURIComponent(compressed));
 
         console.log('📦 存档码长度: ' + base64.length + ' 字符');
         console.log('📦 数据项数: ' + (Object.keys(bundle).length - 1));
         if (missingKeys.length > 0) {
-            console.warn('⚠️ 以下键不存在，已跳过:', missingKeys.join(', '));
+            // ★★★ 只显示数量，不显示具体键名 ★★★
+            console.log('📦 已跳过 ' + missingKeys.length + ' 个尚未创建的键（正常现象）');
         }
 
         // 复制到剪贴板

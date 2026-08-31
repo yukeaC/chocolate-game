@@ -1004,7 +1004,7 @@ function saveAchievementData() {
 }
 
 // ============================================================
-// 成就检查与解锁
+// 成就检查与解锁（修复版）
 // ============================================================
 
 function checkAchievements() {
@@ -1024,30 +1024,39 @@ function checkAchievements() {
     var newUnlocked = [];
     for (var id in ACHIEVEMENT_DEFS) {
         var def = ACHIEVEMENT_DEFS[id];
+        
+        // 已领取或已解锁的跳过
         if (achievementState.claimed.indexOf(id) !== -1) continue;
         if (achievementState.unlocked.indexOf(id) !== -1) continue;
+        
         if (def.isHidden) {
             if (def.check()) {
                 achievementState.hiddenUnlocked.push(id);
                 achievementState.unlocked.push(id);
                 newUnlocked.push(id);
-                claimAchievementReward(id);
+                // ★★★ 修复：不再自动领取，玩家需要手动点击 ★★★
+                // claimAchievementReward(id);  // 移除这行
                 saveAchievementData();
             }
             continue;
         }
+        
         if (def.check()) {
             achievementState.unlocked.push(id);
             newUnlocked.push(id);
+            // ★★★ 修复：不再自动领取，玩家需要手动点击 ★★★
+            // claimAchievementReward(id);  // 移除这行
             saveAchievementData();
         }
     }
+    
     if (newUnlocked.length > 0) {
         showAchievementNotification(newUnlocked);
         updateAchievementRedDot();
         if (typeof renderAchievementList === 'function') renderAchievementList(currentCategory);
         if (typeof updateAchievementStats === 'function') updateAchievementStats();
     }
+    
     return newUnlocked;
 }
 

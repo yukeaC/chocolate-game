@@ -1,10 +1,11 @@
 // ============================================================
-// rice.js · 大米洲 · 能量工坊
-// 提示显示在 #riceStatus（面板内）
+// rice.js · 大米洲 · 能量工坊（9个工坊 · 9分29秒）
 // ============================================================
-
 console.log('🍚 大米洲模块加载中...');
 
+// ============================================================
+// 配置（已修改）
+// ============================================================
 var RICE_ENERGY_TYPES = [
     { id: 'cheese_powder', name: '高塔芝士粉', img: 'images/energy/高塔芝士粉.png' },
     { id: 'inspiration_jelly', name: '灵感啫喱', img: 'images/energy/灵感啫喱.png' },
@@ -15,14 +16,18 @@ var RICE_ENERGY_TYPES = [
 ];
 
 var RICE_CONFIG = {
-    PADDY_ROWS: 4, PADDY_COLS: 9, WORKSHOP_COUNT: 3,
+    PADDY_ROWS: 4, PADDY_COLS: 9, 
+    // ★★★ 工坊数量从 3 改为 9 ★★★
+    WORKSHOP_COUNT: 9,
     PADDY_UNLOCK_PRICES: [20,20,20,20,20,30,30,30,30,30,45,45,45,45,45,65,65,65,65,65,90,90,90,90,90,120,120,120,120,160],
-    WORKSHOP_UNLOCK_PRICES: [0, 300, 600],
+    // ★★★ 工坊解锁价格从 3 个扩展到 9 个 ★★★
+    WORKSHOP_UNLOCK_PRICES: [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400],
     PLANT_COST_BEANS: 10, PLANT_DURATION: 300,
     HARVEST_MIN: 1, HARVEST_MAX: 3,
     GOLDEN_EAR_CHANCE: 0.05,
     PROCESS_COST_RICE: 10, PROCESS_COST_COINS: 9,
-    PROCESS_DURATION: 1740,
+    // ★★★ 制作时间从 1740 秒（29分钟）改为 569 秒（9分29秒） ★★★
+    PROCESS_DURATION: 569,
     GOLDEN_EAR_BONUS_PER: 0.05,
     MAX_GOLDEN_EARS_PER_PROCESS: 10
 };
@@ -62,9 +67,11 @@ function loadRiceData() {
             riceState.totalHarvested = data.totalHarvested || 0;
             riceState.totalEnergyProduced = data.totalEnergyProduced || 0;
             riceState.totalGoldenEarsHarvested = data.totalGoldenEarsHarvested || 0;
+            // ★★★ 确保 paddies 数量正确（36块） ★★★
             while (riceState.paddies.length < RICE_CONFIG.PADDY_ROWS * RICE_CONFIG.PADDY_COLS) {
                 riceState.paddies.push({ unlocked: false, status: 'idle', plantedAt: 0, duration: RICE_CONFIG.PLANT_DURATION, readyAt: 0 });
             }
+            // ★★★ 确保 workshops 数量正确（9个） ★★★
             while (riceState.workshops.length < RICE_CONFIG.WORKSHOP_COUNT) {
                 riceState.workshops.push({ unlocked: false, status: 'idle', energyType: null, startedAt: 0, duration: RICE_CONFIG.PROCESS_DURATION, readyAt: 0, goldenEarsUsed: 0 });
             }
@@ -83,6 +90,7 @@ function initDefaultRiceData() {
         riceState.paddies.push({ unlocked: (i < 6), status: 'idle', plantedAt: 0, duration: RICE_CONFIG.PLANT_DURATION, readyAt: 0 });
     }
     riceState.workshops = [];
+    // ★★★ 初始化 9 个工坊 ★★★
     for (var i = 0; i < RICE_CONFIG.WORKSHOP_COUNT; i++) {
         riceState.workshops.push({ unlocked: (i === 0), status: 'idle', energyType: null, startedAt: 0, duration: RICE_CONFIG.PROCESS_DURATION, readyAt: 0, goldenEarsUsed: 0 });
     }
@@ -175,9 +183,7 @@ function plantPaddy(index) {
     p.duration = RICE_CONFIG.PLANT_DURATION;
     p.readyAt = now + RICE_CONFIG.PLANT_DURATION;
     saveRiceData();
-    // ===== 添加音效 =====
     if (typeof soundPlant === 'function') soundPlant();
-    // ===== 音效添加结束 =====
     renderRiceUI();
     showRiceStatus('🌱 种植成功', false);
     return true;
@@ -200,9 +206,7 @@ function harvestPaddy(index) {
     p.plantedAt = 0;
     p.readyAt = 0;
     saveRiceData();
-    // ===== 添加音效 =====
     if (typeof soundCollect === 'function') soundCollect();
-    // ===== 音效添加结束 =====
     renderRiceUI();
     var msg = '🌾 收获 ' + yieldAmount + ' 稻谷';
     if (goldenEar) msg += ' 🌾✨ 获得金色稻穗！';
@@ -241,9 +245,7 @@ function harvestAllPaddies() {
     }
     if (harvested === 0) { showRiceStatus('没有可收割的稻田', true); return; }
     saveRiceData();
-    // ===== 添加音效 =====
     if (typeof soundCollect === 'function') soundCollect();
-    // ===== 音效添加结束 =====
     renderRiceUI();
     var msg = '🌾 收割了 ' + harvested + ' 块，获得 ' + totalRice + ' 稻谷';
     if (goldenEarsGained > 0) msg += ' 🌾✨ +' + goldenEarsGained + ' 金色稻穗';
@@ -313,15 +315,11 @@ function collectEnergy(workshopIndex) {
     addEnergy(w.energyType, amount);
     riceState.totalEnergyProduced += amount;
     var ename = getEnergyName(w.energyType);
-    // ===== 添加音效 =====
     if (typeof soundEnergyComplete === 'function') soundEnergyComplete();
-    // ===== 音效添加结束 =====
 
-    // ===== 添加声望 =====
     if (typeof window.addReputation === 'function') {
         window.addReputation(5, '大米洲制作能量：' + ename);
     }
-    // ===== 声望添加结束 =====
 
     w.status = 'idle';
     w.energyType = null;
@@ -348,92 +346,13 @@ function updateGoldenEarsInput(value) {
 function getRiceStats() { return { riceGrain: getRiceGrain(), goldenEars: getGoldenEars() }; }
 window.getRiceStats = getRiceStats;
 
-function renderRiceUI() {
-    var container = document.getElementById('riceMode');
-    if (!container) return;
-    var now = nowSeconds();
-    var coins = getExploreCoins();
-    var beans = getCocoaBeans();
-    var energies = getEnergies();
-    var energyHtml = '';
-    RICE_ENERGY_TYPES.forEach(function(e) {
-        var count = energies[e.id] || 0;
-        energyHtml += '<span class="rice-energy-stock-item"><img src="' + e.img + '" class="rice-energy-stock-img" onerror="this.style.display=\'none\'"><span class="rice-energy-stock-count">' + count + '</span></span>';
-    });
-    var panel = riceState.activePanel;
-    var html = '';
-    var title = '🍚 大米洲';
-    if (panel === 'paddy') title = '🌾 稻田种植';
-    else if (panel === 'workshop') title = '⚙️ 能量工坊';
-    html += '<div class="rice-header">';
-    html += '<div class="rice-title">' + title + '</div>';
-    html += '<div class="rice-header-actions"><button class="rice-btn-close" onclick="closeRicePanel()">✕ 关闭</button></div>';
-    html += '</div>';
-    html += '<div id="riceStatus" style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;min-height:20px;padding:4px 0;"></div>';
-    html += '<div class="rice-stats">';
-    html += '<span>🌾 稻谷 <strong>' + getRiceGrain() + '</strong></span>';
-    html += '<span>🌾✨ 金色稻穗 <strong>' + getGoldenEars() + '</strong></span>';
-    html += '<span>🫘 可可豆 <strong>' + beans + '</strong></span>';
-    html += '<span>⚓ 探险币 <strong>' + coins + '</strong></span>';
-    html += '</div>';
-    if (panel === 'workshop') {
-        html += '<div class="rice-energy-stock"><span class="rice-energy-stock-label">能量库存:</span> ' + energyHtml + '</div>';
-    }
-    html += '<div class="rice-main-content">';
-    if (panel === 'paddy') html += renderPaddyPanel(now);
-    else if (panel === 'workshop') html += renderWorkshopPanel(now);
-    else html += renderPaddyPanel(now);
-    html += '</div>';
-    html += '<div class="rice-footer">';
-    if (panel === 'paddy') html += '💡 点击空闲稻田种植（消耗 10 可可豆），5分钟后收获 1~3 稻谷，5%概率获得金色稻穗';
-    else if (panel === 'workshop') html += '💡 消耗 10 稻谷（可含金色稻穗）+ 9 探险币，29分钟产出 1 能量，每投入1金色稻穗 +5% 双倍概率（上限50%）';
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function renderPaddyPanel(now) {
-    var html = '';
-    html += '<div class="rice-paddy-container">';
-    html += '<div class="rice-paddy-header"><span>已解锁 ' + riceState.paddiesUnlocked + '/36</span>';
-    html += '<div class="rice-paddy-actions">';
-    html += '<button class="rice-btn-sm" onclick="plantAllPaddies()">🌱 一键种植</button>';
-    html += '<button class="rice-btn-sm" onclick="harvestAllPaddies()">🌾 一键收割</button>';
-    html += '</div></div>';
-    html += '<div class="rice-paddy-grid">';
-    for (var i = 0; i < riceState.paddies.length; i++) {
-        var p = riceState.paddies[i];
-        var cls = 'rice-paddy-cell';
-        var content = '';
-        var click = '';
-        if (!p.unlocked) {
-            var price = getPaddyUnlockPrice(i);
-            cls += ' locked';
-            content = '🔒<br><span class="rice-price">' + price + '⚓</span>';
-            click = 'onclick="unlockPaddy(' + i + ')"';
-        } else if (p.status === 'idle') {
-            cls += ' idle';
-            content = '🟫';
-            click = 'onclick="plantPaddy(' + i + ')"';
-        } else if (p.status === 'growing') {
-            var remaining = Math.max(0, p.readyAt - now);
-            var mins = Math.floor(remaining / 60);
-            var secs = remaining % 60;
-            cls += ' growing';
-            content = '🌱<br><span class="rice-timer" data-index="' + i + '">' + String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0') + '</span>';
-        } else if (p.status === 'ready') {
-            cls += ' ready';
-            content = '🌾<br><span class="rice-ready-label">可收</span>';
-            click = 'onclick="harvestPaddy(' + i + ')"';
-        }
-        html += '<div class="' + cls + '" ' + click + '>' + content + '</div>';
-    }
-    html += '</div></div>';
-    return html;
-}
-
+// ============================================================
+// ★★★ renderWorkshopPanel 已修改：grid 布局 3列 ★★★
+// ============================================================
 function renderWorkshopPanel(now) {
     var html = '';
-    html += '<div class="workshop-panel-3">';
+    // ★★★ 添加 grid 布局，每行 3 个 ★★★
+    html += '<div class="workshop-panel-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
     for (var i = 0; i < riceState.workshops.length; i++) {
         var w = riceState.workshops[i];
         var cardClass = 'workshop-card';
@@ -476,9 +395,10 @@ function renderWorkshopPanel(now) {
     return html;
 }
 
+// ★★★ 保留原有的 renderEnergySelector（不变） ★★★
 function renderEnergySelector(workshopIndex) {
     var html = '';
-    html += '<div class="energy-selector">';
+    html += '<div class="energy-selector" style="grid-column:1/-1;margin-top:-6px;">';
     html += '<div class="energy-options">';
     RICE_ENERGY_TYPES.forEach(function(e) {
         var selected = (riceState.selectedEnergy === e.id) ? 'selected' : '';
@@ -497,6 +417,9 @@ function renderEnergySelector(workshopIndex) {
     return html;
 }
 
+// ============================================================
+// 其余函数（保持不变）
+// ============================================================
 function riceShowEnergySelect(workshopIndex) {
     if (riceState.selectedWorkshop === workshopIndex) {
         riceState.selectedWorkshop = null;
@@ -561,6 +484,89 @@ function updateRiceTimers() {
     });
 }
 
+function renderRiceUI() {
+    var container = document.getElementById('riceMode');
+    if (!container) return;
+    var now = nowSeconds();
+    var coins = getExploreCoins();
+    var beans = getCocoaBeans();
+    var energies = getEnergies();
+    var energyHtml = '';
+    RICE_ENERGY_TYPES.forEach(function(e) {
+        var count = energies[e.id] || 0;
+        energyHtml += '<span class="rice-energy-stock-item"><img src="' + e.img + '" class="rice-energy-stock-img" onerror="this.style.display=\'none\'"><span class="rice-energy-stock-count">' + count + '</span></span>';
+    });
+    var panel = riceState.activePanel;
+    var html = '';
+    var title = '🍚 大米洲';
+    if (panel === 'paddy') title = '🌾 稻田种植';
+    else if (panel === 'workshop') title = '⚙️ 能量工坊';
+    html += '<div class="rice-header">';
+    html += '<div class="rice-title">' + title + '</div>';
+    html += '<div class="rice-header-actions"><button class="rice-btn-close" onclick="closeRicePanel()">✕ 关闭</button></div>';
+    html += '</div>';
+    html += '<div id="riceStatus" style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;min-height:20px;padding:4px 0;"></div>';
+    html += '<div class="rice-stats">';
+    html += '<span>🌾 稻谷 <strong>' + getRiceGrain() + '</strong></span>';
+    html += '<span>🌾✨ 金色稻穗 <strong>' + getGoldenEars() + '</strong></span>';
+    html += '<span>🫘 可可豆 <strong>' + beans + '</strong></span>';
+    html += '<span>⚓ 探险币 <strong>' + coins + '</strong></span>';
+    html += '</div>';
+    if (panel === 'workshop') {
+        html += '<div class="rice-energy-stock"><span class="rice-energy-stock-label">能量库存:</span> ' + energyHtml + '</div>';
+    }
+    html += '<div class="rice-main-content">';
+    if (panel === 'paddy') html += renderPaddyPanel(now);
+    else if (panel === 'workshop') html += renderWorkshopPanel(now);
+    else html += renderPaddyPanel(now);
+    html += '</div>';
+    html += '<div class="rice-footer">';
+    if (panel === 'paddy') html += '💡 点击空闲稻田种植（消耗 10 可可豆），5分钟后收获 1~3 稻谷，5%概率获得金色稻穗';
+    else if (panel === 'workshop') html += '💡 消耗 10 稻谷（可含金色稻穗）+ 9 探险币，9分29秒产出 1 能量，每投入1金色稻穗 +5% 双倍概率（上限50%）';
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderPaddyPanel(now) {
+    var html = '';
+    html += '<div class="rice-paddy-container">';
+    html += '<div class="rice-paddy-header"><span>已解锁 ' + riceState.paddiesUnlocked + '/36</span>';
+    html += '<div class="rice-paddy-actions">';
+    html += '<button class="rice-btn-sm" onclick="plantAllPaddies()">🌱 一键种植</button>';
+    html += '<button class="rice-btn-sm" onclick="harvestAllPaddies()">🌾 一键收割</button>';
+    html += '</div></div>';
+    html += '<div class="rice-paddy-grid">';
+    for (var i = 0; i < riceState.paddies.length; i++) {
+        var p = riceState.paddies[i];
+        var cls = 'rice-paddy-cell';
+        var content = '';
+        var click = '';
+        if (!p.unlocked) {
+            var price = getPaddyUnlockPrice(i);
+            cls += ' locked';
+            content = '🔒<br><span class="rice-price">' + price + '⚓</span>';
+            click = 'onclick="unlockPaddy(' + i + ')"';
+        } else if (p.status === 'idle') {
+            cls += ' idle';
+            content = '🟫';
+            click = 'onclick="plantPaddy(' + i + ')"';
+        } else if (p.status === 'growing') {
+            var remaining = Math.max(0, p.readyAt - now);
+            var mins = Math.floor(remaining / 60);
+            var secs = remaining % 60;
+            cls += ' growing';
+            content = '🌱<br><span class="rice-timer" data-index="' + i + '">' + String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0') + '</span>';
+        } else if (p.status === 'ready') {
+            cls += ' ready';
+            content = '🌾<br><span class="rice-ready-label">可收</span>';
+            click = 'onclick="harvestPaddy(' + i + ')"';
+        }
+        html += '<div class="' + cls + '" ' + click + '>' + content + '</div>';
+    }
+    html += '</div></div>';
+    return html;
+}
+
 function openRicePanel(panel) {
     if (panel !== 'paddy' && panel !== 'workshop') panel = 'paddy';
     loadRiceData();
@@ -619,4 +625,4 @@ window.riceState = riceState;
 function initRice() { loadRiceData(); console.log('🍚 大米洲模块已加载，稻谷: ' + getRiceGrain() + '，金色稻穗: ' + getGoldenEars()); }
 
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initRice); } else { initRice(); }
-console.log('🍚 大米洲模块加载完成（提示显示在面板内）');
+console.log('🍚 大米洲模块加载完成（9个工坊，9分29秒）');

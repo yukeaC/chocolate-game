@@ -312,26 +312,35 @@ function savePaniniData() {
 }
 
 // ============================================================
-// 食谱匹配
+// ★★★ 异步配方匹配（支持模态框选择） ★★★
 // ============================================================
+
 function matchRecipe(pot) {
     var counts = {};
     pot.forEach(function(slot) {
-        if (slot) {
-            counts[slot] = (counts[slot] || 0) + 1;
+        if (slot) counts[slot] = (counts[slot] || 0) + 1;
+    });
+
+    var matched = [];
+    var added = {};
+
+    PANINI_RECIPES.forEach(function(recipe) {
+        if (matchCounts(counts, recipe.ingredients) && !added[recipe.id]) {
+            matched.push({ recipe: recipe, used: recipe.ingredients });
+            added[recipe.id] = true;
+        }
+        if (recipe.alternatives && matchCounts(counts, recipe.alternatives) && !added[recipe.id]) {
+            matched.push({ recipe: recipe, used: recipe.alternatives });
+            added[recipe.id] = true;
         }
     });
 
-    for (var i = 0; i < PANINI_RECIPES.length; i++) {
-        var recipe = PANINI_RECIPES[i];
-        if (matchCounts(counts, recipe.ingredients)) {
-            return { recipe: recipe, used: recipe.ingredients };
-        }
-        if (recipe.alternatives && matchCounts(counts, recipe.alternatives)) {
-            return { recipe: recipe, used: recipe.alternatives };
-        }
-    }
-    return null;
+    if (matched.length === 0) return null;
+    if (matched.length === 1) return matched[0];
+
+    return new Promise(function(resolve) {
+        showRecipeChoiceModal(matched, resolve);
+    });
 }
 
 function matchCounts(counts, ingredients) {
@@ -470,47 +479,68 @@ function clearPot() {
     showPaniniToast('🗑️ 食材已全部返还', 1500);
 }
 
-function startCooking() {
+// ============================================================
+// ★★★ 异步 startCooking ★★★
+// ============================================================
+
+async function startCooking() {
     if (paniniRecipeBookOpen) closeRecipeBook();
     if (paniniState.isCooking) {
         showPaniniToast('⏳ 正在烹饪中...', 1500);
         return;
     }
-    var filled = 0;
-    for (var i = 0; i < paniniState.currentPot.length; i++) {
-        if (paniniState.currentPot[i] !== null) filled++;
-    }
+
+    var filled = paniniState.currentPot.filter(function(s) { return s !== null; }).length;
     if (filled < 6) {
         showPaniniToast('⚠️ 需要放满 6 种食材（当前 ' + filled + '/6）', 2000);
         return;
     }
-    var fuelCount = getBackpackItem('ore_fuel');
-    if (fuelCount < 6) {
-        showPaniniToast('⛽ 燃料不足！需要 6 个燃料（当前 ' + fuelCount + '）', 2000);
+
+    if (getBackpackItem('ore_fuel') < 6) {
+        showPaniniToast('⛽ 燃料不足！需要 6 个燃料', 2000);
         return;
     }
+
+    var potSnapshot = paniniState.currentPot.slice();
+    var matchResult = matchRecipe(potSnapshot);
+
+    var selectedMatch;
+    if (matchResult && typeof matchResult.then === 'function') {
+        try {
+            selectedMatch = await matchResult;
+        } catch(e) {
+            showPaniniToast('❌ 已取消烹饪', 1500);
+            return;
+        }
+    } else {
+        selectedMatch = matchResult;
+    }
+
+    paniniState.cookRecipeId = selectedMatch ? selectedMatch.recipe.id : null;
+
     if (!spendBackpackItem('ore_fuel', 6)) {
         showPaniniToast('❌ 燃料扣除失败', 1500);
         return;
     }
-    var potSnapshot = paniniState.currentPot.slice();
+
     paniniState._cookingPot = potSnapshot;
-    for (var i = 0; i < paniniState.currentPot.length; i++) {
-        paniniState.currentPot[i] = null;
-    }
+    for (var i = 0; i < paniniState.currentPot.length; i++) paniniState.currentPot[i] = null;
+
     var now = Math.floor(Date.now() / 1000);
     paniniState.isCooking = true;
     paniniState.cookStartTime = now;
-    // ===== 添加音效 =====
-    if (typeof soundCook === 'function') soundCook();
-    // ===== 音效添加结束 =====
     paniniState.cookDuration = 5;
     paniniState.cookFinishTime = now + 5;
-    paniniState.cookRecipeId = null;
+
+    if (typeof soundCook === 'function') soundCook();
     savePaniniData();
     renderPaniniUI();
     showPaniniToast('🔥 开始烹饪！等待 5 秒...', 2000);
 }
+
+// ============================================================
+// ★★★ 修改 collectCooking 使用预存配方 ★★★
+// ============================================================
 
 function collectCooking() {
     if (paniniRecipeBookOpen) closeRecipeBook();
@@ -518,50 +548,58 @@ function collectCooking() {
         showPaniniToast('没有正在烹饪的食物', 1500);
         return;
     }
+
     var now = Math.floor(Date.now() / 1000);
     if (now < paniniState.cookFinishTime) {
         showPaniniToast('⏳ 还没完成，请耐心等待', 1500);
         return;
     }
-    var potSnapshot = paniniState._cookingPot || [];
-    var match = matchRecipe(potSnapshot);
-    var recipe = match ? match.recipe : null;
-    var recipeId = recipe ? recipe.id : 'dark_cuisine';
-    var foodName = recipe ? recipe.name : '黑暗料理';
-    var foodIcon = recipe ? recipe.icon : '💀';
 
-    // ===== 新增：黑暗料理计数 =====
-    if (!recipe) {
+    var recipeId = paniniState.cookRecipeId;
+    var potSnapshot = paniniState._cookingPot || [];
+
+    var foodName, foodIcon;
+    if (recipeId) {
+        var found = PANINI_RECIPES.find(function(r) { return r.id === recipeId; });
+        if (found) {
+            foodName = found.name;
+            foodIcon = found.icon;
+        } else {
+            foodName = '未知食物';
+            foodIcon = '🍽️';
+        }
+    } else {
+        foodName = '黑暗料理';
+        foodIcon = '💀';
         paniniState.darkCooked = (paniniState.darkCooked || 0) + 1;
     }
-    // ===== 新增结束 =====
 
-    addBackpackItem(recipeId, 1);
+    var outputId = recipeId || 'dark_cuisine';
+    addBackpackItem(outputId, 1);
     paniniState.totalCooked++;
-    // ===== 添加音效 =====
+
     if (typeof soundWorkshopDone === 'function') soundWorkshopDone();
-    // ===== 音效添加结束 =====
-    // ===== 挑战塔：烹饪成功 =====
     if (typeof onTowerCooked === 'function') onTowerCooked();
-    // ===== 挑战塔结束 =====
 
     if (typeof window.addReputation === 'function') {
         window.addReputation(3, '帕尼尼制作食物：' + foodName);
     }
 
-    if (recipe && !isRecipeUnlocked(recipeId)) {
+    if (recipeId && !isRecipeUnlocked(recipeId)) {
         paniniState.unlockedRecipes.push(recipeId);
         paniniState.recipeCount = paniniState.unlockedRecipes.length;
         showPaniniToast('📖 新食谱解锁！' + foodIcon + ' ' + foodName, 3000);
     }
+
     paniniState.isCooking = false;
     paniniState.cookStartTime = 0;
     paniniState.cookFinishTime = 0;
     paniniState.cookRecipeId = null;
     paniniState._cookingPot = null;
+
     savePaniniData();
     renderPaniniUI();
-    showPaniniToast('🎉 恭喜发明了 ' + foodIcon + ' ' + foodName + '！已存入探险背包', 3000);
+    showPaniniToast('🎉 烹饪完成！获得 ' + foodIcon + ' ' + foodName + '！已存入探险背包', 3000);
 }
 
 // ============================================================
@@ -853,6 +891,89 @@ function closePaniniPanel() {
 }
 
 // ============================================================
+// ★★★ 配方选择模态框 ★★★
+// ============================================================
+
+// ============================================================
+// ★★★ 配方选择模态框（简洁版） ★★★
+// ============================================================
+
+// ============================================================
+// ★★★ 配方选择模态框（修复 HTML 显示） ★★★
+// ============================================================
+
+function showRecipeChoiceModal(matchedRecipes, callback) {
+    // 遮罩
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+    // 面板
+    var panel = document.createElement('div');
+    panel.style.cssText = 'max-width:420px;width:92%;background:#faf0e0;border-radius:32px;padding:24px 20px;border:1px solid #dcc8b0;box-shadow:0 20px 60px rgba(0,0,0,0.4);';
+
+    var title = document.createElement('h3');
+    title.textContent = '🍳 选择你要制作的食物';
+    title.style.cssText = 'margin:0 0 16px 0;color:#4a2a1a;text-align:center;font-size:1.1rem;';
+    panel.appendChild(title);
+
+    // 选项
+    matchedRecipes.forEach(function(item, index) {
+        var opt = document.createElement('div');
+        opt.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;margin-bottom:6px;background:rgba(255,255,255,0.4);border-radius:14px;border:1px solid rgba(200,160,120,0.15);cursor:pointer;transition:0.15s;';
+        opt.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.7)'; this.style.borderColor = '#c98f5e'; };
+        opt.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.4)'; this.style.borderColor = 'rgba(200,160,120,0.15)'; };
+
+        var icon = document.createElement('span');
+        icon.textContent = item.recipe.icon;
+        icon.style.fontSize = '1.8rem';
+
+        var info = document.createElement('div');
+        info.style.flex = '1';
+
+        var name = document.createElement('div');
+        name.textContent = item.recipe.name;
+        name.style.fontWeight = 'bold';
+        name.style.color = '#4a2a1a';
+
+        // ★★★ 修复：使用 innerHTML 而不是 textContent ★★★
+        var detail = document.createElement('div');
+        var partsHtml = item.used.map(function(ing) {
+            return getIngredientDisplay(ing.key) + '×' + ing.amount;
+        }).join(' + ');
+        detail.innerHTML = '食材: ' + partsHtml;
+        detail.style.fontSize = '0.65rem';
+        detail.style.color = '#8b7a6a';
+
+        info.appendChild(name);
+        info.appendChild(detail);
+        opt.appendChild(icon);
+        opt.appendChild(info);
+
+        opt.onclick = function() {
+            overlay.remove();
+            callback(item);
+        };
+
+        panel.appendChild(opt);
+    });
+
+    // 取消按钮（默认选第一个）
+    var cancelBtn = document.createElement('button');
+    cancelBtn.textContent = '✕ 取消（默认第一个）';
+    cancelBtn.style.cssText = 'display:block;width:100%;margin-top:10px;padding:8px 0;border:none;border-radius:30px;background:rgba(200,160,120,0.12);color:#7b4a2a;font-size:0.75rem;cursor:pointer;';
+    cancelBtn.onmouseover = function() { this.style.background = 'rgba(200,160,120,0.25)'; };
+    cancelBtn.onmouseout = function() { this.style.background = 'rgba(200,160,120,0.12)'; };
+    cancelBtn.onclick = function() {
+        overlay.remove();
+        callback(matchedRecipes[0]);
+    };
+    panel.appendChild(cancelBtn);
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+}
+
+// ============================================================
 // 暴露全局接口
 // ============================================================
 window.openPaniniPanel = openPaniniPanel;
@@ -867,6 +988,7 @@ window.closeRecipeBook = closeRecipeBook;
 window.renderPaniniUI = renderPaniniUI;
 window.PANINI_RECIPES = PANINI_RECIPES;
 window.showPaniniToast = showPaniniToast;
+window.showRecipeChoiceModal = showRecipeChoiceModal;
 
 // ============================================================
 // 初始化
