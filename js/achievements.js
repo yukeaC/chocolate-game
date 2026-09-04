@@ -1298,12 +1298,20 @@ function showAchievementNotification(achievementIds) {
 }
 
 // ============================================================
-// 打开成就面板
+// 打开成就面板（修复：自动检查未解锁成就）
 // ============================================================
 
 function openAchievementModal() {
+    // 1. 加载数据
     loadAchievementData();
-
+    
+    // 2. ★★★ 关键修复：检查所有成就，解锁已满足条件的 ★★★
+    checkAchievements();
+    
+    // 3. 重新加载数据（因为 checkAchievements 可能修改了状态）
+    loadAchievementData();
+    
+    // 4. 渲染UI
     var modal = document.getElementById('achievementModal');
     if (modal) {
         renderCategoryTabs();

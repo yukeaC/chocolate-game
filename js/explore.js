@@ -345,11 +345,35 @@ function getTotalFedCount() { var data = getFeedData(); return data.totalCount |
 function getUniqueFedCount() { var data = getFeedData(); var keys = Object.keys(data.fedFoods); var count = 0; for (var i = 0; i < keys.length; i++) { if (data.fedFoods[keys[i]] > 0) count++; } return count; }
 
 // ============================================================
-// 嫑界洋 · 完成状态管理
+// ★★★ 获取章鱼完成状态（自动重置，如果投喂次数 < 929） ★★★
 // ============================================================
-function getNomoCompleted() { try { return localStorage.getItem('nomo_completed') === 'true'; } catch(e) { return false; } }
-function setNomoCompleted() { localStorage.setItem('nomo_completed', 'true'); }
-function resetNomoCompleted() { localStorage.removeItem('nomo_completed'); }
+
+function getNomoCompleted() {
+    try {
+        return localStorage.getItem('nomo_completed') === 'true';
+    } catch(e) {
+        return false;
+    }
+}
+
+function setNomoCompleted() {
+    var data = getFeedData();
+    var totalCount = data.totalCount || 0;
+    if (totalCount >= 929) {
+        localStorage.setItem('nomo_completed', 'true');
+        console.log('🐙 章鱼完成状态已保存（' + totalCount + '次）');
+    } else {
+        console.warn('🐙 投喂次数不足929（' + totalCount + '次），未标记完成');
+    }
+}
+
+function resetNomoCompleted() {
+    localStorage.removeItem('nomo_completed');
+}
+
+function resetNomoCompleted() {
+    localStorage.removeItem('nomo_completed');
+}
 
 // ============================================================
 // 嫑界洋 · 赛博章鱼对话系统
@@ -387,12 +411,12 @@ function getNomoDialogue() {
     }
     var total = getTotalFedCount();
     var unique = getUniqueFedCount();
-    if (total >= 92 && unique >= 29) return '🐙✨ 能量充足！系统全面激活！感谢你，勇敢的冒险者！';
-    if (total >= 70) return '🐙 能量正在恢复 ... 继续投喂 ... 我需要更多！';
-    if (unique >= 20) return '🐙 多种食物 ... 很好 ... 继续 ...';
-    if (total >= 40) return '🐙 能量水平提升 ... 继续投喂 ...';
-    if (total >= 15) return '🐙 食物 ... 更多 ... 我需要更多！';
-    if (total >= 5) return '🐙 嗯 ... 好吃 ... 还有吗？';
+    if (total >= 929 && unique >= 29) return '🐙✨ 能量充足！系统全面激活！感谢你，勇敢的冒险者！';
+    if (total >= 700) return '🐙 能量正在恢复 ... 继续投喂 ... 我需要更多！';
+    if (unique >= 200) return '🐙 多种食物 ... 很好 ... 继续 ...';
+    if (total >= 400) return '🐙 能量水平提升 ... 继续投喂 ...';
+    if (total >= 150) return '🐙 食物 ... 更多 ... 我需要更多！';
+    if (total >= 50) return '🐙 嗯 ... 好吃 ... 还有吗？';
     if (total > 0) return '🐙 食物 ... 收到了 ... 谢谢 ...';
     var idx = Math.floor(Math.random() * nomoDialogues.length);
     return nomoDialogues[idx];
@@ -408,13 +432,21 @@ function updateNomoDialogue() {
 function updateNomoStats() {
     var totalFed = getTotalFedCount();
     var uniqueFed = getUniqueFedCount();
-    var progress = Math.min(100, Math.round((totalFed / 92) * 100));
+    // ★★★ 使用 929 作为分母 ★★★
+    var progress = Math.min(100, Math.round((totalFed / 929) * 100));
+
     var totalEl = document.getElementById('totalFedDisplay');
     if (totalEl) totalEl.textContent = totalFed;
+
     var uniqueEl = document.getElementById('uniqueFedDisplay');
     if (uniqueEl) uniqueEl.textContent = uniqueFed;
+
     var progressEl = document.getElementById('progressDisplay');
     if (progressEl) progressEl.textContent = progress + '%';
+
+    // 更新进度条（如果有）
+    var bar = document.getElementById('nomoProgressBar');
+    if (bar) bar.style.width = progress + '%';
 }
 
 // ============================================================
@@ -1134,20 +1166,24 @@ function playNomoCompletionStory(onComplete) {
 }
 
 // ============================================================
-// 投喂章鱼（包含100%完成检测 + 黑暗料理反应）
+// ★★★ 投喂章鱼（条件达成后显示再见按钮，不强制送走） ★★★
 // ============================================================
+
 function feedOctopus(foodId) {
     var backpack = getBackpack();
     var count = backpack[foodId] || 0;
     if (count <= 0) { showToast('❌ 背包中没有这种食物', 1500); return; }
+    
     var newCount = count - 1;
     var bp = getBackpack();
     bp[foodId] = newCount;
     saveBackpack(bp);
+    
     var data = addFeedRecord(foodId);
     var totalFed = data.totalCount;
     var uniqueFed = getUniqueFedCount();
     window._lastFedFood = foodId;
+    
     var foodName = foodId;
     if (foodId === 'dark_cuisine') foodName = '黑暗料理';
     else if (typeof window.PANINI_RECIPES !== 'undefined') {
@@ -1155,41 +1191,92 @@ function feedOctopus(foodId) {
             if (window.PANINI_RECIPES[i].id === foodId) { foodName = window.PANINI_RECIPES[i].name; break; }
         }
     }
+    
+    // ★★★ 检查是否达到完成条件 ★★★
+    if (totalFed >= 929 && uniqueFed >= 29) {
+        // 设置"准备离开"标记，不自动送走
+        localStorage.setItem('nomo_ready_to_depart', 'true');
+        showToast('🐙✨ 能量核心完全激活！点击「再见」送走章鱼', 3000);
+        
+        // 更新UI
+        updateNomoDialogue();
+        updateNomoStats();
+        renderNomoOceanPanel(document.getElementById('infoMode'), null);
+        
+        if (typeof checkAchievements === 'function') {
+            setTimeout(function() { checkAchievements(); }, 300);
+        }
+        return;
+    }
+    
+    // 未达成条件，正常提示
     updateNomoDialogue();
     updateNomoStats();
+    
     var dialogueEl = document.getElementById('nomoDialogueText');
     if (dialogueEl) dialogueEl.textContent = getNomoDialogue();
-    var interactEl = document.getElementById('interactCountDisplay');
-    if (interactEl) interactEl.textContent = totalFed + 1;
+    
     var totalEl = document.getElementById('totalFedDisplay');
     if (totalEl) totalEl.textContent = totalFed;
     var uniqueEl = document.getElementById('uniqueFedDisplay');
     if (uniqueEl) uniqueEl.textContent = uniqueFed;
     var progressEl = document.getElementById('progressDisplay');
-    if (progressEl) progressEl.textContent = Math.min(100, Math.round((totalFed / 92) * 100)) + '%';
-    if (totalFed >= 92 && uniqueFed >= 29) {
-        setNomoCompleted();
-        showToast('🐙✨ 能量核心完全激活！开始唤醒星际信使...', 2000);
-        setTimeout(function() {
-            playNomoCompletionStory(function() {
-                var current = getCurrentRegion();
-                if (current && current.id === 'nomo_ocean') {
-                    var selected = getRegion(selectedRegionId);
-                    var targetRegion = (selected && selected.id !== 'nomo_ocean') ? selected : null;
-                    renderNomoOceanPanel(document.getElementById('infoMode'), targetRegion);
-                }
-                if (typeof randomFireworks === 'function') randomFireworks(6);
-                showToast('🌠 章鱼已回归星辰大海... 未完待续', 3000);
-            });
-        }, 800);
-        renderFeedGrid();
-        if (typeof checkAchievements === 'function') { setTimeout(function() { checkAchievements(); }, 300); }
+    if (progressEl) progressEl.textContent = Math.min(100, Math.round((totalFed / 929) * 100)) + '%';
+    
+    renderFeedGrid();
+    
+    if (totalFed % 5 === 0) showToast('🐙 投喂成功！(' + totalFed + '/929)', 2000);
+    else showToast('🍽️ 投喂 ' + foodName + ' 成功！(' + totalFed + '/929)', 1500);
+    
+    if (typeof checkAchievements === 'function') {
+        setTimeout(function() { checkAchievements(); }, 300);
+    }
+}
+
+// ============================================================
+// ★★★ 玩家点击「再见」按钮送走章鱼 ★★★
+// ============================================================
+
+function sendNomoAway() {
+    // 检查是否满足送走条件
+    var ready = localStorage.getItem('nomo_ready_to_depart') === 'true';
+    if (!ready) {
+        showToast('❌ 章鱼还没有准备好离开', 1500);
         return;
     }
-    if (totalFed % 5 === 0) showToast('🐙 投喂成功！(' + totalFed + '/92)', 2000);
-    else showToast('🍽️ 投喂 ' + foodName + ' 成功！(' + totalFed + '/92)', 1500);
+    
+    var data = getFeedData();
+    var totalFed = data.totalCount || 0;
+    var uniqueFed = getUniqueFedCount();
+    
+    if (totalFed < 929 || uniqueFed < 29) {
+        showToast('❌ 条件不足，需要 929 份食物 + 29 种', 1500);
+        return;
+    }
+    
+    // 标记完成
+    localStorage.setItem('nomo_completed', 'true');
+    localStorage.removeItem('nomo_ready_to_depart');
+    
+    // 播放完成剧情
+    showToast('🐙✨ 能量核心完全激活！开始唤醒星际信使...', 2000);
+    setTimeout(function() {
+        playNomoCompletionStory(function() {
+            var current = getCurrentRegion();
+            if (current && current.id === 'nomo_ocean') {
+                var selected = getRegion(selectedRegionId);
+                var targetRegion = (selected && selected.id !== 'nomo_ocean') ? selected : null;
+                renderNomoOceanPanel(document.getElementById('infoMode'), targetRegion);
+            }
+            if (typeof randomFireworks === 'function') randomFireworks(6);
+            showToast('🌠 章鱼已回归星辰大海... 未完待续', 3000);
+        });
+    }, 800);
+    
     renderFeedGrid();
-    if (typeof checkAchievements === 'function') { setTimeout(function() { checkAchievements(); }, 300); }
+    if (typeof checkAchievements === 'function') {
+        setTimeout(function() { checkAchievements(); }, 300);
+    }
 }
 
 // ============================================================
@@ -1253,17 +1340,20 @@ function closeFeedModal() {
     if (modal) modal.style.display = 'none';
 }
 
+
 // ============================================================
 // 嫑界洋 · 赛博机器章鱼怪物面板（包含完成状态 + 暖色投喂面板）
 // ============================================================
 function renderNomoOceanPanel(infoMode, targetRegion) {
-    infoMode.innerHTML = '';
-    infoMode.style.cssText = 'position:relative;padding:0;overflow:hidden;border:none;background:transparent;';
 
+    // ★★★ 新增：如果已完成，显示完成面板 ★★★
     if (getNomoCompleted()) {
         renderNomoCompletedPanel(infoMode, targetRegion);
         return;
     }
+
+    infoMode.innerHTML = '';
+    infoMode.style.cssText = 'position:relative;padding:0;overflow:hidden;border:none;background:transparent;';
 
     if (!document.getElementById('nomoOceanStyle')) {
         var style = document.createElement('style');
@@ -1945,12 +2035,25 @@ function renderNomoOceanPanel(infoMode, targetRegion) {
     html += '          <div class="nomo-eye nomo-eye-right"><div class="nomo-pupil"></div></div>';
     html += '        </div>';
     html += '      </div>';
-    html += '      <button class="nomo-feed-btn" id="nomoFeedBtn" onclick="openFeedModal()">';
-    html += '        <span class="btn-icon">🍽️</span> 投喂';
-    html += '      </button>';
+html += '      <button class="nomo-feed-btn" id="nomoFeedBtn" onclick="openFeedModal()">';
+html += '        <span class="btn-icon">🍽️</span> 投喂';
+html += '      </button>';
+// ★★★ 新增：再见按钮 ★★★
+var totalFed = getTotalFedCount();
+var uniqueFed = getUniqueFedCount();
+if (totalFed >= 929 && uniqueFed >= 29) {
+    html += '      <button class="nomo-goodbye-btn" id="nomoGoodbyeBtn" style="';
+    html += '        margin-top:8px;padding:8px 24px;border:none;border-radius:30px;';
+    html += '        background:linear-gradient(135deg,#f7971e,#ffd200);color:#1a1a2e;';
+    html += '        font-weight:700;font-size:0.85rem;cursor:pointer;';
+    html += '        transition:0.15s;font-family:\'Georgia\',serif;';
+    html += '        box-shadow:0 2px 12px rgba(247,151,30,0.2);';
+    html += '        pointer-events:auto;z-index:10;';
+    html += '      ">👋 再见 · 送别章鱼</button>';
+}
     html += '    </div>';
 
-    var progress = Math.min(100, Math.round((totalFed / 92) * 100));
+    var progress = Math.min(100, Math.round((totalFed / 929) * 100));
     html += '    <div class="nomo-bottom-stats">';
     html += '      <div class="nomo-stats" id="nomoStats">';
     html += '        <span>🍽️ 已投喂 <strong id="totalFedDisplay">' + totalFed + '</strong> 份</span>';
@@ -1975,175 +2078,190 @@ function renderNomoOceanPanel(infoMode, targetRegion) {
     html += '</div>';
 
     infoMode.innerHTML = html;
+// ★★★ 绑定再见按钮事件（使用独立确认模态框）★★★
+var goodbyeBtn = document.getElementById('nomoGoodbyeBtn');
+if (goodbyeBtn) {
+    goodbyeBtn.addEventListener('click', function() {
+        showNomoConfirmModal({
+            icon: '🐙',
+            title: '送别章鱼',
+            message: '确定要送走章鱼吗？\n送别后将无法再投喂，章鱼将回归星辰大海。',
+            okText: '✅ 确认送走',
+            cancelText: '❌ 取消',
+            okColor: 'linear-gradient(135deg,#f7971e,#ffd200)'
+        }).then(function(confirmed) {
+            if (confirmed) {
+                sendNomoAway();
+            } else {
+                showToast('已取消送别', 1500);
+            }
+        });
+    });
+}
     infoMode.style.display = 'flex';
 
     setTimeout(function() { renderFeedGrid(); }, 50);
 }
 
 // ============================================================
-// 章鱼完成状态面板
+// ★★★ 独立确认模态框（不依赖 ui.js）★★★
 // ============================================================
-function renderNomoCompletedPanel(infoMode, targetRegion) {
-    if (!document.getElementById('nomoCompletedStyle')) {
-        var style = document.createElement('style');
-        style.id = 'nomoCompletedStyle';
-        style.textContent = `
-            .nomo-completed-panel {
-                position: relative;
-                width: 100%;
-                height: 100%;
-                border-radius: 16px;
-                overflow: hidden;
-                background: linear-gradient(180deg, #0a1628 0%, #0d1f3a 30%, #0a2a4a 55%, #061a2e 80%, #020d1a 100%);
-                border: 2px solid rgba(0, 180, 255, 0.15);
-                box-shadow: 0 0 60px rgba(0, 180, 255, 0.05), inset 0 0 80px rgba(0, 0, 0, 0.4);
-                display: flex;
-                flex-direction: column;
-                font-family: 'Segoe UI', system-ui, sans-serif;
+
+function showNomoConfirmModal(options) {
+    return new Promise(function(resolve) {
+        // 创建遮罩
+        var overlay = document.createElement('div');
+        overlay.style.cssText = [
+            'position:fixed;top:0;left:0;width:100%;height:100%;',
+            'background:rgba(0,0,0,0.6);z-index:10000;',
+            'display:flex;align-items:center;justify-content:center;',
+            'animation:fadeIn 0.2s ease;'
+        ].join('');
+
+        // 创建面板
+        var panel = document.createElement('div');
+        panel.style.cssText = [
+            'max-width:400px;width:90%;',
+            'background:#faf0e0;border-radius:32px;padding:28px 24px;',
+            'box-shadow:0 20px 60px rgba(0,0,0,0.4);',
+            'border:1px solid #dcc8b0;text-align:center;'
+        ].join('');
+
+        // 图标
+        var icon = document.createElement('div');
+        icon.textContent = options.icon || '⚠️';
+        icon.style.cssText = 'font-size:3rem;margin-bottom:8px;';
+        panel.appendChild(icon);
+
+        // 标题
+        var title = document.createElement('h3');
+        title.textContent = options.title || '确认操作';
+        title.style.cssText = 'margin:0 0 8px 0;color:#4a2a1a;font-size:1.2rem;';
+        panel.appendChild(title);
+
+        // 消息
+        var message = document.createElement('p');
+        message.textContent = options.message || '确定执行此操作吗？';
+        message.style.cssText = 'margin:0 0 20px 0;color:#5a3a2a;font-size:0.95rem;line-height:1.6;';
+        panel.appendChild(message);
+
+        // 按钮容器
+        var btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'display:flex;gap:12px;justify-content:center;';
+
+        // 取消按钮
+        var cancelBtn = document.createElement('button');
+        cancelBtn.textContent = options.cancelText || '取消';
+        cancelBtn.style.cssText = [
+            'padding:8px 28px;border:none;border-radius:30px;',
+            'font-size:0.9rem;font-weight:bold;cursor:pointer;',
+            'background:#d4c8b8;color:#5a3a2a;transition:0.15s;'
+        ].join('');
+        cancelBtn.onmouseover = function() { this.style.background = '#c8b8a8'; };
+        cancelBtn.onmouseout = function() { this.style.background = '#d4c8b8'; };
+        cancelBtn.onclick = function() {
+            overlay.remove();
+            resolve(false);
+        };
+        btnContainer.appendChild(cancelBtn);
+
+        // 确认按钮
+        var okBtn = document.createElement('button');
+        okBtn.textContent = options.okText || '确定';
+        okBtn.style.cssText = [
+            'padding:8px 28px;border:none;border-radius:30px;',
+            'font-size:0.9rem;font-weight:bold;cursor:pointer;',
+            'background:' + (options.okColor || 'linear-gradient(135deg,#6f9e3f,#4c7a2a)') + ';',
+            'color:white;transition:0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.1);'
+        ].join('');
+        okBtn.onmouseover = function() { this.style.transform = 'scale(1.03)'; };
+        okBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
+        okBtn.onclick = function() {
+            overlay.remove();
+            resolve(true);
+        };
+        btnContainer.appendChild(okBtn);
+
+        panel.appendChild(btnContainer);
+        overlay.appendChild(panel);
+
+        // 点击遮罩关闭（取消）
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                overlay.remove();
+                resolve(false);
             }
-            .nomo-completed-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 10px 18px 6px 18px;
-                border-bottom: 1px solid rgba(0, 200, 255, 0.06);
-                flex-shrink: 0;
-                z-index: 20;
-                position: relative;
-            }
-            .nomo-completed-title {
-                font-size: 1.05rem;
-                font-weight: 700;
-                color: #8ab8d0;
-                text-shadow: 0 0 30px rgba(0, 180, 255, 0.05);
-                letter-spacing: 1px;
-            }
-            .nomo-completed-title span { color: #00ccff; }
-            .nomo-completed-travel-btn {
-                background: #6f9e3f;
-                border: none;
-                border-radius: 30px;
-                padding: 5px 16px;
-                color: white;
-                font-weight: bold;
-                cursor: pointer;
-                font-size: 0.7rem;
-                transition: 0.15s;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-            .nomo-completed-travel-btn:hover { background: #5a8a2a; transform: scale(1.02); }
-            .nomo-completed-body {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                padding: 20px;
-                position: relative;
-                z-index: 2;
-            }
-            .nomo-completed-body .depart-icon {
-                font-size: 4rem;
-                opacity: 0.2;
-                animation: nomoDepartFloat 3s ease-in-out infinite;
-            }
-            @keyframes nomoDepartFloat {
-                0%, 100% { transform: translateY(0) scale(1); opacity: 0.2; }
-                50% { transform: translateY(-8px) scale(1.05); opacity: 0.3; }
-            }
-            .nomo-completed-body .depart-text {
-                font-size: 1.2rem;
-                color: rgba(0, 200, 255, 0.25);
-                font-weight: 300;
-                letter-spacing: 2px;
-                text-align: center;
-            }
-            .nomo-completed-body .depart-sub {
-                font-size: 0.7rem;
-                color: rgba(255, 255, 255, 0.08);
-                max-width: 80%;
-                text-align: center;
-                line-height: 1.8;
-                letter-spacing: 0.5px;
-            }
-            .nomo-completed-body .depart-end {
-                font-size: 0.9rem;
-                color: rgba(255, 255, 255, 0.05);
-                margin-top: 4px;
-                letter-spacing: 3px;
-            }
-            .nomo-completed-footer {
-                position: absolute;
-                bottom: 8px;
-                left: 20px;
-                right: 20px;
-                text-align: center;
-                font-size: 0.5rem;
-                color: rgba(0, 200, 255, 0.04);
-                border-top: 1px solid rgba(0, 200, 255, 0.01);
-                padding-top: 6px;
-                letter-spacing: 0.5px;
-                pointer-events: none;
-                z-index: 2;
-            }
-            .nomo-completed-footer strong { color: rgba(0, 200, 255, 0.08); }
-            .nomo-completed-ocean {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                height: 45%;
-                overflow: hidden;
-                pointer-events: none;
-                z-index: 1;
-            }
-            .nomo-completed-ocean .wave {
-                position: absolute;
-                bottom: 0;
-                left: -50%;
-                width: 200%;
-                height: 100%;
-                background: repeating-linear-gradient(90deg, transparent 0px, rgba(0, 180, 255, 0.015) 40px, transparent 80px, rgba(0, 150, 255, 0.01) 120px, transparent 160px);
-                border-radius: 50% 50% 0 0 / 30% 30% 0 0;
-                animation: nomoWaveMove 6s ease-in-out infinite alternate;
-            }
-            .nomo-completed-ocean .wave:nth-child(2) { animation-duration: 8s; animation-delay: -2s; background: repeating-linear-gradient(90deg, transparent 0px, rgba(0, 200, 255, 0.01) 50px, transparent 100px); }
-            .nomo-completed-ocean .wave:nth-child(3) { animation-duration: 10s; animation-delay: -4s; background: repeating-linear-gradient(90deg, transparent 0px, rgba(100, 200, 255, 0.008) 30px, transparent 70px); }
-            .nomo-completed-light {
-                position: absolute;
-                bottom: 20%;
-                left: 10%;
-                width: 300px;
-                height: 50px;
-                background: radial-gradient(ellipse at center, rgba(0, 200, 255, 0.03), transparent 70%);
-                border-radius: 50%;
-                animation: nomoLightPulse 4s ease-in-out infinite;
-                pointer-events: none;
-                z-index: 1;
-            }
-            .nomo-completed-light:nth-child(5) { left: 60%; bottom: 30%; animation-delay: -1.5s; width: 200px; }
-            @media (max-width: 600px) {
-                .nomo-completed-body .depart-icon { font-size: 3rem; }
-                .nomo-completed-body .depart-text { font-size: 1rem; }
-                .nomo-completed-body .depart-sub { font-size: 0.6rem; }
-                .nomo-completed-body .depart-end { font-size: 0.8rem; }
-                .nomo-completed-title { font-size: 0.9rem; }
-            }
-            @media (max-width: 400px) {
-                .nomo-completed-body .depart-icon { font-size: 2.4rem; }
-                .nomo-completed-body .depart-text { font-size: 0.8rem; }
-                .nomo-completed-body .depart-sub { font-size: 0.5rem; max-width: 95%; }
-                .nomo-completed-body .depart-end { font-size: 0.7rem; }
-                .nomo-completed-title { font-size: 0.75rem; }
-                .nomo-completed-travel-btn { font-size: 0.5rem; padding: 3px 10px; }
-            }
-        `;
-        document.head.appendChild(style);
+        });
+
+        document.body.appendChild(overlay);
+    });
+}
+
+// ============================================================
+// ★★★ 新增：玩家点击「再见」按钮送走章鱼 ★★★
+// ============================================================
+
+function sendNomoAway() {
+    var data = getFeedData();
+    var totalFed = data.totalCount || 0;
+    var uniqueFed = getUniqueFedCount();
+
+    if (totalFed < 929 || uniqueFed < 29) {
+        showToast('❌ 条件不足，需要 929 份食物 + 29 种', 1500);
+        return;
     }
 
+    // 标记完成
+    localStorage.setItem('nomo_completed', 'true');
+    localStorage.removeItem('nomo_ready_to_depart');
+
+    showToast('🐙✨ 能量核心完全激活！开始唤醒星际信使...', 2000);
+
+    setTimeout(function() {
+        // ★★★ 播放完成剧情 ★★★
+        playNomoCompletionStory(function() {
+            // ★★★ 关键：强制刷新面板为完成状态 ★★★
+            var infoMode = document.getElementById('infoMode');
+            if (infoMode) {
+                var current = getCurrentRegion ? getCurrentRegion() : null;
+                var targetRegion = (current && current.id === 'nomo_ocean') ? null : current;
+                renderNomoOceanPanel(infoMode, targetRegion);
+            }
+            if (typeof randomFireworks === 'function') randomFireworks(6);
+            showToast('🌠 章鱼已回归星辰大海... 未完待续', 3000);
+        });
+    }, 800);
+}
+
+// ============================================================
+// 章鱼完成状态面板
+// ============================================================
+// ============================================================
+// ★★★ 章鱼完成面板（修复居中）★★★
+// ============================================================
+
+function renderNomoCompletedPanel(infoMode, targetRegion) {
+    // ★★★ 不覆盖整个 cssText，只修改必要的样式 ★★★
+    // 保留父容器的绝对定位，只改背景和边框
+    infoMode.style.background = 'linear-gradient(180deg,#0a1628 0%,#0d1f3a 30%,#0a2a4a 55%,#061a2e 80%,#020d1a 100%)';
+    infoMode.style.border = '2px solid rgba(0,180,255,0.15)';
+    infoMode.style.borderRadius = '16px';
+    infoMode.style.display = 'flex';
+    infoMode.style.flexDirection = 'column';
+    infoMode.style.alignItems = 'center';
+    infoMode.style.justifyContent = 'center';
+    infoMode.style.padding = '20px';
+    infoMode.style.overflow = 'hidden';
+    infoMode.style.boxSizing = 'border-box';
+
+    // 清空内容
+    infoMode.innerHTML = '';
+
+    // 计算统计信息
+    var totalFed = getTotalFedCount ? getTotalFedCount() : 0;
+    var uniqueFed = getUniqueFedCount ? getUniqueFedCount() : 0;
+
+    // 判断是否显示航行按钮
     var showTravelBtn = false;
     var travelTargetId = '';
     if (targetRegion && targetRegion.id !== 'nomo_ocean' && targetRegion.status !== 'locked') {
@@ -2152,34 +2270,31 @@ function renderNomoCompletedPanel(infoMode, targetRegion) {
     }
 
     var html = '';
-    html += '<div class="nomo-completed-panel">';
-    html += '  <div class="nomo-completed-header">';
-    html += '    <div class="nomo-completed-title">🌊 嫑界洋 · <span>深海巨兽</span></div>';
+
+    // ---- 标题栏 ----
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:0 0 10px 0;border-bottom:1px solid rgba(0,200,255,0.06);flex-shrink:0;">';
+    html += '  <div style="font-size:1.05rem;font-weight:700;color:#8ab8d0;letter-spacing:1px;">🌊 嫑界洋 · <span style="color:#00ccff;">深海巨兽</span></div>';
     if (showTravelBtn) {
-        html += '    <button class="nomo-completed-travel-btn" onclick="startTravelFromNomo(\'' + travelTargetId + '\')">🚢 航行</button>';
+        html += '  <button style="background:#6f9e3f;border:none;border-radius:30px;padding:5px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;transition:0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;flex-shrink:0;" onclick="startTravelFromNomo(\'' + travelTargetId + '\')">🚢 航行</button>';
     } else {
-        html += '    <div style="width:80px;"></div>';
+        html += '  <div style="width:80px;"></div>';
     }
-    html += '  </div>';
-
-    html += '  <div class="nomo-completed-ocean">';
-    html += '    <div class="wave"></div><div class="wave"></div><div class="wave"></div>';
-    html += '    <div class="nomo-completed-light"></div><div class="nomo-completed-light"></div>';
-    html += '  </div>';
-
-    html += '  <div class="nomo-completed-body">';
-    html += '    <div class="depart-icon">🐙</div>';
-    html += '    <div class="depart-text">✨ 星际信使已回归星辰大海 ✨</div>';
-    html += '    <div class="depart-sub">感谢你，勇敢的冒险者。<br>当九颗星辰连成一线，那扇门就会打开……</div>';
-    html += '    <div class="depart-end">🌠 未完待续 ...</div>';
-    html += '  </div>';
-
-    html += '  <div class="nomo-completed-footer">';
-    html += '    💡 <strong>星际信使</strong> · 已踏上归途 · 等待星辰之门再次开启';
-    html += '  </div>';
     html += '</div>';
 
+    // ---- 主体内容（居中） ----
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;width:100%;">';
+    html += '  <div style="font-size:4rem;opacity:0.3;animation:nomoDepartFloat 3s ease-in-out infinite;">🐙</div>';
+    html += '  <div style="font-size:1.2rem;color:rgba(0,200,255,0.3);font-weight:300;letter-spacing:2px;">✨ 星际信使已回归星辰大海 ✨</div>';
+    html += '  <div style="font-size:0.7rem;color:rgba(255,255,255,0.08);max-width:80%;line-height:1.8;letter-spacing:0.5px;">感谢你，勇敢的冒险者。<br>当九颗星辰连成一线，那扇门就会打开……</div>';
+    html += '  <div style="font-size:0.9rem;color:rgba(255,255,255,0.05);margin-top:4px;letter-spacing:3px;">🌠 未完待续 ...</div>';
+    html += '</div>';
+
+    // ---- 底部 ----
+    html += '<div style="width:100%;text-align:center;font-size:0.5rem;color:rgba(0,200,255,0.04);border-top:1px solid rgba(0,200,255,0.01);padding-top:6px;letter-spacing:0.5px;flex-shrink:0;">💡 <strong style="color:rgba(0,200,255,0.08);">星际信使</strong> · 已踏上归途 · 等待星辰之门再次开启</div>';
+
     infoMode.innerHTML = html;
+
+    // 确保显示为 flex
     infoMode.style.display = 'flex';
 }
 
@@ -3097,6 +3212,7 @@ window.updateNomoStats = updateNomoStats;
 window.showTreasureClaimPanel = showTreasureClaimPanel;
 window.startTravelFromNomo = startTravelFromNomo;
 window.handleFirstArrival = handleFirstArrival;
+window.sendNomoAway = sendNomoAway;
 
 // 添加动画样式
 (function() {
