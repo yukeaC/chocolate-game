@@ -1,16 +1,16 @@
 // ============================================================
-// saveManager.js · 存档导入/导出（完美修复版）
-// 修复：确保主游戏数据（chocolate_save）完整迁移
+// saveManager.js · 存档导入/导出（完整修复版）
+// 修复：导入后所有模块数据（含挑战塔）正确重新加载
 // ============================================================
 
-console.log('💾 存档管理器加载中（完美修复版）...');
+console.log('💾 存档管理器加载中（完整修复版）...');
 
 // ============================================================
 // 所有需要保存的 localStorage key（完整列表）
 // ============================================================
 var SAVE_KEYS = [
     // ----- 主游戏（核心） -----
-    'chocolate_save',          // 等级、升级、资源、库存、槽位等
+    'chocolate_save',
     'order_date',
     'savedOrders',
     'last_refresh_date',
@@ -30,6 +30,7 @@ var SAVE_KEYS = [
     'explore_backpack',
     'explore_region_status',
     'explore_visited',
+    'explore_travel_state',
     'adventurer_data',
     'treasure_data',
     'story_progress',
@@ -40,7 +41,6 @@ var SAVE_KEYS = [
     'rice_data',
     'trade_total_count',
     'bounty_data',
-    'explore_travel_state',
     'prince_dialogue_state',
     'croissant_state',
     'sudoku_rewards',
@@ -96,7 +96,6 @@ function exportSaveToClipboard() {
         console.log('📦 存档码长度: ' + base64.length + ' 字符');
         console.log('📦 数据项数: ' + (Object.keys(bundle).length - 1));
         if (missingKeys.length > 0) {
-            // ★★★ 只显示数量，不显示具体键名 ★★★
             console.log('📦 已跳过 ' + missingKeys.length + ' 个尚未创建的键（正常现象）');
         }
 
@@ -140,7 +139,6 @@ function fallbackCopy(text) {
 // 导入：文本域方式（支持超长存档码）
 // ============================================================
 function importSaveFromClipboard() {
-    // 尝试从剪贴板读取
     if (navigator.clipboard && navigator.clipboard.readText) {
         navigator.clipboard.readText().then(function(text) {
             if (text && text.length > 10) {
@@ -158,9 +156,7 @@ function importSaveFromClipboard() {
 
 function showLargeTextImportDialog() {
     var existing = document.getElementById('importDialogOverlay');
-    if (existing) {
-        existing.remove();
-    }
+    if (existing) existing.remove();
 
     var overlay = document.createElement('div');
     overlay.id = 'importDialogOverlay';
@@ -248,7 +244,7 @@ function showLargeTextImportDialog() {
 }
 
 // ============================================================
-// ★★★ 核心导入函数（完美修复版）★★★
+// ★★★ 核心导入函数（完整修复版）★★★
 // ============================================================
 function doImport(base64) {
     try {
@@ -285,7 +281,6 @@ function doImport(base64) {
             return;
         }
 
-        // 兼容旧版本（version 2 和 3 都支持）
         if (bundle._meta.version < 2 || bundle._meta.version > 3) {
             showSaveMessage('❌ 存档码版本不兼容（当前支持 v2~v3，存档版本: ' + bundle._meta.version + '）', true);
             return;
@@ -306,7 +301,7 @@ function doImport(base64) {
             return;
         }
 
-        // 5. 清除所有现有数据（避免残留）
+        // 5. 清除所有现有数据
         console.log('📥 正在清除现有数据...');
         for (var i = 0; i < SAVE_KEYS.length; i++) {
             try {
@@ -317,7 +312,6 @@ function doImport(base64) {
         // 6. 写入新数据
         var count = 0;
         var errors = [];
-        var hasChocolateSave = false;
         for (var key in bundle) {
             if (key === '_meta') continue;
             if (SAVE_KEYS.indexOf(key) !== -1) {
@@ -325,14 +319,9 @@ function doImport(base64) {
                     localStorage.setItem(key, bundle[key]);
                     count++;
                     console.log('📥 写入: ' + key + ' (' + (bundle[key] ? bundle[key].length : 0) + ' 字符)');
-                    if (key === 'chocolate_save') {
-                        hasChocolateSave = true;
-                    }
                 } catch(e) {
                     errors.push(key + ': ' + e.message);
                 }
-            } else {
-                console.warn('📥 未知键名，跳过: ' + key);
             }
         }
 
@@ -340,88 +329,117 @@ function doImport(base64) {
             console.warn('⚠️ 部分数据写入失败:', errors);
         }
 
-        console.log('📥 导入成功！已恢复 ' + count + ' 项数据');
+        console.log('📥 数据写入完成，共 ' + count + ' 项');
 
-        // ★★★ 7. 强制重新加载主游戏数据（关键修复） ★★★
-        if (hasChocolateSave) {
-            try {
-                // 从 localStorage 重新读取主游戏数据
+        // ============================================================
+        // ★★★ 7. 强制重新加载所有模块的内存数据 ★★★
+        // ============================================================
+        console.log('🔄 开始重新加载各模块数据...');
+
+        // ---- 主游戏 ----
+        try {
+            if (typeof loadGameFromLocal === 'function') {
+                loadGameFromLocal();
+                console.log('✅ 主游戏数据已重新加载');
+            } else if (typeof loadGameFromData === 'function') {
                 var raw = localStorage.getItem('chocolate_save');
                 if (raw) {
-                    var data = JSON.parse(raw);
-                    // 调用 storage.js 中的加载函数（如果存在）
-                    if (typeof loadGameFromData === 'function') {
-                        var loaded = loadGameFromData(data);
-                        console.log('📥 主游戏数据重新加载: ' + (loaded ? '成功' : '失败'));
-                    } else {
-                        // 降级：手动刷新变量（但 loadGameFromData 更安全）
-                        console.warn('⚠️ loadGameFromData 未定义，将尝试通过刷新页面加载');
-                    }
+                    loadGameFromData(JSON.parse(raw));
+                    console.log('✅ 主游戏数据已重新加载');
                 }
-            } catch(e) {
-                console.warn('⚠️ 重新加载主游戏数据失败:', e);
             }
-        }
+        } catch(e) { console.warn('主游戏重新加载失败:', e); }
 
-        // ★★★ 8. 刷新所有 UI（即使没有主游戏数据，也要刷新其他部分） ★★★
-        if (typeof refreshUI === 'function') {
-            refreshUI();
-            console.log('📥 UI 已刷新');
-        }
-        if (typeof renderSlots === 'function') {
-            renderSlots();
-        }
-        if (typeof renderQuickSell === 'function') {
-            renderQuickSell();
-        }
-        if (typeof renderShopUI === 'function') {
-            renderShopUI();
-        }
-        if (typeof renderWarehouseModal === 'function') {
-            renderWarehouseModal();
-        }
-        if (typeof updateAchievements === 'function') {
-            updateAchievements();
-        }
-        if (typeof updateAdventurerUI === 'function') {
-            updateAdventurerUI();
-        }
-        if (typeof initTower === 'function') {
-            initTower();
-        }
-        if (typeof updateTowerEntry === 'function') {
-            updateTowerEntry();
-        }
+        // ---- 挑战塔（关键修复）----
+        try {
+            if (typeof loadTowerData === 'function') {
+                loadTowerData();
+                console.log('✅ 挑战塔数据已重新加载');
+            }
+            if (typeof initTower === 'function') {
+                initTower();
+                console.log('✅ 挑战塔已初始化');
+            }
+            if (typeof updateTowerEntry === 'function') {
+                updateTowerEntry();
+                console.log('✅ 挑战塔入口已更新');
+            }
+        } catch(e) { console.warn('挑战塔重新加载失败:', e); }
 
-        // 强制更新订单显示
-        if (typeof updateOrderStatusDisplay === 'function') {
-            updateOrderStatusDisplay();
-        }
+        // ---- 成就系统 ----
+        try {
+            if (typeof loadAchievementData === 'function') {
+                loadAchievementData();
+                console.log('✅ 成就数据已重新加载');
+            }
+        } catch(e) { console.warn('成就重新加载失败:', e); }
 
-        // ★★★ 9. 强制重新计算正在生产的槽位 ★★★
-        if (typeof recalcAllProducingSlots === 'function') {
-            recalcAllProducingSlots();
-        }
+        // ---- 商城 ----
+        try {
+            if (typeof loadShopData === 'function') loadShopData();
+            if (typeof loadPlayerBag === 'function') loadPlayerBag();
+            console.log('✅ 商城数据已重新加载');
+        } catch(e) { console.warn('商城重新加载失败:', e); }
 
-        // ★★★ 10. 保存导入时间戳，防止自动保存立即覆盖 ★★★
+        // ---- 农场 ----
+        try {
+            if (typeof initFarm === 'function') initFarm();
+            console.log('✅ 农场数据已重新加载');
+        } catch(e) { console.warn('农场重新加载失败:', e); }
+
+        // ---- 探险地图相关 ----
+        try {
+            if (typeof loadRegionStatus === 'function') loadRegionStatus();
+            if (typeof loadStoryProgress === 'function') loadStoryProgress();
+            if (typeof loadAdventurerData === 'function') loadAdventurerData();
+            if (typeof loadTreasureData === 'function') loadTreasureData();
+            if (typeof loadBountyData === 'function') loadBountyData();
+            if (typeof loadRiceData === 'function') loadRiceData();
+            if (typeof loadPaniniData === 'function') loadPaniniData();
+            if (typeof loadMiningData === 'function') loadMiningData();
+            if (typeof loadTravelState === 'function') loadTravelState();
+            console.log('✅ 探险地图数据已重新加载');
+        } catch(e) { console.warn('探险地图重新加载失败:', e); }
+
+        // ============================================================
+        // ★★★ 8. 刷新所有 UI ★★★
+        // ============================================================
+        console.log('🎨 开始刷新UI...');
+        
+        try {
+            if (typeof refreshUI === 'function') refreshUI();
+            if (typeof renderSlots === 'function') renderSlots();
+            if (typeof renderQuickSell === 'function') renderQuickSell();
+            if (typeof renderWarehouseModal === 'function') renderWarehouseModal();
+            if (typeof updateAchievements === 'function') updateAchievements();
+            if (typeof renderShopUI === 'function') renderShopUI();
+            if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
+            if (typeof recalcAllProducingSlots === 'function') recalcAllProducingSlots();
+            
+            // 探险页面相关
+            if (typeof renderMarkers === 'function') renderMarkers();
+            if (typeof updateInfoPanel === 'function') updateInfoPanel();
+            if (typeof updateAdventurerUI === 'function') updateAdventurerUI();
+            if (typeof updateExploreCoinsDisplay === 'function') updateExploreCoinsDisplay();
+            if (typeof updateTowerEntry === 'function') updateTowerEntry();
+            
+            console.log('✅ UI 刷新完成');
+        } catch(e) { console.warn('UI 刷新失败:', e); }
+
+        // ============================================================
+        // 9. 设置导入标记，防止自动保存立即覆盖
+        // ============================================================
         localStorage.setItem('_imported_at', String(Date.now()));
 
-        // 11. 显示成功消息
-        var msg = '✅ 导入成功！已恢复 ' + count + ' 项数据';
-        if (hasChocolateSave) {
-            msg += '，主游戏数据已恢复';
-        } else {
-            msg += '，但未找到主游戏数据（可能存档不完整）';
-        }
-        showSaveMessage(msg, false);
+        // ============================================================
+        // 10. 显示成功消息并强制刷新页面
+        // ============================================================
+        showSaveMessage('✅ 导入成功！已恢复 ' + count + ' 项数据，页面即将刷新', false);
 
-        // 12. 提示刷新（虽然数据已恢复，但为保险起见建议刷新）
-        if (!confirm('数据已恢复！是否立即刷新页面以确保完全生效？')) {
-            return;
-        }
-        // 硬刷新
-        localStorage.setItem('_import_complete', 'true');
-        location.reload(true);
+        setTimeout(function() {
+            localStorage.setItem('_import_complete', 'true');
+            location.reload(true);
+        }, 1500);
 
     } catch(e) {
         console.error('导入失败:', e);
@@ -436,7 +454,7 @@ function doImport(base64) {
 }
 
 // ============================================================
-// 辅助函数：显示消息（兼容主游戏）
+// 辅助函数：显示消息
 // ============================================================
 function showSaveMessage(msg, isError) {
     if (typeof showMessage === 'function') {
@@ -456,4 +474,4 @@ window.importSaveFromClipboard = importSaveFromClipboard;
 window.doImport = doImport;
 window.showLargeTextImportDialog = showLargeTextImportDialog;
 
-console.log('💾 存档管理器加载完成（完美修复版）');
+console.log('💾 存档管理器加载完成（完整修复版 - 所有模块数据同步）');

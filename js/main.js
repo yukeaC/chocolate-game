@@ -763,7 +763,11 @@ function initGameUI() {
         }
     }
 
-    if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
+   // ★★★ 先检查是否需要刷新订单（跨天/凌晨4点） ★★★
+if (typeof refreshOrdersIfNeeded === 'function') {
+    refreshOrdersIfNeeded();
+}
+if (typeof updateOrderStatusDisplay === 'function') updateOrderStatusDisplay();
     if (typeof refreshUI === 'function') refreshUI();
 
     // 检查翻牌配对游戏的奖励
@@ -788,6 +792,16 @@ function initGameUI() {
 }
 
 window.initGameUI = initGameUI;
+
+// 每小时检查一次订单刷新
+setInterval(function() {
+    if (typeof refreshOrdersIfNeeded === 'function') {
+        var refreshed = refreshOrdersIfNeeded();
+        if (refreshed && typeof showMessage === 'function') {
+            showMessage('📋 新一天的订单已刷新！', false);
+        }
+    }
+}, 3600000); // 1小时
 
 // 超时后备
 setTimeout(function() {

@@ -202,25 +202,29 @@ var ACHIEVEMENT_DEFS = {
 
     // ---------- 特殊类 ----------
     hidden_1: {
-        id: 'hidden_1', category: 'special', name: '探索者', icon: '🔍',
-        description: '制作 1 个隐藏产品',
-        check: function() {
-            var count = 0;
-            for (var id in hiddenInventory) count += hiddenInventory[id] || 0;
-            return count >= 1;
-        },
-        reward: { gold: 50, beans: 30, exp: 25 }
+    id: 'hidden_1', category: 'special', name: '探索者', icon: '🔍',
+    description: '制作 1 个隐藏产品',
+    check: function() {
+        var saved = _getLocalJSON('chocolate_save', {});
+        var inv = saved.hiddenInventory || {};
+        var count = 0;
+        for (var id in inv) count += inv[id] || 0;
+        return count >= 1;
     },
-    hidden_10: {
-        id: 'hidden_10', category: 'special', name: '美食猎人', icon: '🎯',
-        description: '制作 10 个隐藏产品',
-        check: function() {
-            var count = 0;
-            for (var id in hiddenInventory) count += hiddenInventory[id] || 0;
-            return count >= 10;
-        },
-        reward: { gold: 150, beans: 80, exp: 60, energy_box: 1 }
+    reward: { gold: 50, beans: 30, exp: 25 }
+},
+hidden_10: {
+    id: 'hidden_10', category: 'special', name: '美食猎人', icon: '🎯',
+    description: '制作 10 个隐藏产品',
+    check: function() {
+        var saved = _getLocalJSON('chocolate_save', {});
+        var inv = saved.hiddenInventory || {};
+        var count = 0;
+        for (var id in inv) count += inv[id] || 0;
+        return count >= 10;
     },
+    reward: { gold: 150, beans: 80, exp: 60, energy_box: 1 }
+},
     order_5: {
         id: 'order_5', category: 'special', name: '订单达人', icon: '📦',
         description: '完成 5 个订单',
@@ -662,18 +666,18 @@ var ACHIEVEMENT_DEFS = {
         reward: { gold: 150, beans: 75, exp: 75, energy_box: 1, lucky_box: 1 }
     },
     nomo_complete: {
-        id: 'nomo_complete',
-        category: 'explore',
-        name: '星际信使',
-        icon: '🌠',
-        description: '唤醒赛博巨兽（92次+29种）',
-        check: function() {
-            try {
-                return localStorage.getItem('nomo_completed') === 'true';
-            } catch(e) { return false; }
-        },
-        reward: { gold: 300, beans: 150, exp: 150, energy_box: 2, lucky_box: 2, speed_up: 3 }
+    id: 'nomo_complete',
+    category: 'explore',
+    name: '星际信使',
+    icon: '🌠',
+    description: '唤醒赛博巨兽（929份+29种）',  // ★★★ 92 → 929 ★★★
+    check: function() {
+        try {
+            return localStorage.getItem('nomo_completed') === 'true';
+        } catch(e) { return false; }
     },
+    reward: { gold: 300, beans: 150, exp: 150, energy_box: 2, lucky_box: 2, speed_up: 3 }
+},
 
     // ---- 能量 ----
     energy_100: {
@@ -763,18 +767,20 @@ var ACHIEVEMENT_DEFS = {
     reward: { gold: 300, exp: 100, energy_box: 2, lucky_box: 3 }
 },
     hidden_all_recipes: {
-        id: 'hidden_all_recipes', category: 'special', name: '隐藏美食家', icon: '🍽️',
-        description: '制作全部 8 种隐藏产品',
-        isHidden: true,
-        check: function() {
-            var allIds = HIDDEN_RECIPES.map(function(r) { return r.id; });
-            for (var i = 0; i < allIds.length; i++) {
-                if ((hiddenInventory[allIds[i]] || 0) <= 0) return false;
-            }
-            return true;
-        },
-        reward: { gold: 500, beans: 300, exp: 150, energy_box: 3, speed_up: 5 }
+    id: 'hidden_all_recipes', category: 'special', name: '隐藏美食家', icon: '🍽️',
+    description: '制作全部 8 种隐藏产品',
+    isHidden: true,
+    check: function() {
+        var saved = _getLocalJSON('chocolate_save', {});
+        var inv = saved.hiddenInventory || {};
+        var allIds = HIDDEN_RECIPES.map(function(r) { return r.id; });
+        for (var i = 0; i < allIds.length; i++) {
+            if ((inv[allIds[i]] || 0) <= 0) return false;
+        }
+        return true;
     },
+    reward: { gold: 500, beans: 300, exp: 150, energy_box: 3, speed_up: 5 }
+},
     hidden_all_slots: {
         id: 'hidden_all_slots', category: 'special', name: '工坊全开', icon: '🔓',
         description: '解锁全部 6 个工坊',
@@ -1649,16 +1655,21 @@ function getAchievementProgress(achievementId) {
     }
 
     // ---- 特殊类 ----
-    if (achievementId === 'hidden_1') {
-        var count1 = 0;
-        for (var id in hiddenInventory) count1 += hiddenInventory[id] || 0;
-        return Math.min(100, Math.round((count1 / 1) * 100));
-    }
-    if (achievementId === 'hidden_10') {
-        var count10 = 0;
-        for (var id in hiddenInventory) count10 += hiddenInventory[id] || 0;
-        return Math.min(100, Math.round((count10 / 10) * 100));
-    }
+   // ---- 特殊类 ----
+if (achievementId === 'hidden_1') {
+    var saved = _getLocalJSON('chocolate_save', {});
+    var inv = saved.hiddenInventory || {};
+    var count1 = 0;
+    for (var id in inv) count1 += inv[id] || 0;
+    return Math.min(100, Math.round((count1 / 1) * 100));
+}
+if (achievementId === 'hidden_10') {
+    var saved = _getLocalJSON('chocolate_save', {});
+    var inv = saved.hiddenInventory || {};
+    var count10 = 0;
+    for (var id in inv) count10 += inv[id] || 0;
+    return Math.min(100, Math.round((count10 / 10) * 100));
+}
     if (achievementId === 'order_5') {
         var ordersCompleted = (typeof totalOrdersCompleted !== 'undefined') ? totalOrdersCompleted : 0;
         return Math.min(100, Math.round((ordersCompleted / 5) * 100));
@@ -1866,19 +1877,20 @@ function getAchievementProgress(achievementId) {
     }
 
     // ---- 章鱼投喂 ----
-    if (achievementId === 'nomo_feed_100') {
-        var data = _getLocalJSON('nomo_feed_data', {});
-        return Math.min(100, Math.round(((data.totalCount || 0) / 100) * 100));
-    }
-    if (achievementId === 'nomo_feed_500') {
-        var data = _getLocalJSON('nomo_feed_data', {});
-        return Math.min(100, Math.round(((data.totalCount || 0) / 500) * 100));
-    }
-    if (achievementId === 'nomo_complete') {
-        try {
-            return localStorage.getItem('nomo_completed') === 'true' ? 100 : 0;
-        } catch(e) { return 0; }
-    }
+if (achievementId === 'nomo_feed_100') {
+    var data = _getLocalJSON('nomo_feed_data', {});
+    return Math.min(100, Math.round(((data.totalCount || 0) / 100) * 100));
+}
+if (achievementId === 'nomo_feed_500') {
+    var data = _getLocalJSON('nomo_feed_data', {});
+    return Math.min(100, Math.round(((data.totalCount || 0) / 500) * 100));
+}
+// ★★★ 新增：星际信使进度 ★★★
+if (achievementId === 'nomo_complete') {
+    var data = _getLocalJSON('nomo_feed_data', {});
+    var totalCount = data.totalCount || 0;
+    return Math.min(100, Math.round((totalCount / 929) * 100));
+}
 
     // ---- 能量 ----
     if (achievementId === 'energy_100') {

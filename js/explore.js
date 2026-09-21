@@ -432,14 +432,13 @@ function updateNomoDialogue() {
 function updateNomoStats() {
     var totalFed = getTotalFedCount();
     var uniqueFed = getUniqueFedCount();
-    // ★★★ 使用 929 作为分母 ★★★
     var progress = Math.min(100, Math.round((totalFed / 929) * 100));
 
     var totalEl = document.getElementById('totalFedDisplay');
-    if (totalEl) totalEl.textContent = totalFed;
+    if (totalEl) totalEl.textContent = totalFed + '/929';  // ★★★ 显示 x/929 ★★★
 
     var uniqueEl = document.getElementById('uniqueFedDisplay');
-    if (uniqueEl) uniqueEl.textContent = uniqueFed;
+    if (uniqueEl) uniqueEl.textContent = uniqueFed + '/29';
 
     var progressEl = document.getElementById('progressDisplay');
     if (progressEl) progressEl.textContent = progress + '%';
@@ -2056,9 +2055,9 @@ if (totalFed >= 929 && uniqueFed >= 29) {
     var progress = Math.min(100, Math.round((totalFed / 929) * 100));
     html += '    <div class="nomo-bottom-stats">';
     html += '      <div class="nomo-stats" id="nomoStats">';
-    html += '        <span>🍽️ 已投喂 <strong id="totalFedDisplay">' + totalFed + '</strong> 份</span>';
-    html += '        <span>🧩 种类 <strong id="uniqueFedDisplay">' + uniqueFed + '</strong>/29</span>';
-    html += '        <span>🎯 进度 <strong id="progressDisplay">' + progress + '%</strong></span>';
+html += '        <span>🍽️ 已投喂 <strong id="totalFedDisplay">' + totalFed + '/929</strong> 份</span>';
+html += '        <span>🧩 种类 <strong id="uniqueFedDisplay">' + uniqueFed + '/29</strong></span>';
+html += '        <span>🎯 进度 <strong id="progressDisplay">' + progress + '%</strong></span>';
     html += '      </div>';
     html += '    </div>';
     html += '  </div>';
@@ -3087,6 +3086,9 @@ if (backpackModal) {
 // ★★★ 地图初始化（仅在 explore.html 中执行）★★★
 // ============================================================
 function initMap() {
+
+// ★★★ 新增：强制检查章鱼状态 ★★★
+    getNomoCompleted();  // 会重置 nomo_completed 如果投喂 < 929
     // 检查关键元素是否存在
     if (!mapOverlay || !shipMarker) {
         console.warn('⚠️ 地图关键元素缺失，跳过地图初始化');
