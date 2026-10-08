@@ -345,7 +345,7 @@ function getTotalFedCount() { var data = getFeedData(); return data.totalCount |
 function getUniqueFedCount() { var data = getFeedData(); var keys = Object.keys(data.fedFoods); var count = 0; for (var i = 0; i < keys.length; i++) { if (data.fedFoods[keys[i]] > 0) count++; } return count; }
 
 // ============================================================
-// ★★★ 获取章鱼完成状态（自动重置，如果投喂次数 < 929） ★★★
+// ★★★ 获取章鱼完成状态（不再自动重置）★★★
 // ============================================================
 
 function getNomoCompleted() {
@@ -2233,15 +2233,16 @@ function sendNomoAway() {
 }
 
 // ============================================================
-// 章鱼完成状态面板
-// ============================================================
-// ============================================================
-// ★★★ 章鱼完成面板（修复居中）★★★
+// ★★★ 章鱼完成面板（带找回章鱼按钮）★★★
 // ============================================================
 
 function renderNomoCompletedPanel(infoMode, targetRegion) {
-    // ★★★ 不覆盖整个 cssText，只修改必要的样式 ★★★
-    // 保留父容器的绝对定位，只改背景和边框
+    // 检查投喂次数，判断是否需要显示"找回章鱼"按钮
+    var feedData = JSON.parse(localStorage.getItem('nomo_feed_data') || '{"fedFoods":{},"totalCount":0}');
+    var totalCount = feedData.totalCount || 0;
+    var canRecall = totalCount < 929;  // 投喂次数不足，可以找回章鱼
+
+    // 保留父容器绝对定位，只修改背景等
     infoMode.style.background = 'linear-gradient(180deg,#0a1628 0%,#0d1f3a 30%,#0a2a4a 55%,#061a2e 80%,#020d1a 100%)';
     infoMode.style.border = '2px solid rgba(0,180,255,0.15)';
     infoMode.style.borderRadius = '16px';
@@ -2253,14 +2254,8 @@ function renderNomoCompletedPanel(infoMode, targetRegion) {
     infoMode.style.overflow = 'hidden';
     infoMode.style.boxSizing = 'border-box';
 
-    // 清空内容
     infoMode.innerHTML = '';
 
-    // 计算统计信息
-    var totalFed = getTotalFedCount ? getTotalFedCount() : 0;
-    var uniqueFed = getUniqueFedCount ? getUniqueFedCount() : 0;
-
-    // 判断是否显示航行按钮
     var showTravelBtn = false;
     var travelTargetId = '';
     if (targetRegion && targetRegion.id !== 'nomo_ocean' && targetRegion.status !== 'locked') {
@@ -2274,18 +2269,27 @@ function renderNomoCompletedPanel(infoMode, targetRegion) {
     html += '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:0 0 10px 0;border-bottom:1px solid rgba(0,200,255,0.06);flex-shrink:0;">';
     html += '  <div style="font-size:1.05rem;font-weight:700;color:#8ab8d0;letter-spacing:1px;">🌊 嫑界洋 · <span style="color:#00ccff;">深海巨兽</span></div>';
     if (showTravelBtn) {
-        html += '  <button style="background:#6f9e3f;border:none;border-radius:30px;padding:5px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;transition:0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;flex-shrink:0;" onclick="startTravelFromNomo(\'' + travelTargetId + '\')">🚢 航行</button>';
+        html += '  <button style="background:#6f9e3f;border:none;border-radius:30px;padding:5px 16px;color:white;font-weight:bold;cursor:pointer;font-size:0.7rem;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;flex-shrink:0;" onclick="startTravelFromNomo(\'' + travelTargetId + '\')">🚢 航行</button>';
     } else {
         html += '  <div style="width:80px;"></div>';
     }
     html += '</div>';
 
-    // ---- 主体内容（居中） ----
+    // ---- 主体内容 ----
     html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;width:100%;">';
     html += '  <div style="font-size:4rem;opacity:0.3;animation:nomoDepartFloat 3s ease-in-out infinite;">🐙</div>';
     html += '  <div style="font-size:1.2rem;color:rgba(0,200,255,0.3);font-weight:300;letter-spacing:2px;">✨ 星际信使已回归星辰大海 ✨</div>';
     html += '  <div style="font-size:0.7rem;color:rgba(255,255,255,0.08);max-width:80%;line-height:1.8;letter-spacing:0.5px;">感谢你，勇敢的冒险者。<br>当九颗星辰连成一线，那扇门就会打开……</div>';
     html += '  <div style="font-size:0.9rem;color:rgba(255,255,255,0.05);margin-top:4px;letter-spacing:3px;">🌠 未完待续 ...</div>';
+
+    // ★★★ 找回章鱼按钮（仅当投喂次数 < 929 时显示） ★★★
+    if (canRecall) {
+        html += '  <div style="margin-top:16px;padding:10px 16px;background:rgba(0,200,255,0.05);border:1px solid rgba(0,200,255,0.1);border-radius:12px;max-width:80%;">';
+        html += '    <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-bottom:8px;line-height:1.5;">💡 检测到你的投喂进度为 <strong style="color:#ffd700;">' + totalCount + '/929</strong>，尚未完成章鱼的心愿。<br>点击下方按钮可以让章鱼回来继续投喂。</div>';
+        html += '    <button id="nomoRecallBtn" style="padding:10px 32px;border:none;border-radius:40px;font-size:0.9rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#00b4d8,#0077b6);color:white;box-shadow:0 4px 20px rgba(0,180,255,0.3);font-family:\'Georgia\',serif;letter-spacing:1px;transition:0.2s;">🐙 找回章鱼</button>';
+        html += '  </div>';
+    }
+
     html += '</div>';
 
     // ---- 底部 ----
@@ -2293,8 +2297,47 @@ function renderNomoCompletedPanel(infoMode, targetRegion) {
 
     infoMode.innerHTML = html;
 
-    // 确保显示为 flex
-    infoMode.style.display = 'flex';
+    // ★★★ 绑定找回章鱼按钮事件 ★★★
+    var recallBtn = document.getElementById('nomoRecallBtn');
+    if (recallBtn) {
+        recallBtn.addEventListener('click', function() {
+            recallOctopus();
+        });
+    }
+}
+
+// ============================================================
+// ★★★ 找回章鱼（仅当投喂次数 < 929 时有效）★★★
+// ============================================================
+
+function recallOctopus() {
+    var feedData = JSON.parse(localStorage.getItem('nomo_feed_data') || '{"fedFoods":{},"totalCount":0}');
+    var totalCount = feedData.totalCount || 0;
+
+    if (totalCount >= 929) {
+        if (typeof showToast === 'function') {
+            showToast('❌ 章鱼已完成使命，无需找回', 1500);
+        }
+        return;
+    }
+
+    // 重置状态
+    localStorage.removeItem('nomo_completed');
+    localStorage.removeItem('nomo_ready_to_depart');
+
+    if (typeof showToast === 'function') {
+        showToast('🐙 章鱼已回来！继续投喂吧（' + totalCount + '/929）', 2500);
+    }
+
+    // 刷新面板
+    var infoMode = document.getElementById('infoMode');
+    if (infoMode && typeof renderNomoOceanPanel === 'function') {
+        var current = window.getCurrentRegion ? window.getCurrentRegion() : null;
+        var targetRegion = (current && current.id === 'nomo_ocean') ? null : current;
+        renderNomoOceanPanel(infoMode, targetRegion);
+    }
+
+    console.log('🐙 章鱼已找回，当前投喂进度: ' + totalCount + '/929');
 }
 
 // ============================================================
@@ -3215,6 +3258,7 @@ window.showTreasureClaimPanel = showTreasureClaimPanel;
 window.startTravelFromNomo = startTravelFromNomo;
 window.handleFirstArrival = handleFirstArrival;
 window.sendNomoAway = sendNomoAway;
+window.recallOctopus = recallOctopus;
 
 // 添加动画样式
 (function() {
